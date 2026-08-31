@@ -110,6 +110,73 @@ func TestLifecycleRecordsNativeHistory(t *testing.T) {
 	}
 }
 
+func TestHistoryIsolatedByProjectDatabase(t *testing.T) {
+	ctx := context.Background()
+	first := openStore(t, t.TempDir()+"/first/jaflow.sqlite3")
+	second := openStore(t, t.TempDir()+"/second/jaflow.sqlite3")
+	initiative := createTestInitiative(t, first)
+	created := createTestTask(t, first, initiative.ID, "Private history")
+	if err := first.AppendHistoryEvent(ctx, task.HistoryEvent{
+		TaskID:        created.ID,
+		Source:        "native",
+		SourceEventID: "private-history",
+		EventType:     "update",
+		OccurredAt:    "2026-08-30T12:00:00Z",
+	}); err != nil {
+		t.Fatalf("append private history: %v", err)
+	}
+	if _, err := second.ListHistory(ctx, created.ID); err == nil {
+		t.Fatal("second project observed first project history")
+	}
+}
+
+func TestImportRollbackLeavesNoPartialHistory(t *testing.T) {
+	ctx := context.Background()
+	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	initiative := task.ImportedInitiative{
+		ID:        "initiative-import-rollback",
+		ProjectID: "project-alpha",
+		Name:      "rollback",
+		Status:    task.InitiativeActive,
+		CreatedAt: "2026-08-30T12:00:00Z",
+		UpdatedAt: "2026-08-30T12:00:00Z",
+	}
+	bundle := task.ImportBundle{
+		ProjectID:   "project-alpha",
+		Initiatives: []task.ImportedInitiative{initiative},
+		Tasks: []task.ImportedTask{{
+			ID:           "task-import-rollback",
+			InitiativeID: initiative.ID,
+			Description:  "Rollback task",
+			Mode:         task.ModeUnspecified,
+			Status:       task.Pending,
+			Priority:     "M",
+			CreatedAt:    "2026-08-30T12:00:00Z",
+			UpdatedAt:    "2026-08-30T12:00:00Z",
+		}},
+		Dependencies: []task.ImportedDependency{{
+			TaskID:      "task-import-rollback",
+			DependsOnID: "missing-dependency",
+		}},
+		History: []task.HistoryEvent{{
+			TaskID:        "task-import-rollback",
+			InitiativeID:  initiative.ID,
+			Source:        "taskchampion",
+			SourceEventID: "rollback-history",
+			EventType:     "create",
+			OccurredAt:    "2026-08-30T12:00:00Z",
+		}},
+	}
+	if _, err := store.ApplyImport(ctx, bundle); err == nil {
+		t.Fatal("invalid dependency import succeeded")
+	}
+	if tasks, err := store.ListTasks(ctx, "project-alpha", "rollback"); err != nil {
+		t.Fatalf("list rolled back tasks: %v", err)
+	} else if len(tasks) != 0 {
+		t.Fatalf("rolled back tasks = %#v, want none", tasks)
+	}
+}
+
 func TestHistoryRejectsMissingScope(t *testing.T) {
 	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
 	err := store.AppendHistoryEvent(context.Background(), task.HistoryEvent{
