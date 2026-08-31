@@ -20,25 +20,39 @@ import (
 
 // LegacyTask is the subset of Taskwarrior export data used by migration.
 type LegacyTask struct {
-	ID             int64              `json:"id"`
-	UUID           string             `json:"uuid"`
-	Project        string             `json:"project"`
-	Description    string             `json:"description"`
-	Status         string             `json:"status"`
-	Start          string             `json:"start"`
-	End            string             `json:"end"`
-	Entry          string             `json:"entry"`
-	Modified       string             `json:"modified"`
-	Due            string             `json:"due"`
-	Wait           string             `json:"wait"`
-	Priority       string             `json:"priority"`
-	Urgency        float64            `json:"urgency"`
-	ExternalTicket string             `json:"externalid"`
-	Outcome        string             `json:"outcome"`
-	Depends        json.RawMessage    `json:"depends"`
-	Annotations    []LegacyAnnotation `json:"annotations"`
-	Tags           []string           `json:"tags"`
-	Backlog        int                `json:"backlog"`
+	ID             int64                `json:"id"`
+	UUID           string               `json:"uuid"`
+	Project        string               `json:"project"`
+	Description    string               `json:"description"`
+	Status         string               `json:"status"`
+	Start          string               `json:"start"`
+	End            string               `json:"end"`
+	Entry          string               `json:"entry"`
+	Modified       string               `json:"modified"`
+	Due            string               `json:"due"`
+	Wait           string               `json:"wait"`
+	Priority       string               `json:"priority"`
+	Urgency        float64              `json:"urgency"`
+	ExternalTicket string               `json:"externalid"`
+	Outcome        string               `json:"outcome"`
+	Depends        json.RawMessage      `json:"depends"`
+	Annotations    []LegacyAnnotation   `json:"annotations"`
+	Tags           []string             `json:"tags"`
+	Backlog        int                  `json:"backlog"`
+	History        []LegacyHistoryEvent `json:"history"`
+}
+
+// LegacyHistoryEvent is a structured source history event for one task.
+type LegacyHistoryEvent struct {
+	SourceEventID string `json:"source_event_id"`
+	Sequence      int64  `json:"sequence"`
+	EventType     string `json:"event_type"`
+	Property      string `json:"property"`
+	OldValue      string `json:"old_value"`
+	NewValue      string `json:"new_value"`
+	OccurredAt    string `json:"occurred_at"`
+	Actor         string `json:"actor"`
+	SessionID     string `json:"session_id"`
 }
 
 // LegacyAnnotation is one Taskwarrior annotation entry.
@@ -80,6 +94,7 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 	initiativeNames := make([]string, 0)
 	importedTasks := make([]task.ImportedTask, 0, len(source))
 	annotations := make([]task.ImportedAnnotation, 0)
+	historyEvents := make([]task.HistoryEvent, 0)
 	for _, current := range source {
 		initiativeName, discarded := sourceInitiative(current.Project)
 		if _, exists := initiativeIDs[initiativeName]; !exists {
@@ -171,6 +186,32 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 				outcome = body
 			}
 		}
+		for _, sourceEvent := range current.History {
+			if strings.TrimSpace(sourceEvent.SourceEventID) == "" || strings.TrimSpace(sourceEvent.EventType) == "" {
+				return task.ImportBundle{}, warnings, fmt.Errorf("task %s history event is missing source ID or type", current.UUID)
+			}
+			occurredAt, err := normalizeTimestamp(sourceEvent.OccurredAt)
+			if err != nil {
+				return task.ImportBundle{}, warnings, fmt.Errorf("task %s history: %w", current.UUID, err)
+			}
+			if occurredAt == "" {
+				occurredAt = createdAt
+			}
+			historyEvents = append(historyEvents, task.HistoryEvent{
+				TaskID:        current.UUID,
+				InitiativeID:  initiativeIDs[initiativeName],
+				Source:        "taskchampion",
+				SourceEventID: strings.TrimSpace(sourceEvent.SourceEventID),
+				Sequence:      sourceEvent.Sequence,
+				EventType:     strings.ToLower(strings.TrimSpace(sourceEvent.EventType)),
+				Property:      strings.TrimSpace(sourceEvent.Property),
+				OldValue:      sourceEvent.OldValue,
+				NewValue:      sourceEvent.NewValue,
+				OccurredAt:    occurredAt,
+				Actor:         strings.TrimSpace(sourceEvent.Actor),
+				SessionID:     strings.TrimSpace(sourceEvent.SessionID),
+			})
+		}
 		if current.Tags != nil && len(current.Tags) > 0 {
 			warnings = append(warnings, fmt.Sprintf("task %s: source tags require a native retention decision", current.UUID))
 		}
@@ -261,6 +302,7 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 		Tasks:        importedTasks,
 		Dependencies: dependencies,
 		Annotations:  annotations,
+		History:      historyEvents,
 	}, warnings, nil
 }
 
@@ -534,6 +576,24 @@ func validateBundle(bundle task.ImportBundle) error {
 		}
 		if annotation.Kind == "" || annotation.Body == "" || annotation.CreatedAt == "" {
 			return fmt.Errorf("annotation for task %q is incomplete", annotation.TaskID)
+		}
+	}
+	for _, event := range bundle.History {
+		if event.TaskID == "" && event.InitiativeID == "" {
+			return errors.New("history event requires task or initiative ID")
+		}
+		if event.TaskID != "" {
+			if _, exists := taskIDs[event.TaskID]; !exists {
+				return fmt.Errorf("history event task %q is not in the import", event.TaskID)
+			}
+		}
+		if event.InitiativeID != "" {
+			if _, exists := initiativeIDs[event.InitiativeID]; !exists {
+				return fmt.Errorf("history event initiative %q is not in the import", event.InitiativeID)
+			}
+		}
+		if event.Source == "" || event.SourceEventID == "" || event.EventType == "" || event.OccurredAt == "" {
+			return fmt.Errorf("history event %q is incomplete", event.ID)
 		}
 	}
 	for _, session := range bundle.Sessions {

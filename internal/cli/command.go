@@ -126,6 +126,17 @@ var helpEntries = []helpEntry{
 		next:     "Choose the first ready task in the initiative chain; do not skip a blocking dependency.",
 	},
 	{
+		name:      "history",
+		group:     groupExamineState,
+		canonical: "history",
+		summary:   "Show task or initiative history",
+		usage:     "jaflow history <uuid> | initiative <name>",
+		role:      "Use this to inspect immutable workflow events without changing state.",
+		effects:   []string{"Reads task or initiative history in chronological order."},
+		examples:  []string{"jaflow history 57c3fc80", "jaflow history initiative parity"},
+		next:      "Use 'jaflow context <uuid>' for structured annotations and inherited context.",
+	},
+	{
 		name:      "active",
 		group:     groupExamineState,
 		canonical: "active",

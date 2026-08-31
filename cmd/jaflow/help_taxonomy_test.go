@@ -29,7 +29,7 @@ func TestRootHelpGroupsCanonicalCommandsByIntent(t *testing.T) {
 		{
 			name: "examine workflow state",
 			commands: []string{
-				"help", "status", "ponder", "plans", "next", "tree",
+				"help", "status", "ponder", "plans", "next", "history", "tree",
 				"active", "blocked", "overdue",
 			},
 		},

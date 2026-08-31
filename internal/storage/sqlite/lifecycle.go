@@ -150,13 +150,32 @@ func (s *Store) StartTask(ctx context.Context, taskID string) error {
 			)
 		}
 	}
-	_, err = s.db.ExecContext(ctx, `
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin start task: %w", err)
+	}
+	defer tx.Rollback()
+	now := timestamp()
+	if _, err := tx.ExecContext(ctx, `
 		UPDATE tasks
 		SET status = ?, started_at = ?, updated_at = ?
 		WHERE id = ?
-	`, task.Active, timestamp(), timestamp(), current.ID)
-	if err != nil {
+	`, task.Active, now, now, current.ID); err != nil {
 		return fmt.Errorf("start task: %w", err)
+	}
+	if err := appendHistoryEvent(ctx, tx, task.HistoryEvent{
+		TaskID:       current.ID,
+		InitiativeID: current.InitiativeID,
+		EventType:    "start",
+		Property:     "status",
+		OldValue:     string(task.Pending),
+		NewValue:     string(task.Active),
+		OccurredAt:   now,
+	}); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit start task: %w", err)
 	}
 	return nil
 }
@@ -192,6 +211,17 @@ func (s *Store) RecordOutcome(ctx context.Context, taskID string, outcome string
 	`, current.ID, outcome, now); err != nil {
 		return fmt.Errorf("record outcome annotation: %w", err)
 	}
+	if err := appendHistoryEvent(ctx, tx, task.HistoryEvent{
+		TaskID:       current.ID,
+		InitiativeID: current.InitiativeID,
+		EventType:    "outcome",
+		Property:     "outcome",
+		OldValue:     current.Outcome,
+		NewValue:     outcome,
+		OccurredAt:   now,
+	}); err != nil {
+		return err
+	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit outcome: %w", err)
 	}
@@ -213,13 +243,32 @@ func (s *Store) CompleteTask(ctx context.Context, taskID string) error {
 			current.ID[:8], current.ID[:8],
 		)
 	}
-	_, err = s.db.ExecContext(ctx, `
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin complete task: %w", err)
+	}
+	defer tx.Rollback()
+	now := timestamp()
+	if _, err := tx.ExecContext(ctx, `
 		UPDATE tasks
 		SET status = ?, completed_at = ?, updated_at = ?
 		WHERE id = ?
-	`, task.Completed, timestamp(), timestamp(), current.ID)
-	if err != nil {
+	`, task.Completed, now, now, current.ID); err != nil {
 		return fmt.Errorf("complete task: %w", err)
+	}
+	if err := appendHistoryEvent(ctx, tx, task.HistoryEvent{
+		TaskID:       current.ID,
+		InitiativeID: current.InitiativeID,
+		EventType:    "complete",
+		Property:     "status",
+		OldValue:     string(current.Status),
+		NewValue:     string(task.Completed),
+		OccurredAt:   now,
+	}); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit complete task: %w", err)
 	}
 	if err := s.refreshInitiativeStatus(ctx, current.InitiativeID); err != nil {
 		return err
@@ -236,13 +285,32 @@ func (s *Store) ReopenTask(ctx context.Context, taskID string) error {
 	if current.Status != task.Completed {
 		return fmt.Errorf("task %s is not completed", current.ID[:8])
 	}
-	_, err = s.db.ExecContext(ctx, `
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin reopen task: %w", err)
+	}
+	defer tx.Rollback()
+	now := timestamp()
+	if _, err := tx.ExecContext(ctx, `
 		UPDATE tasks
 		SET status = ?, completed_at = '', disposition = '', updated_at = ?
 		WHERE id = ?
-	`, task.Pending, timestamp(), current.ID)
-	if err != nil {
+	`, task.Pending, now, current.ID); err != nil {
 		return fmt.Errorf("reopen task: %w", err)
+	}
+	if err := appendHistoryEvent(ctx, tx, task.HistoryEvent{
+		TaskID:       current.ID,
+		InitiativeID: current.InitiativeID,
+		EventType:    "reopen",
+		Property:     "status",
+		OldValue:     string(task.Completed),
+		NewValue:     string(task.Pending),
+		OccurredAt:   now,
+	}); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit reopen task: %w", err)
 	}
 	return nil
 }
@@ -277,6 +345,17 @@ func (s *Store) DiscardTask(ctx context.Context, taskID string) error {
 		VALUES (?, 'OUTCOME', ?, ?)
 	`, current.ID, audit, now); err != nil {
 		return fmt.Errorf("record discard audit: %w", err)
+	}
+	if err := appendHistoryEvent(ctx, tx, task.HistoryEvent{
+		TaskID:       current.ID,
+		InitiativeID: current.InitiativeID,
+		EventType:    "discard",
+		Property:     "disposition",
+		OldValue:     current.Disposition,
+		NewValue:     "discarded",
+		OccurredAt:   now,
+	}); err != nil {
+		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit discard: %w", err)

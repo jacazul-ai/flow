@@ -111,6 +111,15 @@ func TestApplyIsIdempotentAndPreservesDependenciesAndAnnotations(t *testing.T) {
 				Entry:       "20260830T120000Z",
 				Description: "OUTCOME: First complete",
 			}},
+			History: []migration.LegacyHistoryEvent{{
+				SourceEventID: "42",
+				Sequence:      42,
+				EventType:     "update",
+				Property:      "status",
+				OldValue:      "pending",
+				NewValue:      "completed",
+				OccurredAt:    "20260830T120500Z",
+			}},
 		},
 		{
 			UUID:        secondUUID,
@@ -159,6 +168,13 @@ func TestApplyIsIdempotentAndPreservesDependenciesAndAnnotations(t *testing.T) {
 	}
 	if len(tasks[1].Dependencies) != 1 || tasks[1].Dependencies[0] != firstUUID {
 		t.Fatalf("dependencies = %#v, want first UUID", tasks[1].Dependencies)
+	}
+	history, err := store.ListHistory(context.Background(), firstUUID)
+	if err != nil {
+		t.Fatalf("list imported history: %v", err)
+	}
+	if len(history) != 1 || history[0].SourceEventID != "42" {
+		t.Fatalf("imported history = %#v, want one source event", history)
 	}
 }
 

@@ -7,6 +7,7 @@ type ImportBundle struct {
 	Tasks        []ImportedTask
 	Dependencies []ImportedDependency
 	Annotations  []ImportedAnnotation
+	History      []HistoryEvent
 	Sessions     []ImportedSession
 	SessionNotes []ImportedSessionNote
 }
@@ -56,6 +57,24 @@ type ImportedAnnotation struct {
 	CreatedAt string
 }
 
+// HistoryEvent is one immutable task state transition.
+type HistoryEvent struct {
+	ID            string
+	TaskID        string
+	InitiativeID  string
+	Source        string
+	SourceEventID string
+	Sequence      int64
+	EventType     string
+	Property      string
+	OldValue      string
+	NewValue      string
+	OccurredAt    string
+	Actor         string
+	SessionID     string
+	RecordedAt    string
+}
+
 // ImportedSession is one source focus state for a project session.
 type ImportedSession struct {
 	State     FocusState
@@ -78,4 +97,5 @@ type ImportResult struct {
 	Unchanged    int
 	Dependencies int
 	Annotations  int
+	History      int
 }

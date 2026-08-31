@@ -37,10 +37,45 @@ func (s *Store) UpdateTaskMetadata(ctx context.Context, taskID string, update ta
 	}
 
 	sets = append(sets, "updated_at = ?")
-	args = append(args, timestamp(), current.ID)
+	now := timestamp()
+	args = append(args, now, current.ID)
 	query := fmt.Sprintf("UPDATE tasks SET %s WHERE id = ?", strings.Join(sets, ", "))
-	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return task.Task{}, fmt.Errorf("begin amend task metadata: %w", err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, query, args...); err != nil {
 		return task.Task{}, fmt.Errorf("amend task metadata: %w", err)
+	}
+	if update.Description != nil {
+		if err := appendHistoryEvent(ctx, tx, task.HistoryEvent{
+			TaskID:       current.ID,
+			InitiativeID: current.InitiativeID,
+			EventType:    "update",
+			Property:     "description",
+			OldValue:     current.Description,
+			NewValue:     strings.TrimSpace(*update.Description),
+			OccurredAt:   now,
+		}); err != nil {
+			return task.Task{}, err
+		}
+	}
+	if update.ExternalTicket != nil {
+		if err := appendHistoryEvent(ctx, tx, task.HistoryEvent{
+			TaskID:       current.ID,
+			InitiativeID: current.InitiativeID,
+			EventType:    "update",
+			Property:     "external_ticket",
+			OldValue:     current.ExternalTicket,
+			NewValue:     strings.TrimSpace(*update.ExternalTicket),
+			OccurredAt:   now,
+		}); err != nil {
+			return task.Task{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return task.Task{}, fmt.Errorf("commit amended metadata: %w", err)
 	}
 	return s.GetTask(ctx, current.ID)
 }
@@ -71,10 +106,21 @@ func (s *Store) RenameInitiative(ctx context.Context, projectID string, oldName 
 		return fmt.Errorf("check initiative name: %w", err)
 	}
 
+	now := timestamp()
 	if _, err := s.db.ExecContext(ctx, `
 		UPDATE initiatives SET name = ?, updated_at = ? WHERE id = ?
-	`, newName, timestamp(), initiative.ID); err != nil {
+	`, newName, now, initiative.ID); err != nil {
 		return fmt.Errorf("rename initiative: %w", err)
+	}
+	if err := s.AppendHistoryEvent(ctx, task.HistoryEvent{
+		InitiativeID: initiative.ID,
+		EventType:    "rename",
+		Property:     "name",
+		OldValue:     oldName,
+		NewValue:     newName,
+		OccurredAt:   now,
+	}); err != nil {
+		return err
 	}
 	return nil
 }
@@ -88,12 +134,24 @@ func (s *Store) SetTaskUrgency(ctx context.Context, taskID string, urgency float
 	if err != nil {
 		return err
 	}
+	now := timestamp()
 	if _, err := s.db.ExecContext(ctx, `
 		UPDATE tasks
 		SET priority = 'H', urgency = ?, updated_at = ?
 		WHERE id = ?
-	`, urgency, timestamp(), current.ID); err != nil {
+	`, urgency, now, current.ID); err != nil {
 		return fmt.Errorf("set task urgency: %w", err)
+	}
+	if err := s.AppendHistoryEvent(ctx, task.HistoryEvent{
+		TaskID:       current.ID,
+		InitiativeID: current.InitiativeID,
+		EventType:    "urgent",
+		Property:     "urgency",
+		OldValue:     fmt.Sprintf("%.1f", current.Urgency),
+		NewValue:     fmt.Sprintf("%.1f", urgency),
+		OccurredAt:   now,
+	}); err != nil {
+		return err
 	}
 	return nil
 }
@@ -108,10 +166,22 @@ func (s *Store) SetTaskWait(ctx context.Context, taskID string, waitUntil string
 	if err != nil {
 		return err
 	}
+	now := timestamp()
 	if _, err := s.db.ExecContext(ctx, `
 		UPDATE tasks SET wait_until = ?, updated_at = ? WHERE id = ?
-	`, waitUntil, timestamp(), current.ID); err != nil {
+	`, waitUntil, now, current.ID); err != nil {
 		return fmt.Errorf("set task wait: %w", err)
+	}
+	if err := s.AppendHistoryEvent(ctx, task.HistoryEvent{
+		TaskID:       current.ID,
+		InitiativeID: current.InitiativeID,
+		EventType:    "wait",
+		Property:     "wait_until",
+		OldValue:     current.WaitUntil,
+		NewValue:     waitUntil,
+		OccurredAt:   now,
+	}); err != nil {
+		return err
 	}
 	return nil
 }
@@ -134,6 +204,9 @@ func (s *Store) AddDependency(ctx context.Context, taskID string, dependencyID s
 	`, current.ID, dependency.ID); err != nil {
 		return fmt.Errorf("add dependency: %w", err)
 	}
+	if err := s.RecordNativeHistory(ctx, current.ID, "block", "depends", "", dependency.ID, ""); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -151,6 +224,9 @@ func (s *Store) RemoveDependency(ctx context.Context, taskID string, dependencyI
 		WHERE task_id = ? AND depends_on_id = ?
 	`, current.ID, dependency.ID); err != nil {
 		return fmt.Errorf("remove dependency: %w", err)
+	}
+	if err := s.RecordNativeHistory(ctx, current.ID, "unblock", "depends", dependency.ID, "", ""); err != nil {
+		return err
 	}
 	return nil
 }

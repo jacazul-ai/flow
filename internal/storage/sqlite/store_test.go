@@ -183,8 +183,8 @@ func TestGooseAdoptsLegacyV1Schema(t *testing.T) {
 	).Scan(&version); err != nil {
 		t.Fatalf("read adopted Goose version: %v", err)
 	}
-	if version != 8 {
-		t.Fatalf("adopted Goose version = %d, want 8", version)
+	if version != 9 {
+		t.Fatalf("adopted Goose version = %d, want 9", version)
 	}
 	for _, column := range []string{"started_at", "completed_at", "disposition", "priority", "urgency", "wait_until"} {
 		var count int
@@ -236,8 +236,8 @@ func TestOpenAppliesAllGooseMigrations(t *testing.T) {
 	).Scan(&version); err != nil {
 		t.Fatalf("read goose version: %v", err)
 	}
-	if version != 8 {
-		t.Fatalf("goose version = %d, want 8", version)
+	if version != 9 {
+		t.Fatalf("goose version = %d, want 9", version)
 	}
 	var sessionNotes int
 	if err := db.QueryRow(
@@ -247,6 +247,15 @@ func TestOpenAppliesAllGooseMigrations(t *testing.T) {
 	}
 	if sessionNotes != 1 {
 		t.Fatal("session_notes table was not created")
+	}
+	var historyTable int
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'workflow_history'",
+	).Scan(&historyTable); err != nil {
+		t.Fatalf("check workflow history table: %v", err)
+	}
+	if historyTable != 1 {
+		t.Fatal("workflow_history table was not created")
 	}
 }
 

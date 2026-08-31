@@ -127,6 +127,63 @@ func (s *Store) ApplyImport(ctx context.Context, bundle task.ImportBundle) (task
 		result.Annotations++
 	}
 
+	for _, event := range bundle.History {
+		if event.TaskID == "" && event.InitiativeID == "" {
+			return task.ImportResult{}, errors.New("history event requires task or initiative ID")
+		}
+		if event.Source == "" || event.SourceEventID == "" || event.EventType == "" || event.OccurredAt == "" {
+			return task.ImportResult{}, fmt.Errorf("history event %q is incomplete", event.ID)
+		}
+		if event.TaskID != "" {
+			exists, err := taskExists(ctx, tx, event.TaskID, bundle.ProjectID)
+			if err != nil {
+				return task.ImportResult{}, err
+			}
+			if !exists {
+				return task.ImportResult{}, fmt.Errorf("history task %s not found", event.TaskID)
+			}
+		}
+		if event.InitiativeID != "" {
+			exists, err := initiativeExists(ctx, tx, event.InitiativeID, bundle.ProjectID)
+			if err != nil {
+				return task.ImportResult{}, err
+			}
+			if !exists {
+				return task.ImportResult{}, fmt.Errorf("history initiative %s not found", event.InitiativeID)
+			}
+		}
+		initiativeID := event.InitiativeID
+		if initiativeID == "" {
+			var err error
+			initiativeID, err = taskInitiativeID(ctx, tx, event.TaskID)
+			if err != nil {
+				return task.ImportResult{}, err
+			}
+		}
+		eventID := event.ID
+		if eventID == "" {
+			eventID = newUUID()
+		}
+		recordedAt := event.RecordedAt
+		if recordedAt == "" {
+			recordedAt = timestamp()
+		}
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO workflow_history
+				(id, task_id, initiative_id, source, source_event_id, sequence,
+				 event_type, property, old_value, new_value, occurred_at, actor,
+				 session_id, recorded_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT (source, source_event_id) DO NOTHING
+		`, eventID, nullableValue(event.TaskID), nullableValue(initiativeID),
+			event.Source, event.SourceEventID, event.Sequence, event.EventType,
+			event.Property, event.OldValue, event.NewValue, event.OccurredAt,
+			event.Actor, event.SessionID, recordedAt); err != nil {
+			return task.ImportResult{}, fmt.Errorf("import history event %s: %w", event.SourceEventID, err)
+		}
+		result.History++
+	}
+
 	for _, session := range bundle.Sessions {
 		if session.State.ProjectID != bundle.ProjectID || session.State.SessionID == "" {
 			return task.ImportResult{}, fmt.Errorf("session %q crosses import project boundary", session.State.SessionID)
@@ -215,6 +272,14 @@ func validateImportProject(bundle task.ImportBundle) error {
 			return fmt.Errorf("task %s depends on itself", dependency.TaskID)
 		}
 	}
+	for _, event := range bundle.History {
+		if event.TaskID == "" && event.InitiativeID == "" {
+			return errors.New("history event requires task or initiative ID")
+		}
+		if event.Source == "" || event.SourceEventID == "" || event.EventType == "" || event.OccurredAt == "" {
+			return fmt.Errorf("history event %q is incomplete", event.ID)
+		}
+	}
 	return nil
 }
 
@@ -231,6 +296,18 @@ func initiativeExists(ctx context.Context, tx *sql.Tx, initiativeID string, proj
 		return false, fmt.Errorf("initiative %s belongs to another project", initiativeID)
 	}
 	return true, nil
+}
+
+func taskInitiativeID(ctx context.Context, tx *sql.Tx, taskID string) (string, error) {
+	var initiativeID string
+	err := tx.QueryRowContext(ctx, "SELECT initiative_id FROM tasks WHERE id = ?", taskID).Scan(&initiativeID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("task %q not found", taskID)
+	}
+	if err != nil {
+		return "", fmt.Errorf("read task initiative: %w", err)
+	}
+	return initiativeID, nil
 }
 
 func taskExists(ctx context.Context, tx *sql.Tx, taskID string, projectID string) (bool, error) {

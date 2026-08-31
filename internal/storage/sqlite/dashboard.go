@@ -78,11 +78,22 @@ func (s *Store) SetInitiativeStatus(ctx context.Context, projectID string, name 
 	if status != task.InitiativeActive && status != task.InitiativeBacklog {
 		return fmt.Errorf("initiative status %q cannot be set by this command", status)
 	}
+	now := timestamp()
 	_, err = s.db.ExecContext(ctx, `
 		UPDATE initiatives SET status = ?, updated_at = ? WHERE id = ?
-	`, status, timestamp(), initiative.ID)
+	`, status, now, initiative.ID)
 	if err != nil {
 		return fmt.Errorf("set initiative status: %w", err)
+	}
+	if err := s.AppendHistoryEvent(ctx, task.HistoryEvent{
+		InitiativeID: initiative.ID,
+		EventType:    "update",
+		Property:     "status",
+		OldValue:     string(initiative.Status),
+		NewValue:     string(status),
+		OccurredAt:   now,
+	}); err != nil {
+		return err
 	}
 	return nil
 }

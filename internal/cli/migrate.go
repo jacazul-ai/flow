@@ -97,6 +97,6 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 }
 
 func printMigrationResult(result task.ImportResult) {
-	fmt.Printf("Records: created=%d updated=%d unchanged=%d dependencies=%d annotations=%d\n",
-		result.Created, result.Updated, result.Unchanged, result.Dependencies, result.Annotations)
+	fmt.Printf("Records: created=%d updated=%d unchanged=%d dependencies=%d annotations=%d history=%d\n",
+		result.Created, result.Updated, result.Unchanged, result.Dependencies, result.Annotations, result.History)
 }

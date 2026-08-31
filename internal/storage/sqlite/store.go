@@ -92,6 +92,15 @@ func (s *Store) GetOrCreateInitiative(ctx context.Context, input task.CreateInit
 	if err != nil {
 		return task.Initiative{}, fmt.Errorf("create initiative: %w", err)
 	}
+	if err := s.AppendHistoryEvent(ctx, task.HistoryEvent{
+		InitiativeID:  created.ID,
+		EventType:     "create",
+		Property:      "name",
+		NewValue:      created.Name,
+		OccurredAt:    now,
+	}); err != nil {
+		return task.Initiative{}, err
+	}
 	return created, nil
 }
 
@@ -156,6 +165,16 @@ func (s *Store) CreateTask(ctx context.Context, input task.CreateTaskInput) (tas
 		`, created.ID, dependencyID); err != nil {
 			return task.Task{}, fmt.Errorf("create dependency: %w", err)
 		}
+	}
+	if err := appendHistoryEvent(ctx, tx, task.HistoryEvent{
+		TaskID:       created.ID,
+		InitiativeID: created.InitiativeID,
+		EventType:    "create",
+		Property:     "description",
+		NewValue:     created.Description,
+		OccurredAt:   now,
+	}); err != nil {
+		return task.Task{}, err
 	}
 	if err := tx.Commit(); err != nil {
 		return task.Task{}, fmt.Errorf("commit task: %w", err)

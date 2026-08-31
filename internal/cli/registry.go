@@ -16,6 +16,7 @@ func RegisterCommands(parser *flags.Parser) {
 	registerCommand(parser, "active", &ActiveCommand{})
 	registerCommand(parser, "blocked", &BlockedCommand{})
 	registerCommand(parser, "overdue", &OverdueCommand{})
+	registerCommand(parser, "history", &HistoryCommand{})
 	registerCommand(parser, "cache", &CacheCommand{})
 	registerCommand(parser, "execute", &ExecuteCommand{})
 	registerCommand(parser, "next", &NextCommand{})
