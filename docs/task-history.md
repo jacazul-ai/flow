@@ -5,8 +5,8 @@
 Jaflow needs a durable task history, not only the current task snapshot and
 structured annotations. The history contract preserves what changed, when it
 changed, and which source or session produced the event. It supports both the
-native `jaflow history <uuid>` command and migration from the legacy
-TaskChampion operation log.
+explicit history-scope commands and migration from the legacy TaskChampion
+operation log.
 
 History is task workflow state. Persona files, prompt artifacts, output cache,
 and unrelated session presentation are not history records.
@@ -57,31 +57,56 @@ private prompt data.
 
 ## CLI contract
 
-The first user-facing command is:
+The user-facing commands use an explicit history scope:
 
 ```text
-jaflow history <task-uuid>
+jaflow history task <task-reference>
+jaflow history initiative <initiative-reference>
+jaflow history ini <initiative-reference>
+jaflow history plan <initiative-reference>
 ```
 
-It must:
+Task references resolve full or unambiguous short UUIDs. Initiative references
+resolve an exact project-scoped name, a full ID, or an unambiguous ID prefix of
+at least eight characters. The `initiative`, `ini`, and `plan` forms are
+aliases with identical behavior. A bare `jaflow history <reference>` is
+invalid so the subject cannot be guessed.
 
-- resolve full or unambiguous short UUIDs;
+History must:
+
 - read only the selected project database;
 - order events by `occurred_at`, `sequence`, and event ID;
-- render short task UUIDs while retaining full UUID identity internally;
+- render short UUIDs while retaining full UUID identity internally;
+- include the resolved initiative short ID in initiative history subjects;
 - show event type, property, old/new values where available, and timestamp;
-- return a quiet, successful no-history result when the task exists but has no
-  events;
-- return an actionable error when the task or project does not exist;
+- return a quiet, successful no-history result when the subject exists but has
+  no events;
+- return an actionable error when the subject does not exist or a short ID is
+  ambiguous;
 - never mutate the task, cache, focus, or session state.
 
 Example shape:
 
 ```text
-HISTORY: 57c3fc80
+$ jaflow history task 57c3fc80
+HISTORY: task 57c3fc80
 [2026-08-30T12:00:00Z] create
-[2026-08-30T12:01:00Z] update description: "Draft" → "Validated draft"
-[2026-08-30T12:02:00Z] transition status: pending → active
+[2026-08-30T12:01:00Z] update description: "Draft" -> "Validated draft"
+[2026-08-30T12:02:00Z] transition status: pending -> active
+
+$ jaflow history initiative parity
+HISTORY: initiative parity [id:91b2c3d4]
+[2026-08-30T12:00:00Z] create name: <empty> -> "parity"
+```
+
+Initiative list commands expose the same short reference for follow-up
+commands:
+
+```text
+$ jaflow plans --force
+PROJECT: example
+INITIATIVES:
+- [ACTIVE] parity [id:91b2c3d4] pending:2 active:0 completed:0 blocked:1
 ```
 
 History output is intentionally a presentation contract, not a promise to

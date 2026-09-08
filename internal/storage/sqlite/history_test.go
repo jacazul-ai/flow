@@ -73,6 +73,79 @@ func TestHistorySupportsTaskAndInitiativeScopes(t *testing.T) {
 	}
 }
 
+func TestInitiativeHistoryResolvesFullAndShortUUIDs(t *testing.T) {
+	ctx := context.Background()
+	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	initiative := createTestInitiative(t, store)
+
+	for _, reference := range []string{initiative.ID, initiative.ID[:8]} {
+		events, err := store.ListInitiativeHistory(ctx, initiative.ProjectID, reference)
+		if err != nil {
+			t.Fatalf("list initiative history by %s: %v", reference, err)
+		}
+		if len(events) == 0 {
+			t.Fatalf("initiative history by %s is empty", reference)
+		}
+	}
+}
+
+func TestInitiativeHistoryRejectsAmbiguousUUIDPrefix(t *testing.T) {
+	ctx := context.Background()
+	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	const projectID = "project-alpha"
+	const firstID = "abcdef01-first"
+	const secondID = "abcdef01-second"
+	bundle := task.ImportBundle{
+		ProjectID: projectID,
+		Initiatives: []task.ImportedInitiative{
+			{
+				ID:        firstID,
+				ProjectID: projectID,
+				Name:      "first",
+				Status:    task.InitiativeActive,
+				CreatedAt: "2026-08-30T12:00:00Z",
+				UpdatedAt: "2026-08-30T12:00:00Z",
+			},
+			{
+				ID:        secondID,
+				ProjectID: projectID,
+				Name:      "second",
+				Status:    task.InitiativeActive,
+				CreatedAt: "2026-08-30T12:00:00Z",
+				UpdatedAt: "2026-08-30T12:00:00Z",
+			},
+		},
+	}
+	if _, err := store.ApplyImport(ctx, bundle); err != nil {
+		t.Fatalf("import ambiguous initiative fixtures: %v", err)
+	}
+
+	_, err := store.ListInitiativeHistory(ctx, projectID, "abcdef01")
+	if err == nil || !strings.Contains(err.Error(), "ambiguous") {
+		t.Fatalf("ambiguous initiative reference error = %v, want actionable ambiguity", err)
+	}
+}
+
+func TestInitiativeHistoryRejectsUnknownReference(t *testing.T) {
+	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	_, err := store.ListInitiativeHistory(context.Background(), "project-alpha", "missing-initiative")
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("unknown initiative reference error = %v, want not found", err)
+	}
+}
+
+func TestInitiativeHistoryIsolatedByProjectReference(t *testing.T) {
+	ctx := context.Background()
+	first := openStore(t, t.TempDir()+"/first/jaflow.sqlite3")
+	second := openStore(t, t.TempDir()+"/second/jaflow.sqlite3")
+	initiative := createTestInitiative(t, first)
+
+	_, err := second.ListInitiativeHistory(ctx, initiative.ProjectID, initiative.ID)
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("cross-project initiative reference error = %v, want not found", err)
+	}
+}
+
 func TestLifecycleRecordsNativeHistory(t *testing.T) {
 	ctx := context.Background()
 	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")

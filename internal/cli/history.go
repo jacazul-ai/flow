@@ -21,8 +21,8 @@ func (cmd *HistoryCommand) SetAppOptions(opts *config.AppOptions) {
 
 // Execute reads task history or initiative history without mutating state.
 func (cmd *HistoryCommand) Execute(args []string) error {
-	if len(args) != 1 && len(args) != 2 {
-		return fmt.Errorf("history requires a task UUID or initiative name\nACTION: Run 'jaflow history <uuid>' or 'jaflow history initiative <name>'.")
+	if len(args) != 2 {
+		return fmt.Errorf("history requires an explicit scope and reference\nACTION: Run 'jaflow history task <uuid>' or 'jaflow history initiative <reference>'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
@@ -31,21 +31,30 @@ func (cmd *HistoryCommand) Execute(args []string) error {
 	defer store.Close()
 
 	ctx := context.Background()
-	if len(args) == 1 {
-		events, err := store.ListHistory(ctx, args[0])
+	switch args[0] {
+	case "task":
+		current, err := store.GetTask(ctx, args[1])
 		if err != nil {
 			return err
 		}
-		return renderHistory("task "+shortID(args[0]), events)
-	}
-	if args[0] != "initiative" && args[0] != "ini" && args[0] != "plan" {
+		events, err := store.ListHistory(ctx, current.ID)
+		if err != nil {
+			return err
+		}
+		return renderHistory("task "+shortID(current.ID), events)
+	case "initiative", "ini", "plan":
+		initiative, err := store.FindInitiativeReference(ctx, cmd.appOpts.ProjectID, args[1])
+		if err != nil {
+			return err
+		}
+		events, err := store.ListInitiativeHistory(ctx, cmd.appOpts.ProjectID, initiative.ID)
+		if err != nil {
+			return err
+		}
+		return renderHistory("initiative "+initiative.Name+" [id:"+shortID(initiative.ID)+"]", events)
+	default:
 		return fmt.Errorf("unknown history scope %q\nACTION: Use task or initiative.", args[0])
 	}
-	events, err := store.ListInitiativeHistory(ctx, cmd.appOpts.ProjectID, args[1])
-	if err != nil {
-		return err
-	}
-	return renderHistory("initiative "+args[1], events)
 }
 
 func renderHistory(subject string, events []task.HistoryEvent) error {

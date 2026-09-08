@@ -27,9 +27,10 @@ The root help exposes canonical commands once in this fixed order:
 - `help`: show the agent workflow briefing;
 - `status`: inspect project task state;
 - `ponder`: render the project dashboard;
-- `plans`: list initiative summaries;
+- `plans`: list initiative summaries with short UUID references;
 - `next`: list ready tasks;
 - `tree`: inspect dependency markers;
+- `history`: inspect task or initiative history by explicit scope;
 - `active`, `blocked`, `overdue`: inspect derived task views.
 
 ### Work on the current task
@@ -88,6 +89,33 @@ jaflow help ini
 jaflow help initiatives
 jaflow help ship
 ```
+
+## History references
+
+History requires an explicit subject scope:
+
+```bash
+jaflow history task <task-reference>
+jaflow history initiative <initiative-reference>
+jaflow history ini <initiative-reference>
+jaflow history plan <initiative-reference>
+```
+
+Task references accept a full or unambiguous short UUID. Initiative references
+accept an exact name, a full ID, or an unambiguous ID prefix of at least eight
+characters. The `initiative`, `ini`, and `plan` forms are equivalent. Initiative
+listings expose the short reference for follow-up commands:
+
+```text
+PROJECT: example
+INITIATIVES:
+- [ACTIVE] parity [id:91b2c3d4] pending:2 active:0 completed:0 blocked:1
+```
+
+A bare `jaflow history <reference>` is rejected with an `ACTION:` prompt; the
+CLI never guesses whether the reference identifies a task or initiative.
+Unknown and ambiguous references also return actionable errors. History reads
+only the selected project database and does not mutate workflow state.
 
 ## Recommended navigation loop
 

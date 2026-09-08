@@ -193,9 +193,10 @@ func renderPlanList(projectID string, summaries []task.InitiativeSummary, all bo
 			output.WriteString("INITIATIVES:\n")
 		}
 		shown++
-		fmt.Fprintf(&output, "- [%s] %s pending:%d active:%d completed:%d blocked:%d\n",
+		fmt.Fprintf(&output, "- [%s] %s [id:%s] pending:%d active:%d completed:%d blocked:%d\n",
 			strings.ToUpper(string(summary.Initiative.Status)),
 			summary.Initiative.Name,
+			shortID(summary.Initiative.ID),
 			summary.Pending,
 			summary.Active,
 			summary.Completed,

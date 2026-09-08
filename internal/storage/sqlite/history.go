@@ -84,8 +84,8 @@ func (s *Store) ListHistory(ctx context.Context, taskID string) ([]task.HistoryE
 }
 
 // ListInitiativeHistory returns events for an initiative and its tasks.
-func (s *Store) ListInitiativeHistory(ctx context.Context, projectID string, initiativeName string) ([]task.HistoryEvent, error) {
-	initiative, err := s.FindInitiative(ctx, projectID, initiativeName)
+func (s *Store) ListInitiativeHistory(ctx context.Context, projectID string, initiativeReference string) ([]task.HistoryEvent, error) {
+	initiative, err := s.FindInitiativeReference(ctx, projectID, initiativeReference)
 	if err != nil {
 		return nil, err
 	}

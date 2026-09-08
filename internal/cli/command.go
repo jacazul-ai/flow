@@ -130,10 +130,10 @@ var helpEntries = []helpEntry{
 		group:     groupExamineState,
 		canonical: "history",
 		summary:   "Show task or initiative history",
-		usage:     "jaflow history <uuid> | initiative <name>",
+		usage:     "jaflow history task <uuid> | initiative|ini|plan <reference>",
 		role:      "Use this to inspect immutable workflow events without changing state.",
-		effects:   []string{"Reads task or initiative history in chronological order."},
-		examples:  []string{"jaflow history 57c3fc80", "jaflow history initiative parity"},
+		effects:   []string{"Reads task or initiative history in chronological order using an explicit scope."},
+		examples:  []string{"jaflow history task 57c3fc80", "jaflow history initiative parity"},
 		next:      "Use 'jaflow context <uuid>' for structured annotations and inherited context.",
 	},
 	{
