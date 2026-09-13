@@ -108,6 +108,30 @@ var helpEntries = []helpEntry{
 		next: "Run 'jaflow status <initiative>' to inspect pending work, then execute the first ready task.",
 	},
 	{
+		name:      "organize",
+		group:     groupStartAndOrganize,
+		canonical: "organize",
+		summary:   "Reorder pending tasks within one initiative",
+		usage:     "jaflow organize <order|first|after|block> <initiative> ...",
+		role:      "Use this to change presentation order without changing lifecycle state or dependency readiness.",
+		preconditions: []string{
+			"Every task reference must resolve uniquely in the selected project and initiative.",
+			"Only pending tasks may be moved or used as relative anchors.",
+		},
+		effects: []string{
+			"Persists an initiative-scoped task position and invalidates derived output cache.",
+			"Keeps completed and active tasks immutable; blocked pending tasks remain blocked.",
+			"Does not add dependencies, change task status, or change ready-task selection.",
+		},
+		examples: []string{
+			"jaflow organize order parity 9a1b2c3d 8e7f6a5b",
+			"jaflow organize first parity 9a1b2c3d",
+			"jaflow organize after parity 9a1b2c3d 8e7f6a5b",
+			"jaflow organize block parity 9a1b2c3d 8e7f6a5b --after 7d6c5b4a",
+		},
+		next: "Run 'jaflow status <initiative> --force' to verify the new order.",
+	},
+	{
 		name:      "status",
 		group:     groupExamineState,
 		canonical: "status",

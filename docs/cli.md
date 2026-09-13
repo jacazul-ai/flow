@@ -17,6 +17,7 @@ The root help exposes canonical commands once in this fixed order:
 ### Start and organize work
 
 - `plan`: create an initiative and chained tasks;
+- `organize`: reorder pending tasks within an initiative;
 - `roadmap`: manage strategic phases;
 - `rename`: rename an initiative;
 - `backlog`: pause an initiative;
@@ -116,6 +117,41 @@ A bare `jaflow history <reference>` is rejected with an `ACTION:` prompt; the
 CLI never guesses whether the reference identifies a task or initiative.
 Unknown and ambiguous references also return actionable errors. History reads
 only the selected project database and does not mutate workflow state.
+
+## Organize pending tasks
+
+Organization is explicit and scoped to one initiative:
+
+```bash
+jaflow organize order <initiative-reference> <task-reference> <task-reference> [...]
+jaflow organize first <initiative-reference> <task-reference>
+jaflow organize after <initiative-reference> <task-reference> <anchor-reference>
+jaflow organize block <initiative-reference> <task-reference> <task-reference> [...] --first
+jaflow organize block <initiative-reference> <task-reference> <task-reference> [...] --after <anchor-reference>
+```
+
+Initiative references accept an exact name, full ID, or unambiguous short ID.
+Task references accept a full or unambiguous short UUID. Every task reference
+must resolve inside the selected initiative and project.
+
+`order` permutes only the slots occupied by the named pending tasks, so omitted
+tasks do not move. `first`, `after`, and `block` explicitly move one task or an
+ordered block while preserving the relative order of all omitted pending tasks.
+For example, after tasks `One` and `Two` are completed:
+
+```bash
+jaflow organize order parity 6f6f6f6f 4f4f4f4f 5f5f5f5f 3f3f3f3f
+jaflow organize first parity 5f5f5f5f
+jaflow organize after parity 3f3f3f3f 5f5f5f5f
+jaflow organize block parity 6f6f6f6f 4f4f4f4f --after 5f5f5f5f
+```
+
+Only pending tasks can be moved or used as anchors. Completed and active tasks,
+duplicate references, ambiguous UUIDs, and cross-project or cross-initiative
+references fail with `ACTION:` guidance. Blocked pending tasks may be reordered,
+but ordering never changes dependencies, completion state, wait dates, or
+readiness. Run `jaflow next <initiative>` after organizing to identify the
+actual executable task.
 
 ## Recommended navigation loop
 

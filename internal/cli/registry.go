@@ -8,6 +8,7 @@ func RegisterCommands(parser *flags.Parser) {
 
 	plan := &PlanCommand{}
 	registerCommand(parser, "plan", plan)
+	registerCommand(parser, "organize", &OrganizeCommand{})
 	registerCommand(parser, "initiative", plan)
 	registerCommand(parser, "ini", plan)
 
