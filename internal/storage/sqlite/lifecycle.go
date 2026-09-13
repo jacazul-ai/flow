@@ -28,7 +28,7 @@ func (s *Store) GetTask(ctx context.Context, taskID string) (task.Task, error) {
 		SELECT t.id, t.initiative_id, i.name, t.description,
 		       t.task_mode_code, t.status, t.outcome, t.external_ticket,
 		       t.started_at, t.completed_at, t.disposition, t.due_at,
-		       t.priority, t.urgency, t.wait_until
+		       t.priority, t.urgency, t.wait_until, t.position
 		FROM tasks t
 		JOIN initiatives i ON i.id = t.initiative_id
 		WHERE t.id = ?
@@ -48,6 +48,7 @@ func (s *Store) GetTask(ctx context.Context, taskID string) (task.Task, error) {
 		&current.Priority,
 		&current.Urgency,
 		&current.WaitUntil,
+		&current.Position,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return task.Task{}, fmt.Errorf("task %q not found", taskID)

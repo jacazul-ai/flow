@@ -93,11 +93,11 @@ func (s *Store) GetOrCreateInitiative(ctx context.Context, input task.CreateInit
 		return task.Initiative{}, fmt.Errorf("create initiative: %w", err)
 	}
 	if err := s.AppendHistoryEvent(ctx, task.HistoryEvent{
-		InitiativeID:  created.ID,
-		EventType:     "create",
-		Property:      "name",
-		NewValue:      created.Name,
-		OccurredAt:    now,
+		InitiativeID: created.ID,
+		EventType:    "create",
+		Property:     "name",
+		NewValue:     created.Name,
+		OccurredAt:   now,
 	}); err != nil {
 		return task.Initiative{}, err
 	}
@@ -146,16 +146,24 @@ func (s *Store) CreateTask(ctx context.Context, input task.CreateTaskInput) (tas
 	}
 	defer tx.Rollback()
 
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COALESCE(MAX(position), 0) + 1
+		FROM tasks
+		WHERE initiative_id = ?
+	`, created.InitiativeID).Scan(&created.Position); err != nil {
+		return task.Task{}, fmt.Errorf("allocate task position: %w", err)
+	}
+
 	now := timestamp()
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO tasks
 			(id, initiative_id, description, mode, status, outcome,
 			 external_ticket, priority, urgency, wait_until, due_at,
-			 task_mode_code, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, '', '', ?, ?, ?, ?, ?, ?, ?)
+			 task_mode_code, position, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, '', '', ?, ?, ?, ?, ?, ?, ?, ?)
 	`, created.ID, created.InitiativeID, created.Description, legacyModeName(created.Mode),
 		created.Status, created.Priority, created.Urgency, created.WaitUntil,
-		created.DueAt, created.Mode, now, now); err != nil {
+		created.DueAt, created.Mode, created.Position, now, now); err != nil {
 		return task.Task{}, fmt.Errorf("create task: %w", err)
 	}
 	for _, dependencyID := range created.Dependencies {
@@ -192,7 +200,7 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 		SELECT t.id, t.initiative_id, i.name, t.description,
 		       t.status, t.outcome, t.external_ticket,
 		       t.started_at, t.completed_at, t.disposition, t.due_at,
-		       t.priority, t.urgency, t.wait_until, t.task_mode_code
+		       t.priority, t.urgency, t.wait_until, t.task_mode_code, t.position
 		FROM tasks t
 		JOIN initiatives i ON i.id = t.initiative_id
 		WHERE i.project_id = ?
@@ -202,7 +210,7 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 		query += " AND i.name = ?"
 		args = append(args, initiativeName)
 	}
-	query += " ORDER BY t.created_at, t.id"
+	query += " ORDER BY t.position, t.created_at, t.id"
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -231,6 +239,7 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 			&current.Urgency,
 			&current.WaitUntil,
 			&modeCode,
+			&current.Position,
 		); err != nil {
 			return nil, fmt.Errorf("scan task: %w", err)
 		}

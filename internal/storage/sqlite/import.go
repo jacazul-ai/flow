@@ -62,8 +62,13 @@ func (s *Store) ApplyImport(ctx context.Context, bundle task.ImportBundle) (task
 			INSERT INTO tasks
 				(id, initiative_id, description, mode, status, outcome,
 				 external_ticket, started_at, completed_at, disposition, due_at,
-				 priority, urgency, wait_until, task_mode_code, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				 priority, urgency, wait_until, task_mode_code, position, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+				COALESCE(
+					(SELECT position FROM tasks WHERE id = ?),
+					(SELECT COALESCE(MAX(position), 0) + 1 FROM tasks WHERE initiative_id = ?)
+				),
+				?, ?)
 			ON CONFLICT (id) DO UPDATE SET
 				initiative_id = excluded.initiative_id,
 				description = excluded.description,
@@ -84,7 +89,8 @@ func (s *Store) ApplyImport(ctx context.Context, bundle task.ImportBundle) (task
 			legacyModeName(imported.Mode), imported.Status, imported.Outcome,
 			imported.ExternalTicket, imported.StartedAt, imported.CompletedAt,
 			imported.Disposition, imported.DueAt, imported.Priority, imported.Urgency,
-			imported.WaitUntil, imported.Mode, imported.CreatedAt, imported.UpdatedAt); err != nil {
+			imported.WaitUntil, imported.Mode, imported.ID, imported.InitiativeID,
+			imported.CreatedAt, imported.UpdatedAt); err != nil {
 			return task.ImportResult{}, fmt.Errorf("import task %s: %w", imported.ID, err)
 		}
 		if !exists {

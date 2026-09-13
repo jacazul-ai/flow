@@ -183,10 +183,10 @@ func TestGooseAdoptsLegacyV1Schema(t *testing.T) {
 	).Scan(&version); err != nil {
 		t.Fatalf("read adopted Goose version: %v", err)
 	}
-	if version != 9 {
-		t.Fatalf("adopted Goose version = %d, want 9", version)
+	if version != 10 {
+		t.Fatalf("adopted Goose version = %d, want 10", version)
 	}
-	for _, column := range []string{"started_at", "completed_at", "disposition", "priority", "urgency", "wait_until"} {
+	for _, column := range []string{"started_at", "completed_at", "disposition", "priority", "urgency", "wait_until", "position"} {
 		var count int
 		if err := adopted.QueryRow(
 			"SELECT COUNT(*) FROM pragma_table_info('tasks') WHERE name = ?", column,
@@ -236,8 +236,8 @@ func TestOpenAppliesAllGooseMigrations(t *testing.T) {
 	).Scan(&version); err != nil {
 		t.Fatalf("read goose version: %v", err)
 	}
-	if version != 9 {
-		t.Fatalf("goose version = %d, want 9", version)
+	if version != 10 {
+		t.Fatalf("goose version = %d, want 10", version)
 	}
 	var sessionNotes int
 	if err := db.QueryRow(
@@ -256,6 +256,15 @@ func TestOpenAppliesAllGooseMigrations(t *testing.T) {
 	}
 	if historyTable != 1 {
 		t.Fatal("workflow_history table was not created")
+	}
+	var taskPositionIndex int
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'tasks_initiative_position_idx'",
+	).Scan(&taskPositionIndex); err != nil {
+		t.Fatalf("check task position index: %v", err)
+	}
+	if taskPositionIndex != 1 {
+		t.Fatal("task position index was not created")
 	}
 }
 

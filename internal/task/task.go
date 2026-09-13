@@ -147,6 +147,7 @@ type CreateInitiativeInput struct {
 // Task is the local workflow representation shared by task backends.
 type Task struct {
 	ID             string       `json:"id"`
+	Position       int64        `json:"position"`
 	InitiativeID   string       `json:"initiative_id"`
 	InitiativeName string       `json:"initiative_name"`
 	Description    string       `json:"description"`
