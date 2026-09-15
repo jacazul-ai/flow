@@ -27,6 +27,24 @@ Compatibility aliases remain routable and are documented with
 `jaflow help <alias>` without appearing as duplicate canonical commands in the
 root taxonomy.
 
+## Deterministic agent onboarding
+
+`jaflow onboard` is the one-shot bootstrap briefing for an agent. It composes
+existing workflow primitives without creating a second persistence model or
+replacing the individual commands:
+
+1. render a pending session handoff first;
+2. render the current session focus and focused task context;
+3. render focused `status` when an anchor exists;
+4. render project-wide `ponder` when no anchor exists;
+5. acknowledge the handoff only after the complete briefing renders
+   successfully.
+
+`jaflow session dump` remains the producer of a resumable handoff,
+`jaflow session resume` remains the low-level reader, and `jaflow session ack`
+remains available for explicit acknowledgement and diagnostics. A failed
+onboard briefing does not acknowledge a pending handoff.
+
 ## Root help taxonomy
 
 The root help exposes canonical commands once in this fixed order:
