@@ -32,7 +32,10 @@ func main() {
 
 	parser.CommandHandler = config.WithAppOptions(&opts)
 
-	cli.RegisterCommands(parser)
+	if err := cli.RegisterCommands(parser); err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: register commands: %v\n", err)
+		os.Exit(1)
+	}
 
 	_, err := parser.Parse()
 	if err != nil {
@@ -41,7 +44,7 @@ func main() {
 			os.Exit(0)
 		}
 		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Type == flags.ErrHelp {
-			parser.WriteHelp(os.Stdout)
+			cli.PrintRootHelp(os.Stdout)
 			os.Exit(0)
 		}
 		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)

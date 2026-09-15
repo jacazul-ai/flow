@@ -121,6 +121,34 @@ func TestHelpProvidesAgentWorkflowBriefing(t *testing.T) {
 	}
 }
 
+func TestRootHelpFlagsUseCustomRenderer(t *testing.T) {
+	binary := buildJaflow(t)
+	harness := testharness.NewHarness(t, "project", "session")
+	var explicitHelp string
+
+	for _, args := range [][]string{{"help"}, {"--help"}} {
+		output, err := runJaflow(t, binary, harness, args...)
+		if err != nil {
+			t.Fatalf("help %v failed: %v\n%s", args, err, output)
+		}
+		for _, section := range []string{"ROLE", "WORKFLOW", "COMMANDS", "GLOBAL OPTIONS"} {
+			if !strings.Contains(output, section) {
+				t.Fatalf("help %v = %q, want %q section", args, output, section)
+			}
+		}
+		if strings.Contains(output, "Parser options:") || strings.Contains(output, "Available commands:") {
+			t.Fatalf("help %v leaked go-flags output: %q", args, output)
+		}
+		if args[0] == "help" {
+			explicitHelp = output
+			continue
+		}
+		if output != explicitHelp {
+			t.Fatalf("root help differs between help and --help\nhelp:\n%s\n--help:\n%s", explicitHelp, output)
+		}
+	}
+}
+
 func TestTaskLifecycleEnforcesOutcomeAndUnblocks(t *testing.T) {
 	binary := buildJaflow(t)
 	harness := testharness.NewHarness(t, "project", "session")

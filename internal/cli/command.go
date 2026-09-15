@@ -5,18 +5,14 @@ import (
 	"io"
 	"os"
 	"strings"
-
-	"github.com/jessevdk/go-flags"
 )
 
 // HelpCommand renders agent-facing workflow guidance.
-type HelpCommand struct {
-	parser *flags.Parser
-}
+type HelpCommand struct{}
 
-// NewHelpCommand creates a help command backed by the root parser.
-func NewHelpCommand(parser *flags.Parser) *HelpCommand {
-	return &HelpCommand{parser: parser}
+// NewHelpCommand creates a help command backed by the command registry.
+func NewHelpCommand() *HelpCommand {
+	return &HelpCommand{}
 }
 
 // Execute prints root help or the operational brief for one command.
@@ -29,8 +25,10 @@ func (cmd *HelpCommand) Execute(args []string) error {
 	if len(args) == 1 {
 		command = args[0]
 	}
+
+	registry := NewCommandRegistry()
 	if command != "" && command != "help" {
-		entry, ok := findHelpEntry(command)
+		entry, ok := registry.Find(command)
 		if !ok {
 			return fmt.Errorf("unknown help topic %q; use 'jaflow help' to list commands", command)
 		}
@@ -39,10 +37,6 @@ func (cmd *HelpCommand) Execute(args []string) error {
 	}
 
 	writeRootHelp(os.Stdout)
-	if cmd.parser != nil {
-		fmt.Fprintln(os.Stdout, "Parser options:")
-		cmd.parser.WriteHelp(os.Stdout)
-	}
 	return nil
 }
 
@@ -689,6 +683,11 @@ func findHelpEntry(name string) (helpEntry, bool) {
 	return helpEntry{}, false
 }
 
+// PrintRootHelp renders the agent-facing root help without parser-generated output.
+func PrintRootHelp(writer io.Writer) {
+	writeRootHelp(writer)
+}
+
 func writeRootHelp(writer io.Writer) {
 	fmt.Fprintln(writer, "jaflow — local project workflow engine")
 	fmt.Fprintln(writer, "")
@@ -701,13 +700,14 @@ func writeRootHelp(writer io.Writer) {
 	fmt.Fprintln(writer, "  A task with an unfinished dependency is blocked; completion exposes the next ready task.")
 	fmt.Fprintln(writer, "")
 	fmt.Fprintln(writer, "COMMANDS")
-	for _, group := range helpGroupOrder() {
-		fmt.Fprintln(writer, group)
-		for _, entry := range helpEntries {
-			if entry.group != group || entry.hidden {
-				continue
+	for _, group := range NewCommandRegistry().CommonGroups() {
+		fmt.Fprintln(writer, group.Name)
+		for _, entry := range group.Commands {
+			summary := entry.Summary
+			if len(entry.Aliases) > 0 {
+				summary += fmt.Sprintf(" (aliases: %s)", strings.Join(entry.Aliases, ", "))
 			}
-			fmt.Fprintf(writer, "  %-12s %s\n", entry.name, entry.summary)
+			fmt.Fprintf(writer, "  %-12s %s\n", entry.Name, summary)
 		}
 		fmt.Fprintln(writer, "")
 	}
@@ -721,6 +721,8 @@ func writeRootHelp(writer io.Writer) {
 	fmt.Fprintln(writer, "")
 	fmt.Fprintln(writer, "NEXT")
 	fmt.Fprintln(writer, "  Run 'jaflow status' to see the current project's pending work.")
+	fmt.Fprintln(writer, "")
+	writeGlobalOptions(writer)
 }
 
 func helpGroupOrder() []string {
@@ -736,14 +738,28 @@ func helpGroupOrder() []string {
 	}
 }
 
-func writeCommandHelp(writer io.Writer, entry helpEntry) {
-	fmt.Fprintf(writer, "jaflow %s — %s\n\n", entry.name, entry.summary)
-	fmt.Fprintf(writer, "USAGE\n  %s\n\n", entry.usage)
-	fmt.Fprintf(writer, "ROLE\n  %s\n\n", entry.role)
-	writeList(writer, "PREREQUISITES", entry.preconditions)
-	writeList(writer, "SIDE EFFECTS AND OUTPUT", entry.effects)
-	writeList(writer, "EXAMPLES", entry.examples)
-	fmt.Fprintf(writer, "NEXT ACTION\n  %s\n", entry.next)
+func writeCommandHelp(writer io.Writer, entry CommandSpec) {
+	fmt.Fprintf(writer, "jaflow %s — %s\n\n", entry.Name, entry.Summary)
+	fmt.Fprintf(writer, "USAGE\n  %s\n\n", entry.ArgsUsage)
+	fmt.Fprintf(writer, "ROLE\n  %s\n\n", entry.Description)
+	writeList(writer, "PREREQUISITES", entry.Prerequisites)
+	writeList(writer, "SIDE EFFECTS AND OUTPUT", entry.Effects)
+	writeList(writer, "EXAMPLES", entry.Examples)
+	if len(entry.Aliases) > 0 {
+		writeList(writer, "ALIASES", []string{strings.Join(entry.Aliases, ", ")})
+	}
+	fmt.Fprintf(writer, "NEXT ACTION\n  %s\n", entry.NextAction)
+}
+
+func writeGlobalOptions(writer io.Writer) {
+	fmt.Fprintln(writer, "GLOBAL OPTIONS")
+	fmt.Fprintln(writer, "  -v, --verbose        Enable verbose mode")
+	fmt.Fprintln(writer, "  -V, --version        Show version")
+	fmt.Fprintln(writer, "      --project-id=    Project identity")
+	fmt.Fprintln(writer, "      --taskdata=      Legacy Taskwarrior data directory")
+	fmt.Fprintln(writer, "      --database-path= Project SQLite database path [$JAFLOW_DATABASE_PATH]")
+	fmt.Fprintln(writer, "      --session-id=    Workflow session identity [$JACAZUL_SESSION_ID]")
+	fmt.Fprintln(writer, "  -h, --help           Show this help message")
 }
 
 func writeList(writer io.Writer, heading string, values []string) {
