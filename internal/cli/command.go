@@ -80,6 +80,21 @@ var helpEntries = []helpEntry{
 		next:     "Run 'jaflow status' to inspect the current project state.",
 	},
 	{
+		name:      "onboard",
+		group:     groupExamineState,
+		canonical: "onboard",
+		summary:   "Render a one-shot agent context briefing",
+		usage:     "jaflow onboard",
+		role:      "Use this once at agent bootstrap to load handoff, focus, context, and the current workflow view in a deterministic order.",
+		effects: []string{
+			"Renders the pending session handoff before focus and workflow context.",
+			"Uses focused status when an anchor exists and the project dashboard otherwise.",
+			"Acknowledges an unacknowledged handoff only after the complete briefing renders successfully.",
+		},
+		examples: []string{"jaflow onboard"},
+		next:     "Continue with the focused task, or use the lower-level focus, status, ponder, and session commands for diagnostics.",
+	},
+	{
 		name:      "plan",
 		group:     groupStartAndOrganize,
 		canonical: "plan",
