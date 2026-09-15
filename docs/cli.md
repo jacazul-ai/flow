@@ -6,9 +6,26 @@ command name. Use it to choose the workflow family first, then use
 
 ```bash
 jaflow help
+jaflow --help
 jaflow help status
 jaflow help migrate
 ```
+
+`jaflow help` and `jaflow --help` render the same agent-facing root briefing.
+The parser remains responsible for recognizing options, but it does not own
+primary help presentation. Root help includes these global options:
+
+- `-v`, `--verbose`: enable verbose mode;
+- `-V`, `--version`: show the version;
+- `--project-id`: select the project identity;
+- `--taskdata`: select the legacy Taskwarrior data directory;
+- `--database-path`: select the project SQLite database;
+- `--session-id`: select the workflow session identity;
+- `-h`, `--help`: show the root briefing.
+
+Compatibility aliases remain routable and are documented with
+`jaflow help <alias>` without appearing as duplicate canonical commands in the
+root taxonomy.
 
 ## Root help taxonomy
 
