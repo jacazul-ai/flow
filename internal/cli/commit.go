@@ -36,7 +36,7 @@ func (cmd *CommitCommand) Execute(args []string) error {
 		return err
 	}
 	if focus.FocusedTaskID == "" {
-		return fmt.Errorf("no focused task found\nACTION: Run 'jaflow focus task <uuid>' first.")
+		return fmt.Errorf("no focused task found\nACTION: Run 'jczl-flow focus task <uuid>' first.")
 	}
 	task, err := store.GetTask(context.Background(), focus.FocusedTaskID)
 	if err != nil {

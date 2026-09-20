@@ -240,7 +240,7 @@ func (s *Store) CompleteTask(ctx context.Context, taskID string) error {
 	}
 	if strings.TrimSpace(current.Outcome) == "" {
 		return fmt.Errorf(
-			"task %s cannot be completed without an OUTCOME record\nACTION: Run 'jaflow outcome %s <message>' first.",
+			"task %s cannot be completed without an OUTCOME record\nACTION: Run 'jczl-flow outcome %s <message>' first.",
 			current.ID[:8], current.ID[:8],
 		)
 	}
@@ -380,7 +380,7 @@ func completedTaskError(taskID string, operation string) error {
 		shortID = shortID[:8]
 	}
 	return fmt.Errorf(
-		"task %s is already COMPLETED; cannot %s\nACTION: Use 'jaflow amend %s ...' for metadata or 'jaflow reopen %s' for more work.",
+		"task %s is already COMPLETED; cannot %s\nACTION: Use 'jczl-flow amend %s ...' for metadata or 'jczl-flow reopen %s' for more work.",
 		shortID, operation, shortID, shortID,
 	)
 }

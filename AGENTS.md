@@ -133,7 +133,7 @@ Preserve these domain contracts unless a design decision explicitly changes
 ## Repository Layout
 
 ```text
-cmd/jaflow/       CLI executable and global option parsing
+cmd/jczl-flow/    CLI executable and global option parsing
 internal/cli/      command implementations and command routing
 internal/config/   application-wide options and dispatch integration
 internal/testharness/ isolated test fixtures and fake external commands
@@ -144,7 +144,7 @@ go.mod            module and dependency declarations
 The command model is intentionally Git-like:
 
 ```text
-jaflow <command> [<args>]
+jczl-flow <command> [<args>]
 ```
 
 The command registry should become the source of truth for command metadata,
@@ -164,7 +164,7 @@ or a behavioral source for workflow semantics. The parent
 
 Adopt the following composition style for `jaflow`:
 
-- Keep `cmd/jaflow/main.go` thin: construct global options, configure the
+- Keep `cmd/jczl-flow/main.go` thin: construct global options, configure the
   `go-flags` parser, register commands, handle help/version, and map final
   errors to stderr and exit status.
 - Use an explicit command registry as the source of truth for command names,

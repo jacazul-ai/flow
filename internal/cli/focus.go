@@ -47,7 +47,7 @@ func (cmd *FocusCommand) Execute(args []string) error {
 	if len(args) == 1 {
 		return cmd.Plan.execute(args, false)
 	}
-	return fmt.Errorf("focus accepts at most one smart initiative name\nACTION: Run 'jaflow help focus'.")
+	return fmt.Errorf("focus accepts at most one smart initiative name\nACTION: Run 'jczl-flow help focus'.")
 }
 
 // FocusIndependentCommand provides focus operations for an isolated session.
@@ -68,7 +68,7 @@ func (cmd *FocusIndependentCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute supports smart independent focus by initiative name.
 func (cmd *FocusIndependentCommand) Execute(args []string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("focus ind requires plan or task\nACTION: Run 'jaflow focus ind plan <name>' or 'jaflow focus ind task <uuid>'.")
+		return fmt.Errorf("focus ind requires plan or task\nACTION: Run 'jczl-flow focus ind plan <name>' or 'jczl-flow focus ind task <uuid>'.")
 	}
 	return cmd.Plan.execute(args, true)
 }
@@ -87,10 +87,10 @@ func (cmd *FocusInterestCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute adds, removes, or lists plans of interest for the current session.
 func (cmd *FocusInterestCommand) Execute(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("focus interest requires add, remove, or list\nACTION: Run 'jaflow help focus'.")
+		return fmt.Errorf("focus interest requires add, remove, or list\nACTION: Run 'jczl-flow help focus'.")
 	}
 	if args[0] != "list" && len(args) != 2 {
-		return fmt.Errorf("focus interest %s requires an initiative name\nACTION: Run 'jaflow focus interest [add|remove] <initiative>'.", args[0])
+		return fmt.Errorf("focus interest %s requires an initiative name\nACTION: Run 'jczl-flow focus interest [add|remove] <initiative>'.", args[0])
 	}
 	if args[0] == "list" && len(args) != 1 {
 		return fmt.Errorf("focus interest list accepts no arguments")
@@ -209,7 +209,7 @@ func (cmd *FocusPlanCommand) Execute(args []string) error {
 
 func (cmd *FocusPlanCommand) execute(args []string, independent bool) error {
 	if len(args) != 1 {
-		return fmt.Errorf("focus plan requires one initiative name\nACTION: Run 'jaflow help focus'.")
+		return fmt.Errorf("focus plan requires one initiative name\nACTION: Run 'jczl-flow help focus'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
@@ -329,7 +329,7 @@ func (cmd *FocusPopCommand) Execute(args []string) error {
 		return err
 	}
 	if len(state.TaskStack) == 0 {
-		return fmt.Errorf("focus stack is empty\nACTION: Run 'jaflow focus task <uuid>' or 'jaflow focus plan <name>'.")
+		return fmt.Errorf("focus stack is empty\nACTION: Run 'jczl-flow focus task <uuid>' or 'jczl-flow focus plan <name>'.")
 	}
 	state.TaskStack = state.TaskStack[1:]
 	state.FocusedTaskID = ""
@@ -373,7 +373,7 @@ func (cmd *FocusBackCommand) Execute(args []string) error {
 		return fmt.Errorf("focus back accepts no arguments")
 	}
 	if cmd.appOpts.SessionID == "global" {
-		return fmt.Errorf("cannot leave the global focus\nACTION: Set JACAZUL_SESSION_ID before using 'jaflow focus back'.")
+		return fmt.Errorf("cannot leave the global focus\nACTION: Set JACAZUL_SESSION_ID before using 'jczl-flow focus back'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {

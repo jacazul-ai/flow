@@ -70,7 +70,7 @@ func listTaskView(
 	include func(task.Task, map[string]task.Status) bool,
 ) error {
 	if len(args) > 1 {
-		return fmt.Errorf("%s accepts at most one initiative name\nACTION: Run 'jaflow help %s'.", strings.ToLower(strings.TrimSuffix(header, " TASKS")), strings.ToLower(strings.TrimSuffix(header, " TASKS")))
+		return fmt.Errorf("%s accepts at most one initiative name\nACTION: Run 'jczl-flow help %s'.", strings.ToLower(strings.TrimSuffix(header, " TASKS")), strings.ToLower(strings.TrimSuffix(header, " TASKS")))
 	}
 	initiativeName := ""
 	if len(args) == 1 {

@@ -20,7 +20,7 @@ func (cmd *NextCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute renders pending tasks whose dependencies are complete.
 func (cmd *NextCommand) Execute(args []string) error {
 	if len(args) > 1 {
-		return fmt.Errorf("next accepts at most one initiative name\nACTION: Run 'jaflow next [initiative]'.")
+		return fmt.Errorf("next accepts at most one initiative name\nACTION: Run 'jczl-flow next [initiative]'.")
 	}
 	initiativeName := ""
 	if len(args) == 1 {

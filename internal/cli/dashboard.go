@@ -474,7 +474,7 @@ func containsString(values []string, wanted string) bool {
 
 func setInitiativeState(opts *config.AppOptions, args []string, state task.InitiativeStatus, command string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("%s requires one initiative name\nACTION: Run 'jaflow help %s'.", command, command)
+		return fmt.Errorf("%s requires one initiative name\nACTION: Run 'jczl-flow help %s'.", command, command)
 	}
 	store, err := openStore(opts)
 	if err != nil {

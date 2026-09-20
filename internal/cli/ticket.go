@@ -21,7 +21,7 @@ func (cmd *TicketCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute stores one direct ticket reference on a task.
 func (cmd *TicketCommand) Execute(args []string) error {
 	if len(args) != 2 || strings.TrimSpace(args[1]) == "" {
-		return fmt.Errorf("ticket requires a task UUID and ticket reference\nACTION: Run 'jaflow ticket <uuid> <ticket>'.")
+		return fmt.Errorf("ticket requires a task UUID and ticket reference\nACTION: Run 'jczl-flow ticket <uuid> <ticket>'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {

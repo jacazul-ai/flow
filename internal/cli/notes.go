@@ -24,7 +24,7 @@ func (cmd *NoteCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute adds an annotation or deletes one by creation timestamp.
 func (cmd *NoteCommand) Execute(args []string) error {
 	if len(args) < 3 {
-		return fmt.Errorf("note requires a task UUID, type, and message\nACTION: Run 'jaflow help note'.")
+		return fmt.Errorf("note requires a task UUID, type, and message\nACTION: Run 'jczl-flow help note'.")
 	}
 
 	store, err := openStore(cmd.appOpts)
@@ -40,7 +40,7 @@ func (cmd *NoteCommand) Execute(args []string) error {
 	kind := strings.TrimSpace(args[1])
 	if isAnnotationDelete(kind) {
 		if len(args) != 3 {
-			return fmt.Errorf("note delete requires one annotation timestamp\nACTION: Run 'jaflow notes %s' to list valid timestamps.", shortID(current.ID))
+			return fmt.Errorf("note delete requires one annotation timestamp\nACTION: Run 'jczl-flow notes %s' to list valid timestamps.", shortID(current.ID))
 		}
 		if err := store.DeleteAnnotation(context.Background(), current.ID, args[2]); err != nil {
 			return err
@@ -86,7 +86,7 @@ func (cmd *NotesCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute renders annotations with their creation timestamps.
 func (cmd *NotesCommand) Execute(args []string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("notes requires exactly one task UUID\nACTION: Run 'jaflow help notes'.")
+		return fmt.Errorf("notes requires exactly one task UUID\nACTION: Run 'jczl-flow help notes'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
@@ -126,7 +126,7 @@ func (cmd *ContextCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute renders the task context and dependency-inherited annotations.
 func (cmd *ContextCommand) Execute(args []string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("context requires exactly one task UUID\nACTION: Run 'jaflow help context'.")
+		return fmt.Errorf("context requires exactly one task UUID\nACTION: Run 'jczl-flow help context'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {

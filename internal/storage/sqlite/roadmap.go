@@ -72,7 +72,7 @@ func (s *Store) InitializeRoadmap(ctx context.Context, projectID string) error {
 		return err
 	}
 	if len(entries) > 0 {
-		return errors.New("roadmap already initialized\nACTION: Use 'jaflow roadmap show' or 'jaflow roadmap add'; do not initialize again.")
+		return errors.New("roadmap already initialized\nACTION: Use 'jczl-flow roadmap show' or 'jczl-flow roadmap add'; do not initialize again.")
 	}
 	summaries, err := s.ListInitiatives(ctx, projectID, true, true)
 	if err != nil {
@@ -139,7 +139,7 @@ func (s *Store) ShipRoadmapEntry(ctx context.Context, projectID string, identifi
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return task.RoadmapEntry{}, fmt.Errorf(
-			"roadmap entry %q not found\nACTION: Run 'jaflow roadmap show' to list valid entries.", identifier,
+			"roadmap entry %q not found\nACTION: Run 'jczl-flow roadmap show' to list valid entries.", identifier,
 		)
 	}
 	if err != nil {

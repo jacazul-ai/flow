@@ -57,7 +57,7 @@ func (cmd *OutcomeCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute records all remaining arguments as one outcome message.
 func (cmd *OutcomeCommand) Execute(args []string) error {
 	if len(args) < 2 {
-		return fmt.Errorf("outcome requires a task UUID and message\nACTION: Run 'jaflow outcome <uuid> <message>'.")
+		return fmt.Errorf("outcome requires a task UUID and message\nACTION: Run 'jczl-flow outcome <uuid> <message>'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
@@ -201,7 +201,7 @@ func openStore(opts *config.AppOptions) (*sqlite.Store, error) {
 
 func oneTaskID(command string, args []string) (string, error) {
 	if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
-		return "", fmt.Errorf("%s requires exactly one task UUID\nACTION: Run 'jaflow help %s'.", command, command)
+		return "", fmt.Errorf("%s requires exactly one task UUID\nACTION: Run 'jczl-flow help %s'.", command, command)
 	}
 	return args[0], nil
 }

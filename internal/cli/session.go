@@ -23,7 +23,7 @@ type SessionCommand struct {
 
 // Execute requires a session subcommand.
 func (cmd *SessionCommand) Execute(args []string) error {
-	return fmt.Errorf("session requires a subcommand\nACTION: Run 'jaflow help session'.")
+	return fmt.Errorf("session requires a subcommand\nACTION: Run 'jczl-flow help session'.")
 }
 
 // SessionListCommand lists persisted sessions for the current project.
@@ -345,9 +345,9 @@ func renderSessionDump(ctx context.Context, store *sqlite.Store, opts *config.Ap
 	}
 	output.WriteString("\nRestore focus:\n\n")
 	if focus.FocusedTaskID != "" {
-		output.WriteString(fmt.Sprintf("jaflow focus task %s\n", shortID(focus.FocusedTaskID)))
+		output.WriteString(fmt.Sprintf("jczl-flow focus task %s\n", shortID(focus.FocusedTaskID)))
 	} else if focus.InitiativeID != "" {
-		output.WriteString(fmt.Sprintf("jaflow focus plan %s\n", focus.InitiativeID))
+		output.WriteString(fmt.Sprintf("jczl-flow focus plan %s\n", focus.InitiativeID))
 	}
 	output.WriteString("\n---\n\n## Session Notes\n\n<!-- FILL IN -->\n")
 	return output.String(), nil

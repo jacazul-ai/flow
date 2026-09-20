@@ -42,7 +42,7 @@ func (cmd *CacheCommand) Execute(args []string) error {
 		return nil
 	case "clear":
 		if len(args) > 2 {
-			return fmt.Errorf("cache clear accepts an optional status or ponder scope\nACTION: Run 'jaflow cache clear [status|ponder]'.")
+			return fmt.Errorf("cache clear accepts an optional status or ponder scope\nACTION: Run 'jczl-flow cache clear [status|ponder]'.")
 		}
 		prefix := ""
 		if len(args) == 2 {

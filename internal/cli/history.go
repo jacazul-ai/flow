@@ -22,7 +22,7 @@ func (cmd *HistoryCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute reads task history or initiative history without mutating state.
 func (cmd *HistoryCommand) Execute(args []string) error {
 	if len(args) != 2 {
-		return fmt.Errorf("history requires an explicit scope and reference\nACTION: Run 'jaflow history task <uuid>' or 'jaflow history initiative <reference>'.")
+		return fmt.Errorf("history requires an explicit scope and reference\nACTION: Run 'jczl-flow history task <uuid>' or 'jczl-flow history initiative <reference>'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {

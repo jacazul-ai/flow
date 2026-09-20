@@ -71,7 +71,7 @@ func (cmd *RenameCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute renames one initiative.
 func (cmd *RenameCommand) Execute(args []string) error {
 	if len(args) != 2 {
-		return fmt.Errorf("rename requires old and new initiative names\nACTION: Run 'jaflow rename <old-name> <new-name>'.")
+		return fmt.Errorf("rename requires old and new initiative names\nACTION: Run 'jczl-flow rename <old-name> <new-name>'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
@@ -101,7 +101,7 @@ func (cmd *UrgentCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute marks a task urgent with an optional urgency value.
 func (cmd *UrgentCommand) Execute(args []string) error {
 	if len(args) < 1 || len(args) > 2 {
-		return fmt.Errorf("urgent requires a task UUID and optional urgency\nACTION: Run 'jaflow urgent <uuid> [urgency]'.")
+		return fmt.Errorf("urgent requires a task UUID and optional urgency\nACTION: Run 'jczl-flow urgent <uuid> [urgency]'.")
 	}
 	urgency := 15.0
 	if len(args) == 2 {
@@ -143,7 +143,7 @@ func (cmd *BlockCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute makes the first task depend on the second task.
 func (cmd *BlockCommand) Execute(args []string) error {
 	if len(args) != 2 {
-		return fmt.Errorf("block requires a task UUID and dependency UUID\nACTION: Run 'jaflow block <uuid> <dependency-uuid>'.")
+		return fmt.Errorf("block requires a task UUID and dependency UUID\nACTION: Run 'jczl-flow block <uuid> <dependency-uuid>'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
@@ -177,7 +177,7 @@ func (cmd *UnblockCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute removes one dependency edge.
 func (cmd *UnblockCommand) Execute(args []string) error {
 	if len(args) != 2 {
-		return fmt.Errorf("unblock requires a task UUID and dependency UUID\nACTION: Run 'jaflow unblock <uuid> <dependency-uuid>'.")
+		return fmt.Errorf("unblock requires a task UUID and dependency UUID\nACTION: Run 'jczl-flow unblock <uuid> <dependency-uuid>'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
@@ -211,7 +211,7 @@ func (cmd *WaitCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute stores a normalized wait-until date.
 func (cmd *WaitCommand) Execute(args []string) error {
 	if len(args) != 2 {
-		return fmt.Errorf("wait requires a task UUID and date\nACTION: Run 'jaflow wait <uuid> <YYYY-MM-DD|today|tomorrow>'.")
+		return fmt.Errorf("wait requires a task UUID and date\nACTION: Run 'jczl-flow wait <uuid> <YYYY-MM-DD|today|tomorrow>'.")
 	}
 	waitUntil, err := normalizeDueDate(args[1])
 	if err != nil {

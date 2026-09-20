@@ -18,11 +18,11 @@ func buildJaflow(t *testing.T) string {
 		t.Fatalf("resolve module root: %v", err)
 	}
 
-	binary := filepath.Join(t.TempDir(), "jaflow")
-	command := exec.Command("go", "build", "-o", binary, "./cmd/jaflow")
+	binary := filepath.Join(t.TempDir(), "jczl-flow")
+	command := exec.Command("go", "build", "-o", binary, "./cmd/jczl-flow")
 	command.Dir = root
 	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("build jaflow: %v\n%s", err, output)
+		t.Fatalf("build jczl-flow: %v\n%s", err, output)
 	}
 	return binary
 }

@@ -19,7 +19,7 @@ type OrganizeCommand struct {
 
 // Execute requires one organization operation.
 func (cmd *OrganizeCommand) Execute(args []string) error {
-	return fmt.Errorf("organize requires an operation\nACTION: Run 'jaflow help organize'.")
+	return fmt.Errorf("organize requires an operation\nACTION: Run 'jczl-flow help organize'.")
 }
 
 // OrganizeOrderCommand permutes only the pending-task slots named by the user.
@@ -35,7 +35,7 @@ func (cmd *OrganizeOrderCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute reorders selected pending-task slots in the supplied initiative.
 func (cmd *OrganizeOrderCommand) Execute(args []string) error {
 	if len(args) < 3 {
-		return fmt.Errorf("organize order requires an initiative and at least two task references\nACTION: Run 'jaflow organize order <initiative> <task> <task> [...].")
+		return fmt.Errorf("organize order requires an initiative and at least two task references\nACTION: Run 'jczl-flow organize order <initiative> <task> <task> [...].")
 	}
 	return organize(cmd.appOpts, args[0], args[1:], organizeSelectedSlots)
 }
@@ -53,7 +53,7 @@ func (cmd *OrganizeFirstCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute moves one task to the first pending slot.
 func (cmd *OrganizeFirstCommand) Execute(args []string) error {
 	if len(args) != 2 {
-		return fmt.Errorf("organize first requires an initiative and task reference\nACTION: Run 'jaflow organize first <initiative> <task>'.")
+		return fmt.Errorf("organize first requires an initiative and task reference\nACTION: Run 'jczl-flow organize first <initiative> <task>'.")
 	}
 	return organize(cmd.appOpts, args[0], args[1:], organizeFirst)
 }
@@ -71,7 +71,7 @@ func (cmd *OrganizeAfterCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute moves a task after one anchor.
 func (cmd *OrganizeAfterCommand) Execute(args []string) error {
 	if len(args) != 3 {
-		return fmt.Errorf("organize after requires an initiative, task, and anchor\nACTION: Run 'jaflow organize after <initiative> <task> <anchor>'.")
+		return fmt.Errorf("organize after requires an initiative, task, and anchor\nACTION: Run 'jczl-flow organize after <initiative> <task> <anchor>'.")
 	}
 	return organizeAfterTask(cmd.appOpts, args[0], args[1], args[2])
 }
@@ -91,7 +91,7 @@ func (cmd *OrganizeBlockCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute moves an ordered block of pending tasks.
 func (cmd *OrganizeBlockCommand) Execute(args []string) error {
 	if len(args) < 3 {
-		return fmt.Errorf("organize block requires an initiative and at least two task references\nACTION: Run 'jaflow organize block <initiative> <task> <task> --first|--after <anchor>'.")
+		return fmt.Errorf("organize block requires an initiative and at least two task references\nACTION: Run 'jczl-flow organize block <initiative> <task> <task> --first|--after <anchor>'.")
 	}
 	if cmd.First == (cmd.After != "") {
 		return fmt.Errorf("organize block requires exactly one destination\nACTION: Use either --first or --after <anchor>.")

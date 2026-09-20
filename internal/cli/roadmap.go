@@ -19,7 +19,7 @@ type RoadmapCommand struct {
 
 // Execute requires a roadmap subcommand.
 func (cmd *RoadmapCommand) Execute(args []string) error {
-	return fmt.Errorf("roadmap requires a subcommand\nACTION: Run 'jaflow help roadmap'.")
+	return fmt.Errorf("roadmap requires a subcommand\nACTION: Run 'jczl-flow help roadmap'.")
 }
 
 // RoadmapShowCommand displays roadmap phases.
@@ -104,12 +104,12 @@ func (cmd *RoadmapAddCommand) Execute(args []string) error {
 	description := cmd.Description
 	if len(args) > 0 {
 		if len(args) != 2 || phase != "" || description != "" {
-			return fmt.Errorf("roadmap add accepts <phase> <description> or --phase and --description\nACTION: Run 'jaflow help roadmap'.")
+			return fmt.Errorf("roadmap add accepts <phase> <description> or --phase and --description\nACTION: Run 'jczl-flow help roadmap'.")
 		}
 		phase, description = args[0], args[1]
 	}
 	if phase == "" || description == "" {
-		return fmt.Errorf("roadmap add requires --phase and --description\nACTION: Run 'jaflow help roadmap'.")
+		return fmt.Errorf("roadmap add requires --phase and --description\nACTION: Run 'jczl-flow help roadmap'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
@@ -152,7 +152,7 @@ func (cmd *RoadmapShipCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute marks a roadmap phase as shipped by ID or description.
 func (cmd *RoadmapShipCommand) Execute(args []string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("roadmap ship requires one roadmap entry ID\nACTION: Run 'jaflow help roadmap'.")
+		return fmt.Errorf("roadmap ship requires one roadmap entry ID\nACTION: Run 'jczl-flow help roadmap'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {

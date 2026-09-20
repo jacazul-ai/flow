@@ -22,7 +22,7 @@ func (cmd *HandoffCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute starts the target task when needed and adds a HANDOFF annotation.
 func (cmd *HandoffCommand) Execute(args []string) error {
 	if len(args) < 2 {
-		return fmt.Errorf("handoff requires a task UUID and message\nACTION: Run 'jaflow help handoff'.")
+		return fmt.Errorf("handoff requires a task UUID and message\nACTION: Run 'jczl-flow help handoff'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {

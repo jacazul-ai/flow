@@ -22,7 +22,7 @@ func (cmd *MigrateCommand) SetAppOptions(opts *config.AppOptions) {
 
 // Execute requires a migration source subcommand.
 func (cmd *MigrateCommand) Execute(args []string) error {
-	return fmt.Errorf("migrate requires a subcommand\nACTION: Run 'jaflow help migrate'.")
+	return fmt.Errorf("migrate requires a subcommand\nACTION: Run 'jczl-flow help migrate'.")
 }
 
 // TaskwarriorMigrationCommand imports one explicit Taskwarrior snapshot.
@@ -45,7 +45,7 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 		return fmt.Errorf("migrate taskwarrior accepts flags only")
 	}
 	if strings.TrimSpace(cmd.Source) == "" {
-		return fmt.Errorf("migration source is required\nACTION: Run 'jaflow migrate taskwarrior --source <export.json>'.")
+		return fmt.Errorf("migration source is required\nACTION: Run 'jczl-flow migrate taskwarrior --source <export.json>'.")
 	}
 	if cmd.Apply && cmd.DryRun {
 		return fmt.Errorf("--apply and --dry-run cannot be combined\nACTION: Choose --apply or omit it for the default dry-run.")

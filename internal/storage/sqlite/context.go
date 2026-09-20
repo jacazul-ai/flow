@@ -71,7 +71,7 @@ func (s *Store) DeleteAnnotation(ctx context.Context, taskID string, createdAt s
 	}
 	if removed == 0 {
 		return fmt.Errorf(
-			"no annotation found with timestamp [%s] on task %s\nACTION: Run 'jaflow notes %s' to list valid timestamps.",
+			"no annotation found with timestamp [%s] on task %s\nACTION: Run 'jczl-flow notes %s' to list valid timestamps.",
 			createdAt, shortTaskID(current.ID), shortTaskID(current.ID),
 		)
 	}

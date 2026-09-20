@@ -104,7 +104,7 @@ func Run(ctx context.Context, args []string, env Env, streams Streams) int {
 	}
 
 	fmt.Fprintf(stderr, "ERROR: %v\n", err)
-	fmt.Fprintln(stderr, "ACTION: Review the command syntax or run 'jaflow help'.")
+	fmt.Fprintln(stderr, "ACTION: Review the command syntax or run 'jczl-flow help'.")
 	parser.WriteHelp(stderr)
 	return 1
 }
