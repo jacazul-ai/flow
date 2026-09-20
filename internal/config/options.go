@@ -131,3 +131,21 @@ func Resolve(opts *AppOptions) error {
 	}
 	return nil
 }
+
+// Out returns the stream for command output. It is never nil, so commands
+// constructed outside Resolve still write somewhere harmless.
+func (opts *AppOptions) Out() io.Writer {
+	if opts == nil || opts.Stdout == nil {
+		return io.Discard
+	}
+	return opts.Stdout
+}
+
+// Err returns the stream for diagnostics. It is never nil, for the same
+// reason as Out.
+func (opts *AppOptions) Err() io.Writer {
+	if opts == nil || opts.Stderr == nil {
+		return io.Discard
+	}
+	return opts.Stderr
+}

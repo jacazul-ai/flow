@@ -40,19 +40,12 @@ func (cmd *HelpCommand) Execute(args []string) error {
 		if !ok {
 			return fmt.Errorf("unknown help topic %q; use 'jczl-flow help' to list commands", command)
 		}
-		writeCommandHelp(cmd.stdout(), entry)
+		writeCommandHelp(cmd.appOpts.Out(), entry)
 		return nil
 	}
 
-	writeRootHelp(cmd.stdout())
+	writeRootHelp(cmd.appOpts.Out())
 	return nil
-}
-
-func (cmd *HelpCommand) stdout() io.Writer {
-	if cmd.appOpts == nil || cmd.appOpts.Stdout == nil {
-		return io.Discard
-	}
-	return cmd.appOpts.Stdout
 }
 
 type helpEntry struct {
