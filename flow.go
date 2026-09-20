@@ -99,7 +99,13 @@ func Run(ctx context.Context, args []string, env Env, streams Streams) int {
 		return 0
 	}
 	var flagsErr *flags.Error
-	if errors.As(err, &flagsErr) && flagsErr.Type == flags.ErrHelp {
+	if !errors.As(err, &flagsErr) {
+		// The command ran and failed. Its error already names the next valid
+		// move, so the parser usage would only bury it.
+		fmt.Fprintf(stderr, "ERROR: %v\n", err)
+		return 1
+	}
+	if flagsErr.Type == flags.ErrHelp {
 		cli.PrintRootHelp(stdout)
 		return 0
 	}

@@ -168,3 +168,37 @@ func TestRunWritesCommandOutputOnlyToProvidedStreams(t *testing.T) {
 		})
 	}
 }
+
+// A command that ran and failed already explains its own next step. Repeating
+// a syntax ACTION and dumping the usage buries that guidance under advice that
+// does not apply.
+func TestRunSeparatesCommandFailuresFromSyntaxErrors(t *testing.T) {
+	t.Run("command failure keeps only its own guidance", func(t *testing.T) {
+		code, _, stderr := run(t, context.Background(), flow.Env{ProjectID: "project-alpha"}, "status")
+		if code != 1 {
+			t.Fatalf("exit = %d, want 1", code)
+		}
+		if !strings.Contains(stderr, "runtime home is required") {
+			t.Fatalf("stderr = %q, want the command's own failure", stderr)
+		}
+		if strings.Contains(stderr, "Review the command syntax") {
+			t.Fatalf("stderr = %q, want no syntax guidance for a runtime failure", stderr)
+		}
+		if strings.Contains(stderr, "Application Options:") {
+			t.Fatalf("stderr = %q, want no usage dump for a runtime failure", stderr)
+		}
+	})
+
+	t.Run("syntax error still shows usage", func(t *testing.T) {
+		code, _, stderr := run(t, context.Background(), flow.Env{Home: t.TempDir()}, "no-such-command")
+		if code != 1 {
+			t.Fatalf("exit = %d, want 1", code)
+		}
+		if !strings.Contains(stderr, "Review the command syntax") {
+			t.Fatalf("stderr = %q, want syntax guidance", stderr)
+		}
+		if !strings.Contains(stderr, "Application Options:") {
+			t.Fatalf("stderr = %q, want the usage dump", stderr)
+		}
+	})
+}
