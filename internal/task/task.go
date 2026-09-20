@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"fmt"
 	"strings"
 )
@@ -243,13 +242,4 @@ type CreateTaskInput struct {
 type TaskMetadataUpdate struct {
 	Description    *string
 	ExternalTicket *string
-}
-
-// CreateInput is the legacy task backend input shape.
-type CreateInput = CreateTaskInput
-
-// TaskBackend persists and retrieves workflow tasks.
-type TaskBackend interface {
-	Create(ctx context.Context, input CreateTaskInput) (Task, error)
-	List(ctx context.Context, projectID string, plan string) ([]Task, error)
 }
