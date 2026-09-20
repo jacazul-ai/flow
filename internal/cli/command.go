@@ -3,16 +3,24 @@ package cli
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
+
+	"github.com/jacazul-ai/jaflow/internal/config"
 )
 
 // HelpCommand renders agent-facing workflow guidance.
-type HelpCommand struct{}
+type HelpCommand struct {
+	appOpts *config.AppOptions
+}
 
 // NewHelpCommand creates a help command backed by the command registry.
 func NewHelpCommand() *HelpCommand {
 	return &HelpCommand{}
+}
+
+// SetAppOptions supplies the output streams to the command.
+func (cmd *HelpCommand) SetAppOptions(opts *config.AppOptions) {
+	cmd.appOpts = opts
 }
 
 // Execute prints root help or the operational brief for one command.
@@ -32,12 +40,19 @@ func (cmd *HelpCommand) Execute(args []string) error {
 		if !ok {
 			return fmt.Errorf("unknown help topic %q; use 'jaflow help' to list commands", command)
 		}
-		writeCommandHelp(os.Stdout, entry)
+		writeCommandHelp(cmd.stdout(), entry)
 		return nil
 	}
 
-	writeRootHelp(os.Stdout)
+	writeRootHelp(cmd.stdout())
 	return nil
+}
+
+func (cmd *HelpCommand) stdout() io.Writer {
+	if cmd.appOpts == nil || cmd.appOpts.Stdout == nil {
+		return io.Discard
+	}
+	return cmd.appOpts.Stdout
 }
 
 type helpEntry struct {

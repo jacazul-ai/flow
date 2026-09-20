@@ -2,7 +2,7 @@ package config
 
 import (
 	"errors"
-	"os"
+	"io"
 	"path/filepath"
 
 	"github.com/jessevdk/go-flags"
@@ -10,13 +10,31 @@ import (
 
 var ErrVersionRequired = errors.New("version required")
 
+// ErrHomeRequired reports that default paths cannot be derived without a runtime home.
+var ErrHomeRequired = errors.New("runtime home is required\nACTION: Set JACAZUL_HOME or pass a home directory to flow.Run.")
+
 type AppOptions struct {
 	Verbose      bool   `short:"v" long:"verbose" description:"Enable verbose mode"`
 	Version      bool   `short:"V" long:"version" description:"Show version"`
 	ProjectID    string `long:"project-id" description:"Project identity"`
 	TaskData     string `long:"taskdata" description:"Legacy Taskwarrior data directory"`
-	DatabasePath string `long:"database-path" env:"JAFLOW_DATABASE_PATH" description:"Project SQLite database path"`
-	SessionID    string `long:"session-id" env:"JACAZUL_SESSION_ID" description:"Workflow session identity"`
+	DatabasePath string `long:"database-path" description:"Project SQLite database path"`
+	SessionID    string `long:"session-id" description:"Workflow session identity"`
+
+	// Runtime is the caller-resolved context used when a flag is not supplied.
+	Runtime Runtime `no-flag:"true"`
+	// Stdout and Stderr receive command output.
+	Stdout io.Writer `no-flag:"true"`
+	Stderr io.Writer `no-flag:"true"`
+}
+
+// Runtime is the invocation context resolved by the caller, never read from
+// the process environment inside the engine.
+type Runtime struct {
+	ProjectID    string
+	SessionID    string
+	DatabasePath string
+	Home         string
 }
 
 type AppOptionsAware interface {
@@ -50,29 +68,39 @@ func WithAppOptions(opts *AppOptions, fns ...AppOptionsFunc) func(
 	}
 }
 
-// Resolve fills project-scoped options from the runtime environment.
+// Resolve fills project-scoped options from flags first, then the runtime context.
 func Resolve(opts *AppOptions) error {
+	if opts.Stdout == nil {
+		opts.Stdout = io.Discard
+	}
+	if opts.Stderr == nil {
+		opts.Stderr = io.Discard
+	}
 	if opts.ProjectID == "" {
-		opts.ProjectID = os.Getenv("PROJECT_ID")
+		opts.ProjectID = opts.Runtime.ProjectID
 	}
 	if opts.ProjectID == "" {
 		opts.ProjectID = "global"
 	}
-	if opts.TaskData == "" {
-		opts.TaskData = os.Getenv("TASKDATA")
-	}
-	home, err := runtimeHome()
-	if err != nil {
-		return err
-	}
-	if opts.TaskData == "" {
-		opts.TaskData = filepath.Join(home, ".task", opts.ProjectID)
-	}
 	if opts.SessionID == "" {
-		opts.SessionID = os.Getenv("JACAZUL_SESSION_ID")
+		opts.SessionID = opts.Runtime.SessionID
 	}
 	if opts.SessionID == "" {
 		opts.SessionID = "global"
+	}
+	if opts.DatabasePath == "" {
+		opts.DatabasePath = opts.Runtime.DatabasePath
+	}
+	if opts.TaskData != "" && opts.DatabasePath != "" {
+		return nil
+	}
+
+	home := opts.Runtime.Home
+	if home == "" {
+		return ErrHomeRequired
+	}
+	if opts.TaskData == "" {
+		opts.TaskData = filepath.Join(home, ".task", opts.ProjectID)
 	}
 	if opts.DatabasePath == "" {
 		opts.DatabasePath = filepath.Join(
@@ -83,11 +111,4 @@ func Resolve(opts *AppOptions) error {
 		)
 	}
 	return nil
-}
-
-func runtimeHome() (string, error) {
-	if home := os.Getenv("JACAZUL_HOME"); home != "" {
-		return home, nil
-	}
-	return os.UserHomeDir()
 }
