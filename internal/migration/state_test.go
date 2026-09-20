@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jacazul-ai/jaflow/internal/migration"
-	"github.com/jacazul-ai/jaflow/internal/storage/sqlite"
+	"github.com/jacazul-ai/flow/internal/migration"
+	"github.com/jacazul-ai/flow/internal/storage/sqlite"
 )
 
 func TestLegacyStateMapsFocusAndSessionNote(t *testing.T) {

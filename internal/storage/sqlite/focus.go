@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 // FindInitiative returns one initiative by project and name.

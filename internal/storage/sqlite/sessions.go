@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 // GetSessionNote returns a persisted session note and whether it exists.

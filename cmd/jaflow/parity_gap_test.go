@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jacazul-ai/jaflow/internal/storage/sqlite"
-	"github.com/jacazul-ai/jaflow/internal/task"
-	"github.com/jacazul-ai/jaflow/internal/testharness"
+	"github.com/jacazul-ai/flow/internal/storage/sqlite"
+	"github.com/jacazul-ai/flow/internal/task"
+	"github.com/jacazul-ai/flow/internal/testharness"
 )
 
 var shortTaskIDPattern = regexp.MustCompile(`Created task ([0-9a-f]{8})`)

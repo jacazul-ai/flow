@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/jacazul-ai/jaflow/internal/config"
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/config"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 // CommitCommand renders a conventional commit draft without executing Git.

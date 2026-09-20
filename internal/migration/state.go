@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 // LegacyFocusState is the JSON shape persisted by legacy FocusManager.

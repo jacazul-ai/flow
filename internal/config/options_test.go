@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jacazul-ai/jaflow/internal/config"
+	"github.com/jacazul-ai/flow/internal/config"
 )
 
 func TestLegacyTaskDataDoesNotReplaceNativeDatabase(t *testing.T) {

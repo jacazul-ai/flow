@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jacazul-ai/jaflow/internal/testharness"
+	"github.com/jacazul-ai/flow/internal/testharness"
 )
 
 func TestOrganizeReordersPendingTasksWithoutChangingReadiness(t *testing.T) {

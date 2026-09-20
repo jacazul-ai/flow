@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jacazul-ai/jaflow/internal/storage/sqlite"
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/storage/sqlite"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 func TestStorePersistsInitiativesTasksAndDependencies(t *testing.T) {

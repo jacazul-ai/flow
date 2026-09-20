@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/task"
 	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
 )

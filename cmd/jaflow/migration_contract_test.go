@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jacazul-ai/jaflow/internal/testharness"
+	"github.com/jacazul-ai/flow/internal/testharness"
 )
 
 func TestMigrationDryRunDoesNotCreateTargetDatabase(t *testing.T) {

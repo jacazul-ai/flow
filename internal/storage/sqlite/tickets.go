@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 // FindExternalTicket resolves a task ticket, recursively checking dependencies.

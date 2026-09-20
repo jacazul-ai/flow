@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 func TestFocusIsolatedBySession(t *testing.T) {

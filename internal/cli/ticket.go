@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jacazul-ai/jaflow/internal/config"
+	"github.com/jacazul-ai/flow/internal/config"
 )
 
 // TicketCommand links a task to an external ticket reference.

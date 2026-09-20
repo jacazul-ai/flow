@@ -3,7 +3,7 @@ package task_test
 import (
 	"testing"
 
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 func TestTaskModeCatalogRoundTrip(t *testing.T) {

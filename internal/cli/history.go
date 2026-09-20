@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jacazul-ai/jaflow/internal/config"
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/config"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 // HistoryCommand renders immutable history for a task or initiative.

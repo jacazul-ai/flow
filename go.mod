@@ -1,4 +1,4 @@
-module github.com/jacazul-ai/jaflow
+module github.com/jacazul-ai/flow
 
 go 1.25.0
 

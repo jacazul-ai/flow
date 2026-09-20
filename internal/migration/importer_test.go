@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jacazul-ai/jaflow/internal/migration"
-	"github.com/jacazul-ai/jaflow/internal/storage/sqlite"
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/migration"
+	"github.com/jacazul-ai/flow/internal/storage/sqlite"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 const (

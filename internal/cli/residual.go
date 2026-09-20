@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jacazul-ai/jaflow/internal/config"
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/config"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 // AmendCommand updates task description and ticket metadata.

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	flow "github.com/jacazul-ai/jaflow"
+	flow "github.com/jacazul-ai/flow"
 )
 
 func run(t *testing.T, ctx context.Context, env flow.Env, args ...string) (int, string, string) {

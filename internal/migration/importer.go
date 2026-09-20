@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jacazul-ai/jaflow/internal/storage/sqlite"
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/storage/sqlite"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 // LegacyTask is the subset of Taskwarrior export data used by migration.

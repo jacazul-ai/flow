@@ -14,12 +14,12 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/jacazul-ai/jaflow/internal/cli"
-	"github.com/jacazul-ai/jaflow/internal/config"
+	"github.com/jacazul-ai/flow/internal/cli"
+	"github.com/jacazul-ai/flow/internal/config"
 	"github.com/jessevdk/go-flags"
 )
 
-const modulePath = "github.com/jacazul-ai/jaflow"
+const modulePath = "github.com/jacazul-ai/flow"
 
 // Env is the resolved runtime context for one invocation.
 type Env struct {

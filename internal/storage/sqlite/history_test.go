@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 func TestHistorySupportsTaskAndInitiativeScopes(t *testing.T) {

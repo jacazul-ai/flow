@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jacazul-ai/jaflow/internal/config"
-	"github.com/jacazul-ai/jaflow/internal/migration"
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/config"
+	"github.com/jacazul-ai/flow/internal/migration"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 // MigrateCommand groups explicit legacy migration commands.

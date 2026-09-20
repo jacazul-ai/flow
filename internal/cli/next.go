@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jacazul-ai/jaflow/internal/config"
+	"github.com/jacazul-ai/flow/internal/config"
 )
 
 // NextCommand lists the next ready tasks for a project or initiative.

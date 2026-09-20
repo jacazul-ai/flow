@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	flow "github.com/jacazul-ai/jaflow"
+	flow "github.com/jacazul-ai/flow"
 )
 
 func main() {

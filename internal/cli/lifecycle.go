@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jacazul-ai/jaflow/internal/config"
-	"github.com/jacazul-ai/jaflow/internal/storage/sqlite"
+	"github.com/jacazul-ai/flow/internal/config"
+	"github.com/jacazul-ai/flow/internal/storage/sqlite"
 )
 
 // ExecuteCommand starts a ready task.

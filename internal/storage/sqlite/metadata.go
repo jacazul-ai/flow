@@ -8,7 +8,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/jacazul-ai/jaflow/internal/task"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 // UpdateTaskMetadata amends the supplied non-nil task metadata fields.
