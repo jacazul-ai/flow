@@ -1,17 +1,17 @@
-# Jaflow CLI Navigation
+# flow CLI Navigation
 
-Jaflow's root help is organized by operator intent rather than alphabetic
+`flow`'s root help is organized by operator intent rather than alphabetic
 command name. Use it to choose the workflow family first, then use
-`jaflow help <command>` for the exact contract.
+`jczl-flow help <command>` for the exact contract.
 
 ```bash
-jaflow help
-jaflow --help
-jaflow help status
-jaflow help migrate
+jczl-flow help
+jczl-flow --help
+jczl-flow help status
+jczl-flow help migrate
 ```
 
-`jaflow help` and `jaflow --help` render the same agent-facing root briefing.
+`jczl-flow help` and `jczl-flow --help` render the same agent-facing root briefing.
 The parser remains responsible for recognizing options, but it does not own
 primary help presentation. Root help includes these global options:
 
@@ -24,12 +24,12 @@ primary help presentation. Root help includes these global options:
 - `-h`, `--help`: show the root briefing.
 
 Compatibility aliases remain routable and are documented with
-`jaflow help <alias>` without appearing as duplicate canonical commands in the
+`jczl-flow help <alias>` without appearing as duplicate canonical commands in the
 root taxonomy.
 
 ## Deterministic agent onboarding
 
-`jaflow onboard` is the one-shot bootstrap briefing for an agent. It composes
+`jczl-flow onboard` is the one-shot bootstrap briefing for an agent. It composes
 existing workflow primitives without creating a second persistence model or
 replacing the individual commands:
 
@@ -40,8 +40,8 @@ replacing the individual commands:
 5. acknowledge the handoff only after the complete briefing renders
    successfully.
 
-`jaflow session dump` remains the producer of a resumable handoff,
-`jaflow session resume` remains the low-level reader, and `jaflow session ack`
+`jczl-flow session dump` remains the producer of a resumable handoff,
+`jczl-flow session resume` remains the low-level reader, and `jczl-flow session ack`
 remains available for explicit acknowledgement and diagnostics. A failed
 onboard briefing does not acknowledge a pending handoff.
 
@@ -105,7 +105,7 @@ The root help exposes canonical commands once in this fixed order:
 
 ### Migrate legacy state
 
-- `migrate`: import an explicit Taskwarrior snapshot into native Jaflow.
+- `migrate`: import an explicit Taskwarrior snapshot into native flow.
 
 ## Compatibility aliases
 
@@ -121,9 +121,9 @@ canonical list:
 Detailed help remains available for aliases:
 
 ```bash
-jaflow help ini
-jaflow help initiatives
-jaflow help ship
+jczl-flow help ini
+jczl-flow help initiatives
+jczl-flow help ship
 ```
 
 ## History references
@@ -131,10 +131,10 @@ jaflow help ship
 History requires an explicit subject scope:
 
 ```bash
-jaflow history task <task-reference>
-jaflow history initiative <initiative-reference>
-jaflow history ini <initiative-reference>
-jaflow history plan <initiative-reference>
+jczl-flow history task <task-reference>
+jczl-flow history initiative <initiative-reference>
+jczl-flow history ini <initiative-reference>
+jczl-flow history plan <initiative-reference>
 ```
 
 Task references accept a full or unambiguous short UUID. Initiative references
@@ -148,7 +148,7 @@ INITIATIVES:
 - [ACTIVE] parity [id:91b2c3d4] pending:2 active:0 completed:0 blocked:1
 ```
 
-A bare `jaflow history <reference>` is rejected with an `ACTION:` prompt; the
+A bare `jczl-flow history <reference>` is rejected with an `ACTION:` prompt; the
 CLI never guesses whether the reference identifies a task or initiative.
 Unknown and ambiguous references also return actionable errors. History reads
 only the selected project database and does not mutate workflow state.
@@ -158,11 +158,11 @@ only the selected project database and does not mutate workflow state.
 Organization is explicit and scoped to one initiative:
 
 ```bash
-jaflow organize order <initiative-reference> <task-reference> <task-reference> [...]
-jaflow organize first <initiative-reference> <task-reference>
-jaflow organize after <initiative-reference> <task-reference> <anchor-reference>
-jaflow organize block <initiative-reference> <task-reference> <task-reference> [...] --first
-jaflow organize block <initiative-reference> <task-reference> <task-reference> [...] --after <anchor-reference>
+jczl-flow organize order <initiative-reference> <task-reference> <task-reference> [...]
+jczl-flow organize first <initiative-reference> <task-reference>
+jczl-flow organize after <initiative-reference> <task-reference> <anchor-reference>
+jczl-flow organize block <initiative-reference> <task-reference> <task-reference> [...] --first
+jczl-flow organize block <initiative-reference> <task-reference> <task-reference> [...] --after <anchor-reference>
 ```
 
 Initiative references accept an exact name, full ID, or unambiguous short ID.
@@ -175,17 +175,17 @@ ordered block while preserving the relative order of all omitted pending tasks.
 For example, after tasks `One` and `Two` are completed:
 
 ```bash
-jaflow organize order parity 6f6f6f6f 4f4f4f4f 5f5f5f5f 3f3f3f3f
-jaflow organize first parity 5f5f5f5f
-jaflow organize after parity 3f3f3f3f 5f5f5f5f
-jaflow organize block parity 6f6f6f6f 4f4f4f4f --after 5f5f5f5f
+jczl-flow organize order parity 6f6f6f6f 4f4f4f4f 5f5f5f5f 3f3f3f3f
+jczl-flow organize first parity 5f5f5f5f
+jczl-flow organize after parity 3f3f3f3f 5f5f5f5f
+jczl-flow organize block parity 6f6f6f6f 4f4f4f4f --after 5f5f5f5f
 ```
 
 Only pending tasks can be moved or used as anchors. Completed and active tasks,
 duplicate references, ambiguous UUIDs, and cross-project or cross-initiative
 references fail with `ACTION:` guidance. Blocked pending tasks may be reordered,
 but ordering never changes dependencies, completion state, wait dates, or
-readiness. Run `jaflow next <initiative>` after organizing to identify the
+readiness. Run `jczl-flow next <initiative>` after organizing to identify the
 actual executable task.
 
 ## Recommended navigation loop
@@ -199,13 +199,13 @@ orient → inspect → focus → execute → outcome → done → next focus
 Typical sequence:
 
 ```bash
-jaflow status
-jaflow next <initiative>
-jaflow focus task <uuid>
-jaflow execute <uuid>
-jaflow outcome <uuid> "Describe the result"
-jaflow done <uuid>
-jaflow focus plan <initiative>
+jczl-flow status
+jczl-flow next <initiative>
+jczl-flow focus task <uuid>
+jczl-flow execute <uuid>
+jczl-flow outcome <uuid> "Describe the result"
+jczl-flow done <uuid>
+jczl-flow focus plan <initiative>
 ```
 
 Do not execute a blocked task. `pending` is not equivalent to `ready`; native

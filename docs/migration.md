@@ -1,14 +1,14 @@
-# Taskwarrior to Jaflow Migration
+# Taskwarrior to flow Migration
 
 ## Purpose
 
 This document defines the first local migration from the legacy
-Taskwarrior-backed `jacazul-ai-cli` workflow to native Jaflow. The migration
-moves workflow state into the project-scoped Jaflow SQLite database while
+Taskwarrior-backed `jacazul-ai-cli` workflow to native flow. The migration
+moves workflow state into the project-scoped flow SQLite database while
 keeping `jacazul-ai-cli` available as the behavioral oracle and temporary
 compatibility client.
 
-The migration is not a runtime dependency of Jaflow. Normal Jaflow commands
+The migration is not a runtime dependency of flow. Normal flow commands
 must not invoke Taskwarrior, read legacy `TASKDATA`, call a ticket broker, or
 load output caches. Legacy access belongs to an explicit importer boundary.
 
@@ -37,7 +37,7 @@ accident.
 The target is one native database selected by the canonical `PROJECT_ID`:
 
 ```text
-$JACAZUL_HOME/jaflow/<PROJECT_ID>/jaflow.sqlite3
+$JACAZUL_HOME/flow/<PROJECT_ID>/flow.sqlite3
 ```
 
 The native database owns initiatives, tasks, dependencies, annotations,
@@ -78,8 +78,8 @@ design decision for the implementation slice that owns that mapping.
 The first importer interface should expose the following modes:
 
 ```text
-jaflow migrate taskwarrior --source <export.json> --project-id <id> --dry-run
-jaflow migrate taskwarrior --source <export.json> --project-id <id> --apply
+jczl-flow migrate taskwarrior --source <export.json> --project-id <id> --dry-run
+jczl-flow migrate taskwarrior --source <export.json> --project-id <id> --apply
 ```
 
 - **Dry-run is the default.** It validates the snapshot, resolves references,
@@ -152,7 +152,7 @@ Migration verification has two separate oracles:
    UUIDs, initiatives, statuses, dependency edges, annotations, tickets,
    focus, sessions, and dates.
 2. **Behavior verification:** run the same isolated scenarios through the
-   legacy `tw-flow` adapter and the native `jaflow` adapter. Normalize UUIDs,
+   legacy `tw-flow` adapter and the native `flow` adapter. Normalize UUIDs,
    timestamps, paths, and known formatting differences before comparison.
 
 Known legacy defects are not migration targets. For example, an imported
@@ -167,7 +167,7 @@ The cutover sequence is:
 3. create a native backup/checkpoint;
 4. apply into an isolated target and run state verification;
 5. run differential behavior scenarios;
-6. switch `jacazul-ai-cli` to the native Jaflow client path;
+6. switch `jacazul-ai-cli` to the native flow client path;
 7. keep the legacy path read-only and available for rollback;
 8. monitor native errors and retain the source snapshot until acceptance;
 9. remove legacy runtime writes only after an explicit rollback window.
@@ -180,7 +180,7 @@ has been exercised on an isolated target.
 
 The following procedure is for an explicitly selected project and an isolated
 sandbox first. Replace every path with a deliberate target; do not run it
-against the operator's real `TASKDATA` or Jaflow database until the dry-run and
+against the operator's real `TASKDATA` or flow database until the dry-run and
 acceptance review are complete.
 
 ### 1. Capture the source snapshot
@@ -189,8 +189,8 @@ Use the controlled legacy boundary to create a JSON snapshot and retain its
 checksum. Do not build the snapshot with shell interpolation of task fields.
 
 ```bash
-mkdir -p /tmp/jaflow-migration
-TASK_EXPORT=/tmp/jaflow-migration/tasks.json
+mkdir -p /tmp/flow-migration
+TASK_EXPORT=/tmp/flow-migration/tasks.json
 taskp export > "$TASK_EXPORT"
 sha256sum "$TASK_EXPORT" > "$TASK_EXPORT.sha256"
 ```
@@ -199,7 +199,7 @@ When focus or handoff continuity is required, copy the selected legacy focus
 files into an isolated state directory and pass it explicitly:
 
 ```bash
-LEGACY_STATE=/tmp/jaflow-migration/legacy-state
+LEGACY_STATE=/tmp/flow-migration/legacy-state
 mkdir -p "$LEGACY_STATE"
 # Copy only the selected focus*.json and session-note-*.md files here.
 ```
@@ -212,7 +212,7 @@ Run the importer with an explicit project and database target. Omit `--apply`
 to keep the operation read-only; `--dry-run` may be supplied for clarity.
 
 ```bash
-jaflow \
+jczl-flow \
   --project-id "$PROJECT_ID" \
   --database-path "$TARGET_DB" \
   migrate taskwarrior \
@@ -239,7 +239,7 @@ project and target. The command creates a timestamped backup of an existing
 SQLite database and available `-wal`/`-shm` sidecars before applying.
 
 ```bash
-jaflow \
+jczl-flow \
   --project-id "$PROJECT_ID" \
   --database-path "$TARGET_DB" \
   migrate taskwarrior \
@@ -258,11 +258,11 @@ Run the state and behavior checks in a new process using the same project and
 session identity:
 
 ```bash
-jaflow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" status --force
-jaflow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" next <initiative>
-jaflow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" focus
-jaflow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" session list
-jaflow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" session resume
+jczl-flow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" status --force
+jczl-flow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" next <initiative>
+jczl-flow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" focus
+jczl-flow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" session list
+jczl-flow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" session resume
 ```
 
 Confirm that:
@@ -284,7 +284,7 @@ not volatile UUID formatting, timestamps, paths, or known intentional fixes.
 ### 5. Rollback
 
 Rollback is an operator-controlled file restoration, not a hidden importer
-operation. Stop all Jaflow writers first and preserve the failed target for
+operation. Stop all flow writers first and preserve the failed target for
 forensics. Then restore the backup printed by the apply command, including
 sidecars when they exist:
 

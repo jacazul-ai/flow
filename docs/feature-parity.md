@@ -1,4 +1,4 @@
-# jaflow Feature Parity
+# flow Feature Parity
 
 ## Purpose
 
@@ -164,17 +164,17 @@ reintroducing Taskwarrior as the native source of truth:
 The native context command surface is:
 
 ```text
-jaflow note <uuid> <type> <message...>
-jaflow notes <uuid>
-jaflow context <uuid>
-jaflow ticket <uuid> <ticket>
-jaflow handoff <uuid> <message...>
-jaflow focus ind task <uuid>
-jaflow focus back
-jaflow session <list|show|resume|ack|dump|purge>
-jaflow active [initiative]
-jaflow blocked [initiative]
-jaflow overdue [initiative]
+jczl-flow note <uuid> <type> <message...>
+jczl-flow notes <uuid>
+jczl-flow context <uuid>
+jczl-flow ticket <uuid> <ticket>
+jczl-flow handoff <uuid> <message...>
+jczl-flow focus ind task <uuid>
+jczl-flow focus back
+jczl-flow session <list|show|resume|ack|dump|purge>
+jczl-flow active [initiative]
+jczl-flow blocked [initiative]
+jczl-flow overdue [initiative]
 ```
 
 `note` normalizes semantic aliases to uppercase kinds, `notes` exposes
@@ -214,10 +214,10 @@ valid action, while healthy verification must not become noisy protocol dump.
 
 ## Legacy Backend Resolution
 
-Jaflow commands always use the native project SQLite database. The legacy
+`flow` commands always use the native project SQLite database. The legacy
 `TASKDATA`/`--taskdata` value may remain available as migration context, but it
 must not select the runtime backend or invoke the Taskwarrior binary. The
-legacy adapter belongs to the separate Taskwarrior-to-Jaflow migration
+legacy adapter belongs to the separate Taskwarrior-to-`flow` migration
 initiative and is not part of normal task creation, lifecycle, context, cache,
 or dashboard execution.
 
@@ -250,7 +250,7 @@ first place tests are defined.
 Follow the `nvimim` CLI pattern:
 
 ```text
-cmd/jaflow/main.go       parser, global options, command registry, process exit
+cmd/jczl-flow/main.go       parser, global options, command registry, process exit
 internal/cli/             one command type and Execute method per command
 internal/workflow/        small shared workflow behavior
 internal/storage/         project database and persistence boundaries
@@ -266,9 +266,9 @@ and render results; they do not manipulate SQL or SQLite tables directly.
 Do not translate the Python `FlowManager` into a Go monolith. Feature parity is
 measured per command and per contract, not by matching the old class layout.
 
-## Out of Scope for jaflow Core
+## Out of Scope for flow Core
 
-Do not port these as jaflow workflow features:
+Do not port these as flow workflow features:
 
 - JIT prompt generation and the `hatch` subsystem.
 - Persona rendering and client-specific agent artifacts.

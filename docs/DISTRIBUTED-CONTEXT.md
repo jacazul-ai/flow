@@ -1,4 +1,4 @@
-# Jaflow Distributed Context
+# flow Distributed Context
 
 ## Status
 
@@ -7,7 +7,7 @@ it is not an implementation guarantee yet.
 
 ## Mission
 
-Jaflow is the operational context system for agents. It is not only a local
+`flow` is the operational context system for agents. It is not only a local
 task organizer and it is not only a ticket API. It preserves and coordinates
 the context required to continue work across agents, machines, sessions, and
 reconnections.
@@ -25,7 +25,7 @@ The distributed context includes:
 
 Taskwarrior is not part of the target architecture or the source of truth. Any
 migration or compatibility adapter in the current codebase is transitional.
-The Jaflow domain and its native persistence own the operational state.
+The flow domain and its native persistence own the operational state.
 
 ## Roles
 
@@ -42,7 +42,7 @@ Local Bastion
         |
         | authenticated sync stream
         v
-Central Bastion / jaflow-server
+Central Bastion / flow-server
   global authority, distributed context, API, Web UI
 ```
 
@@ -64,7 +64,7 @@ The local Bastion is the source of authority for the local runtime. It:
 - connects upstream instead of exposing Peasants directly to the internet;
 - reports execution state and results to the central Bastion.
 
-### Central Bastion / `jaflow-server`
+### Central Bastion / `flow-server`
 
 The central Bastion is the source of truth for shared, cross-machine context.
 It:
@@ -100,7 +100,7 @@ whether and how that intent is executed locally.
 
 ## Distributed Context Model
 
-Jaflow context is an event-backed graph rather than a collection of independent
+`flow` context is an event-backed graph rather than a collection of independent
 copies. A context projection is built from the canonical event history and the
 local events that have not yet been accepted upstream.
 
@@ -121,7 +121,7 @@ Event
 ExternalReference
 ```
 
-Every task and ticket has a stable Jaflow UUID. A human-readable key such as
+Every task and ticket has a stable flow UUID. A human-readable key such as
 `JF-123` is presentation data and must not replace the UUID.
 
 Annotations remain structured operational context. Examples include
@@ -204,7 +204,7 @@ HANDOFF
 ```
 
 The transport does not define domain authority. It carries the synchronization
-contract; the Jaflow server and local Bastion enforce their respective
+contract; the flow server and local Bastion enforce their respective
 boundaries.
 
 ## Conflict and Lease Rules
@@ -236,11 +236,11 @@ result carries an `event_id` and `lease_id`.
 
 ## Tickets and External Systems
 
-Jaflow is the canonical ticket system. GitHub, Jira, and other providers are
+`flow` is the canonical ticket system. GitHub, Jira, and other providers are
 external projections or integrations, not authorities for the agent context.
 
 ```text
-Jaflow event log
+flow event log
       |
       +--> GitHub connector
       +--> Jira connector
@@ -250,7 +250,7 @@ Jaflow event log
 A ticket may retain external references:
 
 ```text
-jaflow_ticket_uuid:  <stable UUID>
+flow_ticket_uuid:  <stable UUID>
 external_references:
   - provider: github
     project: org/repository
@@ -263,7 +263,7 @@ external_references:
 Connectors use an outbox and webhook ingestion:
 
 ```text
-Jaflow mutation
+flow mutation
   -> durable outbox
   -> connector retry
   -> external provider
@@ -271,7 +271,7 @@ Jaflow mutation
 External webhook
   -> signature validation
   -> normalized event
-  -> Jaflow event log
+  -> flow event log
 ```
 
 Agent operation must not depend on GitHub or Jira availability. External
@@ -293,7 +293,7 @@ Cryptozoid
 ```
 
 The open `gopeasant` contract remains useful for directory and nonce-based
-client-to-Bastion communication. Jaflow-specific synchronization may use a
+client-to-Bastion communication. flow-specific synchronization may use a
 Protobuf/gRPC binding without changing the domain model.
 
 Recommended defaults:
@@ -334,13 +334,13 @@ The product can be split into independently deployable components while
 sharing stable domain and protocol packages:
 
 ```text
-jaflow
+flow
   local engine and CLI
 
-jaflow-bastion
+flow-bastion
   local daemon, scheduler, firewall boundary, and sync client
 
-jaflow-server
+flow-server
   central Bastion, API, event store, connectors, and Web UI
 
 cryptozoid
@@ -350,15 +350,15 @@ gopeasant
   open client-to-Bastion protocol
 ```
 
-The current `jaflow` repository should keep the local engine independent from
-server deployment details. `jaflow-bastion` may begin as a separate command or
-package while its contracts stabilize. `jaflow-server` and its Web UI are a
-separate server product that consumes stable Jaflow domain and synchronization
+The current `flow` repository should keep the local engine independent from
+server deployment details. `flow-bastion` may begin as a separate command or
+package while its contracts stabilize. `flow-server` and its Web UI are a
+separate server product that consumes stable flow domain and synchronization
 contracts.
 
 ## Evolution Path
 
-1. Finish and verify the native local Jaflow context model.
+1. Finish and verify the native local flow context model.
 2. Define event identities, revisions, cursors, leases, and conflict behavior.
 3. Implement a local Bastion with a local Peasant pool.
 4. Implement the central Bastion and durable event log.

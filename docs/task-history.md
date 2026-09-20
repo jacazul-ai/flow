@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Jaflow needs a durable task history, not only the current task snapshot and
+`flow` needs a durable task history, not only the current task snapshot and
 structured annotations. The history contract preserves what changed, when it
 changed, and which source or session produced the event. It supports both the
 explicit history-scope commands and migration from the legacy TaskChampion
@@ -60,16 +60,16 @@ private prompt data.
 The user-facing commands use an explicit history scope:
 
 ```text
-jaflow history task <task-reference>
-jaflow history initiative <initiative-reference>
-jaflow history ini <initiative-reference>
-jaflow history plan <initiative-reference>
+jczl-flow history task <task-reference>
+jczl-flow history initiative <initiative-reference>
+jczl-flow history ini <initiative-reference>
+jczl-flow history plan <initiative-reference>
 ```
 
 Task references resolve full or unambiguous short UUIDs. Initiative references
 resolve an exact project-scoped name, a full ID, or an unambiguous ID prefix of
 at least eight characters. The `initiative`, `ini`, and `plan` forms are
-aliases with identical behavior. A bare `jaflow history <reference>` is
+aliases with identical behavior. A bare `jczl-flow history <reference>` is
 invalid so the subject cannot be guessed.
 
 History must:
@@ -88,13 +88,13 @@ History must:
 Example shape:
 
 ```text
-$ jaflow history task 57c3fc80
+$ jczl-flow history task 57c3fc80
 HISTORY: task 57c3fc80
 [2026-08-30T12:00:00Z] create
 [2026-08-30T12:01:00Z] update description: "Draft" -> "Validated draft"
 [2026-08-30T12:02:00Z] transition status: pending -> active
 
-$ jaflow history initiative parity
+$ jczl-flow history initiative parity
 HISTORY: initiative parity [id:91b2c3d4]
 [2026-08-30T12:00:00Z] create name: <empty> -> "parity"
 ```
@@ -103,7 +103,7 @@ Initiative list commands expose the same short reference for follow-up
 commands:
 
 ```text
-$ jaflow plans --force
+$ jczl-flow plans --force
 PROJECT: example
 INITIATIVES:
 - [ACTIVE] parity [id:91b2c3d4] pending:2 active:0 completed:0 blocked:1
@@ -127,7 +127,7 @@ The copied TaskChampion database established the following source boundary:
 - the observed database contains 33,421 operations and all observed operations
   are unsynced.
 
-These tables are a forensic source format, not a Jaflow runtime dependency.
+These tables are a forensic source format, not a flow runtime dependency.
 The migration boundary should be a read-only, schema-gated exporter owned by
 `jacazul-ai-cli` or its migration adapter:
 
@@ -136,7 +136,7 @@ taskchampion.sqlite3
         ↓ read-only adapter
 history snapshot JSON
         ↓ explicit source input
-jaflow migration importer
+flow migration importer
         ↓ idempotent native events
 task_history
 ```
@@ -192,7 +192,7 @@ for event details.
 The history slice is complete only when isolated tests prove:
 
 1. native lifecycle writes append ordered events;
-2. `jaflow history <uuid>` returns only the selected task's events;
+2. `jczl-flow history <uuid>` returns only the selected task's events;
 3. a second import is idempotent by source event identity;
 4. separate project databases cannot observe one another's events;
 5. malformed, unknown, or orphaned source events fail with an actionable

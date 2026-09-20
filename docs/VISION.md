@@ -1,17 +1,17 @@
-# jaflow Vision
+# flow Vision
 
 ## Mission
 
-`jaflow` is the operational workflow engine for Jacazul agents.
+`flow` is the operational workflow engine for Jacazul agents.
 
 Its job is to preserve and coordinate the work being done: initiatives,
 plans, tasks, dependencies, focus, handoffs, decisions, outcomes, and session
 state. It exists so multiple agents can continue the same operational thread
 without losing ownership or context.
 
-## What jaflow Is Not
+## What flow Is Not
 
-`jaflow` is not the project's knowledge base.
+`flow` is not the project's knowledge base.
 
 Knowledge remains in the project repository and its documentation systems:
 
@@ -22,7 +22,7 @@ Knowledge remains in the project repository and its documentation systems:
 - design records;
 - project files.
 
-`jaflow` manages operational memory about that work. It does not copy or
+`flow` manages operational memory about that work. It does not copy or
 synchronize project knowledge by default.
 
 ## Local-First Direction
@@ -72,9 +72,9 @@ operational work; neither replaces the project's knowledge repository.
 The first collaboration primitive is explicit initiative transport:
 
 ```text
-jaflow send <ini> --to <target>
-jaflow receive <ini>
-jaflow sync <ini>
+jczl-flow send <ini> --to <target>
+jczl-flow receive <ini>
+jczl-flow sync <ini>
 ```
 
 `send` and `receive` establish a portable workflow handoff. `sync` reconciles

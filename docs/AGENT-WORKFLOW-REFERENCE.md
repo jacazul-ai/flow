@@ -3,11 +3,11 @@
 ## Purpose
 
 This document defines the evidence boundary for verifying that the native Go
-Jaflow engine preserves the observable behavior of the reference `tw-flow`
+`flow` engine preserves the observable behavior of the reference `tw-flow`
 workflow. It is a test reference, not a generated agent prompt and not a
 replacement for the reference implementation.
 
-The parity target is behavior. Jaflow may use different packages, storage, and
+The parity target is behavior. `flow` may use different packages, storage, and
 process boundaries as long as the supported behavior, safety rules, state
 transitions, and actionable errors remain compatible.
 
@@ -63,17 +63,17 @@ tw-flow and taskp
 
 Generated agent files must not be edited directly. Changes to prompt or skill
 behavior belong in `jacazul/hatch/templates/` and require regeneration. Agent
-prompt generation is outside the Jaflow domain; Jaflow should implement the
+prompt generation is outside the flow domain; flow should implement the
 stable workflow contracts consumed by any client.
 
 The current reference repository still describes Taskwarrior wrappers and
-`tw-flow`. The Jaflow target uses native persistence and domain APIs. Any
+`tw-flow`. The flow target uses native persistence and domain APIs. Any
 Taskwarrior compatibility code in the migration is a transitional boundary,
 not a source-of-truth requirement for the target engine.
 
 ## Test Coverage Map
 
-| Behavior area | Primary reference evidence | Required Jaflow proof |
+| Behavior area | Primary reference evidence | Required flow proof |
 |---|---|---|
 | Entry points and project isolation | `tests/core_test.py` | Subprocess routing, exit status, project-scoped state, and cross-project non-observation |
 | Lifecycle, focus, context, tickets, dashboards, modes, handoffs, and completion safety | `tests/flow_test.py` | Command/API contracts plus persisted state and actionable errors |
@@ -99,7 +99,7 @@ same isolated inputs
         +--> reference flow
         |       output + error + state
         |
-        +--> native Jaflow flow
+        +--> native flow flow
                 output + error + state
 ```
 
@@ -122,7 +122,7 @@ contract visible to a client or operator.
 
 Each test scenario must use controlled temporary state:
 
-- a temporary home and Jaflow runtime root;
+- a temporary home and flow runtime root;
 - an isolated project identity;
 - isolated session identity when session behavior is under test;
 - temporary databases and cache directories;
@@ -146,7 +146,7 @@ harness helpers provide isolation; they are not proof of feature behavior.
 For each missing or suspect behavior:
 
 1. **Red:** add a valid failing contract test based on the reference behavior.
-2. **Green:** implement the smallest native Jaflow change that passes it.
+2. **Green:** implement the smallest native flow change that passes it.
 3. **Refactor:** simplify ownership and boundaries without changing the
    contract.
 4. **Mutation check:** intentionally break the protected rule and verify that
@@ -181,7 +181,7 @@ The current compatibility contract requires:
   protected;
 - UUIDs are the identity boundary; presentation identifiers are not identity.
 
-These rules must be asserted through the Jaflow context/status behavior, not
+These rules must be asserted through the flow context/status behavior, not
 only through direct database queries.
 
 ## Operational Rules From `AGENTS.md`

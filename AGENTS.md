@@ -1,8 +1,8 @@
-# jaflow Agent Guide
+# flow Agent Guide
 
 ## Mission
 
-`jaflow` is the Go-native migration of the workflow engine currently shipped
+`flow` is the Go-native migration of the workflow engine currently shipped
 by `jacazul-ai-cli`. Its purpose is to replace the Python/shell `tw-flow`
 stack with a portable local engine that can later support centralized
 coordination.
@@ -37,7 +37,7 @@ shared:
 4. The agent uses the workflow engine to preserve focus, plans, task context,
    annotations, session handoffs, and cached status output.
 
-`jaflow` is the shared workflow engine in this chain. It must remain
+`flow` is the shared workflow engine in this chain. It must remain
 independent of any specific client, persona, launcher, prompt format, or
 agent bootstrap implementation.
 
@@ -46,7 +46,7 @@ agent bootstrap implementation.
 Prompt and agent artifact generation is outside this repository's
 responsibility. The `jacazul-ai-cli` `hatch` subsystem owns JIT prompt forging,
 persona anchoring, and generated client-specific agent files. Do not move hatch
-logic into `jaflow` or make the workflow engine depend on it. `jaflow` should
+logic into `flow` or make the workflow engine depend on it. `flow` should
 consume stable workflow inputs and expose workflow behavior to any client.
 
 ## Current Phase: Feature Parity
@@ -162,7 +162,7 @@ or a behavioral source for workflow semantics. The parent
 
 ### House CLI Style
 
-Adopt the following composition style for `jaflow`:
+Adopt the following composition style for `flow`:
 
 - Keep `cmd/jczl-flow/main.go` thin: construct global options, configure the
   `go-flags` parser, register commands, handle help/version, and map final

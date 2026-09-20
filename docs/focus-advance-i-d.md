@@ -6,7 +6,7 @@ The focus state can advance to a task that is still blocked by an unfinished
 dependency. The failure is in the legacy Python `tw-flow` focus advancement
 path, not in dependency readiness itself.
 
-The current `jaflow` Go code already exposes the correct readiness boundary
+The current `flow` Go code already exposes the correct readiness boundary
 through `Store.ReadyTasks`. Any future automatic focus advancement must use
 that boundary instead of treating `status == pending` as executable.
 
@@ -53,7 +53,7 @@ the next focus.
 
 ### Native Go path
 
-`jaflow` has the required readiness calculation:
+`flow` has the required readiness calculation:
 
 - `internal/storage/sqlite/lifecycle.go:96` — `ReadyTasks` returns only
   pending tasks whose dependencies are completed;
@@ -92,7 +92,7 @@ This is a workflow-integrity defect, not merely a display issue.
 
 ## Corrective direction
 
-When automatic advancement is implemented in `jaflow`:
+When automatic advancement is implemented in `flow`:
 
 1. complete the current task through the lifecycle store;
 2. query `ReadyTasks` for the same initiative and project;
@@ -134,6 +134,6 @@ with an actual dependency graph.
 ## Status
 
 This document records the diagnosis and migration boundary. It does not change
-focus behavior yet. The implementation belongs to the `jaflow` lifecycle/focus
+focus behavior yet. The implementation belongs to the `flow` lifecycle/focus
 parity slice, with isolated contract coverage before the fix is declared
 complete.
