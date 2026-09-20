@@ -290,10 +290,31 @@ func (s *Store) migrate(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("create migration provider: %w", err)
 	}
+	if err := checkSchemaVersion(ctx, provider); err != nil {
+		return err
+	}
 	if _, err := provider.Up(ctx); err != nil {
 		return fmt.Errorf("apply database migrations: %w", err)
 	}
 	return nil
+}
+
+// checkSchemaVersion refuses a database a newer release already upgraded. The
+// older binary cannot know what the newer migrations mean, so migrating down
+// or writing through it would discard or corrupt the newer schema.
+func checkSchemaVersion(ctx context.Context, provider *goose.Provider) error {
+	applied, supported, err := provider.GetVersions(ctx)
+	if err != nil {
+		return fmt.Errorf("read database schema version: %w", err)
+	}
+	if applied <= supported {
+		return nil
+	}
+	return fmt.Errorf(
+		"database schema version %d is newer than the %d this binary supports\n"+
+			"ACTION: Upgrade jacazul to the release that wrote this database, "+
+			"or point --database-path at a database this release understands.",
+		applied, supported)
 }
 
 func findInitiativeQuery() string {
