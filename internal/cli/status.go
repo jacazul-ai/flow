@@ -55,7 +55,7 @@ func (cmd *StatusCommand) Execute(args []string) error {
 			return err
 		}
 		if found {
-			fmt.Println("🐊 [cached] Status unchanged. Use --force to refresh.")
+			fmt.Fprintln(cmd.appOpts.Out(), "🐊 [cached] Status unchanged. Use --force to refresh.")
 			return nil
 		}
 	}
@@ -74,7 +74,7 @@ func (cmd *StatusCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Print(output)
+	fmt.Fprint(cmd.appOpts.Out(), output)
 	if !cmd.PendingOnly {
 		if err := store.SetCache(
 			context.Background(),

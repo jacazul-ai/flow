@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/jacazul-ai/flow/internal/config"
@@ -41,7 +42,7 @@ func (cmd *HistoryCommand) Execute(args []string) error {
 		if err != nil {
 			return err
 		}
-		return renderHistory("task "+shortID(current.ID), events)
+		return renderHistory(cmd.appOpts.Out(), "task "+shortID(current.ID), events)
 	case "initiative", "ini", "plan":
 		initiative, err := store.FindInitiativeReference(ctx, cmd.appOpts.ProjectID, args[1])
 		if err != nil {
@@ -51,16 +52,16 @@ func (cmd *HistoryCommand) Execute(args []string) error {
 		if err != nil {
 			return err
 		}
-		return renderHistory("initiative "+initiative.Name+" [id:"+shortID(initiative.ID)+"]", events)
+		return renderHistory(cmd.appOpts.Out(), "initiative "+initiative.Name+" [id:"+shortID(initiative.ID)+"]", events)
 	default:
 		return fmt.Errorf("unknown history scope %q\nACTION: Use task or initiative.", args[0])
 	}
 }
 
-func renderHistory(subject string, events []task.HistoryEvent) error {
-	fmt.Printf("HISTORY: %s\n", subject)
+func renderHistory(out io.Writer, subject string, events []task.HistoryEvent) error {
+	fmt.Fprintf(out, "HISTORY: %s\n", subject)
 	if len(events) == 0 {
-		fmt.Println("No history recorded.")
+		fmt.Fprintln(out, "No history recorded.")
 		return nil
 	}
 	for _, event := range events {
@@ -74,7 +75,7 @@ func renderHistory(subject string, events []task.HistoryEvent) error {
 		if event.Source != "" && event.Source != "native" {
 			line += " (source: " + event.Source + ")"
 		}
-		fmt.Println(line)
+		fmt.Fprintln(out, line)
 	}
 	return nil
 }

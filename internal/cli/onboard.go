@@ -53,7 +53,7 @@ func (cmd *OnboardCommand) Execute(args []string) error {
 		output += "HANDOFF ACKNOWLEDGED\n"
 	}
 
-	fmt.Print(output)
+	fmt.Fprint(cmd.appOpts.Out(), output)
 	return nil
 }
 

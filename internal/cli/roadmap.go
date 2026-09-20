@@ -47,12 +47,12 @@ func (cmd *RoadmapShowCommand) Execute(args []string) error {
 		return err
 	}
 	if len(entries) == 0 {
-		fmt.Println("No roadmap found.")
+		fmt.Fprintln(cmd.appOpts.Out(), "No roadmap found.")
 		return nil
 	}
-	fmt.Printf("ROADMAP: %s\n", cmd.appOpts.ProjectID)
+	fmt.Fprintf(cmd.appOpts.Out(), "ROADMAP: %s\n", cmd.appOpts.ProjectID)
 	for _, entry := range entries {
-		fmt.Printf("[%s] %s\n", entry.Phase, entry.Description)
+		fmt.Fprintf(cmd.appOpts.Out(), "[%s] %s\n", entry.Phase, entry.Description)
 	}
 	return nil
 }
@@ -80,7 +80,7 @@ func (cmd *RoadmapInitCommand) Execute(args []string) error {
 	if err := store.InitializeRoadmap(context.Background(), cmd.appOpts.ProjectID); err != nil {
 		return err
 	}
-	fmt.Printf("Roadmap initialized: %s\n", cmd.appOpts.ProjectID)
+	fmt.Fprintf(cmd.appOpts.Out(), "Roadmap initialized: %s\n", cmd.appOpts.ProjectID)
 	return nil
 }
 
@@ -135,7 +135,7 @@ func (cmd *RoadmapAddCommand) Execute(args []string) error {
 	if err := store.AddRoadmapEntry(context.Background(), entry); err != nil {
 		return err
 	}
-	fmt.Printf("Roadmap phase added: [%s] %s (%s)\n", phase, description, entry.ID)
+	fmt.Fprintf(cmd.appOpts.Out(), "Roadmap phase added: [%s] %s (%s)\n", phase, description, entry.ID)
 	return nil
 }
 
@@ -163,7 +163,7 @@ func (cmd *RoadmapShipCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Phase shipped: %s ✓\n", entry.Description)
+	fmt.Fprintf(cmd.appOpts.Out(), "Phase shipped: %s ✓\n", entry.Description)
 	return nil
 }
 

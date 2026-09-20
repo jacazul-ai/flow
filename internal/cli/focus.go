@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
@@ -110,12 +111,12 @@ func (cmd *FocusInterestCommand) Execute(args []string) error {
 		return err
 	}
 	if args[0] == "list" {
-		fmt.Println("PLANS OF INTEREST:")
+		fmt.Fprintln(cmd.appOpts.Out(), "PLANS OF INTEREST:")
 		for _, name := range state.PlansOfInterest {
-			fmt.Println(name)
+			fmt.Fprintln(cmd.appOpts.Out(), name)
 		}
 		if len(state.PlansOfInterest) == 0 {
-			fmt.Println("(empty)")
+			fmt.Fprintln(cmd.appOpts.Out(), "(empty)")
 		}
 		return nil
 	}
@@ -127,7 +128,7 @@ func (cmd *FocusInterestCommand) Execute(args []string) error {
 	if args[0] == "add" {
 		for _, current := range state.PlansOfInterest {
 			if current == name {
-				fmt.Printf("Plan already in interests: %s\n", name)
+				fmt.Fprintf(cmd.appOpts.Out(), "Plan already in interests: %s\n", name)
 				return nil
 			}
 		}
@@ -149,9 +150,9 @@ func (cmd *FocusInterestCommand) Execute(args []string) error {
 		return err
 	}
 	if args[0] == "add" {
-		fmt.Printf("Added plan to interests: %s\n", name)
+		fmt.Fprintf(cmd.appOpts.Out(), "Added plan to interests: %s\n", name)
 	} else {
-		fmt.Printf("Removed plan from interests: %s\n", name)
+		fmt.Fprintf(cmd.appOpts.Out(), "Removed plan from interests: %s\n", name)
 	}
 	return nil
 }
@@ -188,7 +189,7 @@ func (cmd *FocusShowCommand) Execute(args []string) error {
 		}
 		initiativeName = initiative.Name
 	}
-	printFocus(state, initiativeName)
+	printFocus(cmd.appOpts.Out(), state, initiativeName)
 	return nil
 }
 
@@ -245,12 +246,12 @@ func (cmd *FocusPlanCommand) execute(args []string, independent bool) error {
 		return err
 	}
 	if independent {
-		fmt.Printf("Independent focus anchored to plan: %s\n", initiative.Name)
+		fmt.Fprintf(cmd.appOpts.Out(), "Independent focus anchored to plan: %s\n", initiative.Name)
 	} else {
-		fmt.Printf("Focused initiative %s\n", initiative.Name)
+		fmt.Fprintf(cmd.appOpts.Out(), "Focused initiative %s\n", initiative.Name)
 	}
 	if len(ready) > 0 {
-		fmt.Printf("Next task %s: %s\n", shortID(ready[0].ID), ready[0].Description)
+		fmt.Fprintf(cmd.appOpts.Out(), "Next task %s: %s\n", shortID(ready[0].ID), ready[0].Description)
 	}
 	return nil
 }
@@ -300,7 +301,7 @@ func (cmd *FocusTaskCommand) execute(args []string, independent bool) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Printf("Focused task %s: %s\n", shortID(current.ID), current.Description)
+	fmt.Fprintf(cmd.appOpts.Out(), "Focused task %s: %s\n", shortID(current.ID), current.Description)
 	return nil
 }
 
@@ -353,7 +354,7 @@ func (cmd *FocusPopCommand) Execute(args []string) error {
 			return err
 		}
 	}
-	fmt.Printf("Focus popped; current task: %s\n", displayTaskID(state.FocusedTaskID))
+	fmt.Fprintf(cmd.appOpts.Out(), "Focus popped; current task: %s\n", displayTaskID(state.FocusedTaskID))
 	return nil
 }
 
@@ -383,7 +384,7 @@ func (cmd *FocusBackCommand) Execute(args []string) error {
 	if err := store.DeleteSession(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
 		return err
 	}
-	fmt.Println("Switched back to global focus")
+	fmt.Fprintln(cmd.appOpts.Out(), "Switched back to global focus")
 	return nil
 }
 
@@ -418,7 +419,7 @@ func (cmd *FocusClearCommand) Execute(args []string) error {
 	if err := store.ClearCache(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, ""); err != nil {
 		return err
 	}
-	fmt.Println("Focus cleared")
+	fmt.Fprintln(cmd.appOpts.Out(), "Focus cleared")
 	return nil
 }
 
@@ -432,15 +433,15 @@ func pushFocus(stack []task.FocusEntry, entry task.FocusEntry) []task.FocusEntry
 	return append([]task.FocusEntry{entry}, filtered...)
 }
 
-func printFocus(state task.FocusState, initiativeName string) {
-	fmt.Println("FOCUS")
-	fmt.Printf("Project: %s\n", state.ProjectID)
-	fmt.Printf("Session: %s\n", state.SessionID)
-	fmt.Printf("Initiative: %s\n", initiativeName)
-	fmt.Printf("Task: %s\n", displayTaskID(state.FocusedTaskID))
-	fmt.Println("STACK:")
+func printFocus(out io.Writer, state task.FocusState, initiativeName string) {
+	fmt.Fprintln(out, "FOCUS")
+	fmt.Fprintf(out, "Project: %s\n", state.ProjectID)
+	fmt.Fprintf(out, "Session: %s\n", state.SessionID)
+	fmt.Fprintf(out, "Initiative: %s\n", initiativeName)
+	fmt.Fprintf(out, "Task: %s\n", displayTaskID(state.FocusedTaskID))
+	fmt.Fprintln(out, "STACK:")
 	for _, entry := range state.TaskStack {
-		fmt.Printf("- %s\n", shortID(entry.TaskID))
+		fmt.Fprintf(out, "- %s\n", shortID(entry.TaskID))
 	}
 }
 

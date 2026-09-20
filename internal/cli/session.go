@@ -52,10 +52,10 @@ func (cmd *SessionListCommand) Execute(args []string) error {
 		return err
 	}
 	if len(sessions) == 0 {
-		fmt.Println("No sessions found.")
+		fmt.Fprintln(cmd.appOpts.Out(), "No sessions found.")
 		return nil
 	}
-	fmt.Println("SESSIONS:")
+	fmt.Fprintln(cmd.appOpts.Out(), "SESSIONS:")
 	now := time.Now().UTC()
 	for _, session := range sessions {
 		marker := " "
@@ -63,7 +63,7 @@ func (cmd *SessionListCommand) Execute(args []string) error {
 			marker = "*"
 		}
 		age, status := sessionAge(session.UpdatedAt, now)
-		fmt.Printf("%s %s task:%s initiative:%s updated:%s age:%s status:%s\n",
+		fmt.Fprintf(cmd.appOpts.Out(), "%s %s task:%s initiative:%s updated:%s age:%s status:%s\n",
 			marker,
 			session.SessionID,
 			displayTaskID(session.FocusedTaskID),
@@ -120,10 +120,10 @@ func (cmd *SessionResumeCommand) Execute(args []string) error {
 		return err
 	}
 	if note.AcknowledgedAt != "" {
-		fmt.Printf("Session note already acknowledged: session %s. Context will not be replayed.\n", cmd.appOpts.SessionID)
+		fmt.Fprintf(cmd.appOpts.Out(), "Session note already acknowledged: session %s. Context will not be replayed.\n", cmd.appOpts.SessionID)
 		return nil
 	}
-	fmt.Printf("📋 SESSION HANDOFF — session %s\n\n%s", cmd.appOpts.SessionID, note.Content)
+	fmt.Fprintf(cmd.appOpts.Out(), "📋 SESSION HANDOFF — session %s\n\n%s", cmd.appOpts.SessionID, note.Content)
 	return nil
 }
 
@@ -153,17 +153,17 @@ func (cmd *SessionAckCommand) Execute(args []string) error {
 		return err
 	}
 	if !found {
-		fmt.Println("No session note found.")
+		fmt.Fprintln(cmd.appOpts.Out(), "No session note found.")
 		return nil
 	}
 	if note.AcknowledgedAt != "" {
-		fmt.Println("Session note already acknowledged.")
+		fmt.Fprintln(cmd.appOpts.Out(), "Session note already acknowledged.")
 		return nil
 	}
 	if _, _, err := store.AcknowledgeSessionNote(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
 		return err
 	}
-	fmt.Println("Session note acknowledged. Context loaded.")
+	fmt.Fprintln(cmd.appOpts.Out(), "Session note acknowledged. Context loaded.")
 	return nil
 }
 
@@ -216,7 +216,7 @@ func (cmd *SessionDumpCommand) Execute(args []string) error {
 	if err := store.SaveSessionNote(ctx, note); err != nil {
 		return err
 	}
-	fmt.Printf("Session dump written for session %s.\n\n%s", cmd.appOpts.SessionID, content)
+	fmt.Fprintf(cmd.appOpts.Out(), "Session dump written for session %s.\n\n%s", cmd.appOpts.SessionID, content)
 	return nil
 }
 
@@ -258,15 +258,15 @@ func (cmd *SessionPurgeCommand) Execute(args []string) error {
 		}
 	}
 	if len(orphans) == 0 {
-		fmt.Println("No orphan sessions to purge.")
+		fmt.Fprintln(cmd.appOpts.Out(), "No orphan sessions to purge.")
 		return nil
 	}
-	fmt.Printf("Orphan sessions (%d):\n", len(orphans))
+	fmt.Fprintf(cmd.appOpts.Out(), "Orphan sessions (%d):\n", len(orphans))
 	for _, session := range orphans {
-		fmt.Printf("  %s\n", session.SessionID)
+		fmt.Fprintf(cmd.appOpts.Out(), "  %s\n", session.SessionID)
 	}
 	if !cmd.Confirm {
-		fmt.Println("\nDry run. Use --confirm to delete.")
+		fmt.Fprintln(cmd.appOpts.Out(), "\nDry run. Use --confirm to delete.")
 		return nil
 	}
 	for _, session := range orphans {
@@ -274,7 +274,7 @@ func (cmd *SessionPurgeCommand) Execute(args []string) error {
 			return err
 		}
 	}
-	fmt.Printf("Purged %d orphan session(s).\n", len(orphans))
+	fmt.Fprintf(cmd.appOpts.Out(), "Purged %d orphan session(s).\n", len(orphans))
 	return nil
 }
 

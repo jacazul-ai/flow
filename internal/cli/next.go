@@ -37,11 +37,11 @@ func (cmd *NextCommand) Execute(args []string) error {
 		return err
 	}
 	if len(ready) == 0 {
-		fmt.Println("No tasks ready.")
+		fmt.Fprintln(cmd.appOpts.Out(), "No tasks ready.")
 		return nil
 	}
 	for _, current := range ready {
-		fmt.Printf("%s %s\n", shortID(current.ID), current.Description)
+		fmt.Fprintf(cmd.appOpts.Out(), "%s %s\n", shortID(current.ID), current.Description)
 	}
 	return nil
 }

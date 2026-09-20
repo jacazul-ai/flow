@@ -40,7 +40,7 @@ func (cmd *ExecuteCommand) Execute(args []string) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Printf("Started task %s\n", shortID(current.ID))
+	fmt.Fprintf(cmd.appOpts.Out(), "Started task %s\n", shortID(current.ID))
 	return nil
 }
 
@@ -74,7 +74,7 @@ func (cmd *OutcomeCommand) Execute(args []string) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Printf("Recorded outcome for task %s\n", shortID(current.ID))
+	fmt.Fprintf(cmd.appOpts.Out(), "Recorded outcome for task %s\n", shortID(current.ID))
 	return nil
 }
 
@@ -109,14 +109,14 @@ func (cmd *DoneCommand) Execute(args []string) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Printf("Completed task %s\n", shortID(current.ID))
+	fmt.Fprintf(cmd.appOpts.Out(), "Completed task %s\n", shortID(current.ID))
 
 	ready, err := store.ReadyTasks(context.Background(), cmd.appOpts.ProjectID, current.InitiativeName)
 	if err != nil {
 		return fmt.Errorf("find next ready tasks: %w", err)
 	}
 	for _, next := range ready {
-		fmt.Printf("Ready task %s: %s\n", shortID(next.ID), next.Description)
+		fmt.Fprintf(cmd.appOpts.Out(), "Ready task %s: %s\n", shortID(next.ID), next.Description)
 	}
 	return nil
 }
@@ -152,7 +152,7 @@ func (cmd *ReopenCommand) Execute(args []string) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Printf("Reopened task %s\n", shortID(current.ID))
+	fmt.Fprintf(cmd.appOpts.Out(), "Reopened task %s\n", shortID(current.ID))
 	return nil
 }
 
@@ -187,7 +187,7 @@ func (cmd *DiscardCommand) Execute(args []string) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Printf("Discarded task %s\n", shortID(current.ID))
+	fmt.Fprintf(cmd.appOpts.Out(), "Discarded task %s\n", shortID(current.ID))
 	return nil
 }
 

@@ -39,6 +39,6 @@ func (cmd *TicketCommand) Execute(args []string) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Printf("Linked ticket %s to task %s\n", strings.TrimSpace(args[1]), shortID(current.ID))
+	fmt.Fprintf(cmd.appOpts.Out(), "Linked ticket %s to task %s\n", strings.TrimSpace(args[1]), shortID(current.ID))
 	return nil
 }

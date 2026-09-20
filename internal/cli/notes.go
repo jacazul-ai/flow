@@ -48,7 +48,7 @@ func (cmd *NoteCommand) Execute(args []string) error {
 		if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 			return err
 		}
-		fmt.Printf("Deleted annotation [%s] from task %s\n", args[2], shortID(current.ID))
+		fmt.Fprintf(cmd.appOpts.Out(), "Deleted annotation [%s] from task %s\n", args[2], shortID(current.ID))
 		return nil
 	}
 
@@ -69,7 +69,7 @@ func (cmd *NoteCommand) Execute(args []string) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Printf("Added %s note to task %s\n", canonical, shortID(current.ID))
+	fmt.Fprintf(cmd.appOpts.Out(), "Added %s note to task %s\n", canonical, shortID(current.ID))
 	return nil
 }
 
@@ -103,12 +103,12 @@ func (cmd *NotesCommand) Execute(args []string) error {
 		return err
 	}
 	if len(annotations) == 0 {
-		fmt.Printf("No annotations on task %s.\n", shortID(current.ID))
+		fmt.Fprintf(cmd.appOpts.Out(), "No annotations on task %s.\n", shortID(current.ID))
 		return nil
 	}
-	fmt.Printf("══ Notes for task %s ══\n", shortID(current.ID))
+	fmt.Fprintf(cmd.appOpts.Out(), "══ Notes for task %s ══\n", shortID(current.ID))
 	for _, annotation := range annotations {
-		fmt.Printf("  [%s] %s: %s\n", annotation.CreatedAt, annotation.Kind, annotation.Body)
+		fmt.Fprintf(cmd.appOpts.Out(), "  [%s] %s: %s\n", annotation.CreatedAt, annotation.Kind, annotation.Body)
 	}
 	return nil
 }
@@ -154,7 +154,7 @@ func (cmd *ContextCommand) Execute(args []string) error {
 	if len(direct) == 0 && len(inherited) == 0 {
 		output.WriteString("No context recorded.\n")
 	}
-	fmt.Print(output.String())
+	fmt.Fprint(cmd.appOpts.Out(), output.String())
 	return nil
 }
 

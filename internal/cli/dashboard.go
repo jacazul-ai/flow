@@ -125,7 +125,7 @@ func (cmd *TreeCommand) Execute(args []string) error {
 		return err
 	}
 	if len(tasks) == 0 {
-		fmt.Println("No tasks found.")
+		fmt.Fprintln(cmd.appOpts.Out(), "No tasks found.")
 		return nil
 	}
 	states := make(map[string]task.Status, len(tasks))
@@ -141,7 +141,7 @@ func (cmd *TreeCommand) Execute(args []string) error {
 		} else if !dependenciesReady(current, states) {
 			marker = "BLOCKED"
 		}
-		fmt.Printf("[%s] %s %s\n", marker, shortID(current.ID), current.Description)
+		fmt.Fprintf(cmd.appOpts.Out(), "[%s] %s %s\n", marker, shortID(current.ID), current.Description)
 	}
 	return nil
 }
@@ -164,7 +164,7 @@ func renderPlans(store *sqlite.Store, opts *config.AppOptions, all bool, closed 
 			return err
 		}
 		if found {
-			fmt.Println("🐊 [cached] Plans unchanged. Use --force to refresh.")
+			fmt.Fprintln(opts.Out(), "🐊 [cached] Plans unchanged. Use --force to refresh.")
 			return nil
 		}
 	}
@@ -173,7 +173,7 @@ func renderPlans(store *sqlite.Store, opts *config.AppOptions, all bool, closed 
 		return err
 	}
 	output := renderPlanList(opts.ProjectID, summaries, all, closed)
-	fmt.Print(output)
+	fmt.Fprint(opts.Out(), output)
 	return store.SetCache(ctx, opts.ProjectID, opts.SessionID, cacheKey, output, time.Now().UTC().Add(5*time.Minute))
 }
 
@@ -227,7 +227,7 @@ func renderPonder(store *sqlite.Store, opts *config.AppOptions, all bool, withBa
 			return err
 		}
 		if found {
-			fmt.Println("🐊 [cached] Ponder unchanged. Use --force to refresh.")
+			fmt.Fprintln(opts.Out(), "🐊 [cached] Ponder unchanged. Use --force to refresh.")
 			return nil
 		}
 	}
@@ -243,7 +243,7 @@ func renderPonder(store *sqlite.Store, opts *config.AppOptions, all bool, withBa
 	if err != nil {
 		return err
 	}
-	fmt.Print(output)
+	fmt.Fprint(opts.Out(), output)
 	return store.SetCache(ctx, opts.ProjectID, opts.SessionID, cacheKey, output, time.Now().UTC().Add(10*time.Minute))
 }
 
@@ -487,7 +487,7 @@ func setInitiativeState(opts *config.AppOptions, args []string, state task.Initi
 	if err := store.ClearCache(context.Background(), opts.ProjectID, opts.SessionID, ""); err != nil {
 		return err
 	}
-	fmt.Printf("Initiative %s: %s\n", args[0], command)
+	fmt.Fprintf(opts.Out(), "Initiative %s: %s\n", args[0], command)
 	return nil
 }
 

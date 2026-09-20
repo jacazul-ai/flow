@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/jacazul-ai/flow/internal/config"
@@ -63,15 +64,15 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 		return err
 	}
 	for _, warning := range warnings {
-		fmt.Printf("WARNING: %s\n", warning)
+		fmt.Fprintf(cmd.appOpts.Out(), "WARNING: %s\n", warning)
 	}
 	if !cmd.Apply {
 		result, err := migration.NewImporter(nil).DryRun(context.Background(), bundle)
 		if err != nil {
 			return err
 		}
-		fmt.Println("Migration dry-run: no changes written")
-		printMigrationResult(result)
+		fmt.Fprintln(cmd.appOpts.Out(), "Migration dry-run: no changes written")
+		printMigrationResult(cmd.appOpts.Out(), result)
 		return nil
 	}
 
@@ -80,7 +81,7 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 		return err
 	}
 	if backup != "" {
-		fmt.Printf("Backup: %s\n", backup)
+		fmt.Fprintf(cmd.appOpts.Out(), "Backup: %s\n", backup)
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
@@ -91,12 +92,12 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Migration applied")
-	printMigrationResult(result)
+	fmt.Fprintln(cmd.appOpts.Out(), "Migration applied")
+	printMigrationResult(cmd.appOpts.Out(), result)
 	return nil
 }
 
-func printMigrationResult(result task.ImportResult) {
-	fmt.Printf("Records: created=%d updated=%d unchanged=%d dependencies=%d annotations=%d history=%d\n",
+func printMigrationResult(out io.Writer, result task.ImportResult) {
+	fmt.Fprintf(out, "Records: created=%d updated=%d unchanged=%d dependencies=%d annotations=%d history=%d\n",
 		result.Created, result.Updated, result.Unchanged, result.Dependencies, result.Annotations, result.History)
 }

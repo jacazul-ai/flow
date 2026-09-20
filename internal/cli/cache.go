@@ -38,7 +38,7 @@ func (cmd *CacheCommand) Execute(args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("🐊 Cache: %d file(s) in %s\n", count, cmd.appOpts.DatabasePath)
+		fmt.Fprintf(cmd.appOpts.Out(), "🐊 Cache: %d file(s) in %s\n", count, cmd.appOpts.DatabasePath)
 		return nil
 	case "clear":
 		if len(args) > 2 {
@@ -62,7 +62,7 @@ func (cmd *CacheCommand) Execute(args []string) error {
 		if prefix != "" {
 			label = prefix
 		}
-		fmt.Printf("Cache cleared: %s\n", label)
+		fmt.Fprintf(cmd.appOpts.Out(), "Cache cleared: %s\n", label)
 		return nil
 	default:
 		return fmt.Errorf("unknown cache action %q\nACTION: Use info or clear.", args[0])

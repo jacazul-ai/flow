@@ -244,7 +244,7 @@ func persistOrganization(store *sqlite.Store, opts *config.AppOptions, initiativ
 	if err := clearTaskCaches(store, opts, task.Task{InitiativeName: initiative.Name}); err != nil {
 		return err
 	}
-	fmt.Printf("Organized %d pending tasks in initiative %s\n", len(desired), initiative.Name)
+	fmt.Fprintf(opts.Out(), "Organized %d pending tasks in initiative %s\n", len(desired), initiative.Name)
 	return nil
 }
 

@@ -54,7 +54,7 @@ func (cmd *AmendCommand) Execute(args []string) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Printf("Amended task %s metadata\n", shortID(current.ID))
+	fmt.Fprintf(cmd.appOpts.Out(), "Amended task %s metadata\n", shortID(current.ID))
 	return nil
 }
 
@@ -84,7 +84,7 @@ func (cmd *RenameCommand) Execute(args []string) error {
 	if err := store.ClearCache(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, ""); err != nil {
 		return err
 	}
-	fmt.Printf("Renamed initiative %s to %s\n", args[0], args[1])
+	fmt.Fprintf(cmd.appOpts.Out(), "Renamed initiative %s to %s\n", args[0], args[1])
 	return nil
 }
 
@@ -126,7 +126,7 @@ func (cmd *UrgentCommand) Execute(args []string) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Printf("Task %s marked urgent (urgency: %.1f)\n", shortID(current.ID), urgency)
+	fmt.Fprintf(cmd.appOpts.Out(), "Task %s marked urgent (urgency: %.1f)\n", shortID(current.ID), urgency)
 	return nil
 }
 
@@ -160,7 +160,7 @@ func (cmd *BlockCommand) Execute(args []string) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Printf("Task %s now depends on task %s\n", shortID(current.ID), shortID(args[1]))
+	fmt.Fprintf(cmd.appOpts.Out(), "Task %s now depends on task %s\n", shortID(current.ID), shortID(args[1]))
 	return nil
 }
 
@@ -194,7 +194,7 @@ func (cmd *UnblockCommand) Execute(args []string) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Printf("Removed dependency from task %s\n", shortID(current.ID))
+	fmt.Fprintf(cmd.appOpts.Out(), "Removed dependency from task %s\n", shortID(current.ID))
 	return nil
 }
 
@@ -235,6 +235,6 @@ func (cmd *WaitCommand) Execute(args []string) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Printf("Task %s waiting until %s\n", shortID(current.ID), waitUntil)
+	fmt.Fprintf(cmd.appOpts.Out(), "Task %s waiting until %s\n", shortID(current.ID), waitUntil)
 	return nil
 }

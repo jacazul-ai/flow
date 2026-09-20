@@ -107,6 +107,6 @@ func listTaskView(
 	if output.Len() == len(header)+2 {
 		output.WriteString(emptyMessage + "\n")
 	}
-	fmt.Print(output.String())
+	fmt.Fprint(opts.Out(), output.String())
 	return nil
 }

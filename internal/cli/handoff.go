@@ -51,6 +51,6 @@ func (cmd *HandoffCommand) Execute(args []string) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Printf("Handoff to task %s with note\n", shortID(current.ID))
+	fmt.Fprintf(cmd.appOpts.Out(), "Handoff to task %s with note\n", shortID(current.ID))
 	return nil
 }

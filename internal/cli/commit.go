@@ -49,16 +49,16 @@ func (cmd *CommitCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("DRAFT CONVENTIONAL COMMIT")
-	fmt.Printf("%s: %s\n", prefix, description)
+	fmt.Fprintln(cmd.appOpts.Out(), "DRAFT CONVENTIONAL COMMIT")
+	fmt.Fprintf(cmd.appOpts.Out(), "%s: %s\n", prefix, description)
 	if ticket != "" {
 		footer := "Refs"
 		if cmd.Fix {
 			footer = "Fixes"
 		}
-		fmt.Printf("\n%s: %s\n", footer, ticket)
+		fmt.Fprintf(cmd.appOpts.Out(), "\n%s: %s\n", footer, ticket)
 	}
-	fmt.Println("\nSAFETY: Draft only. Write a message file and obtain approval before git commit.")
+	fmt.Fprintln(cmd.appOpts.Out(), "\nSAFETY: Draft only. Write a message file and obtain approval before git commit.")
 	return nil
 }
 

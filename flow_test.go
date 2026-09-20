@@ -3,6 +3,7 @@ package flow_test
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -98,5 +99,72 @@ func TestRunUsesEnvInsteadOfProcessEnvironment(t *testing.T) {
 	}
 	if _, err := os.Stat(poisoned); !os.IsNotExist(err) {
 		t.Fatalf("process environment database was touched: %v", err)
+	}
+}
+
+// captureProcessStdout swaps the process stdout for a pipe while fn runs and
+// returns whatever was written there. Nothing should be: Run owns no stream it
+// was not handed.
+func captureProcessStdout(t *testing.T, fn func()) string {
+	t.Helper()
+
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	defer func() { os.Stdout = original }()
+
+	fn()
+
+	os.Stdout = original
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close pipe writer: %v", err)
+	}
+	leaked, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("read pipe: %v", err)
+	}
+	if err := reader.Close(); err != nil {
+		t.Fatalf("close pipe reader: %v", err)
+	}
+	return string(leaked)
+}
+
+func TestRunWritesCommandOutputOnlyToProvidedStreams(t *testing.T) {
+	env := flow.Env{ProjectID: "project-alpha", Home: t.TempDir()}
+
+	steps := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "plan", args: []string{"plan", "alpha", "Alpha task"}, want: "Created task"},
+		{name: "status", args: []string{"status"}, want: "Alpha task"},
+		{name: "next", args: []string{"next"}, want: "Alpha task"},
+		{name: "tree", args: []string{"tree"}, want: "Alpha task"},
+		{name: "plans", args: []string{"plans"}, want: "alpha"},
+		{name: "ponder", args: []string{"ponder"}, want: "alpha"},
+		{name: "focus", args: []string{"focus"}, want: "FOCUS"},
+		{name: "history", args: []string{"history", "initiative", "alpha"}, want: "HISTORY:"},
+	}
+	for _, step := range steps {
+		t.Run(step.name, func(t *testing.T) {
+			var code int
+			var stdout, stderr string
+			leaked := captureProcessStdout(t, func() {
+				code, stdout, stderr = run(t, context.Background(), env, step.args...)
+			})
+			if code != 0 {
+				t.Fatalf("exit = %d, want 0; stderr = %q", code, stderr)
+			}
+			if !strings.Contains(stdout, step.want) {
+				t.Fatalf("injected stdout = %q, want %q", stdout, step.want)
+			}
+			if leaked != "" {
+				t.Fatalf("process stdout received %q; Run must write only to the injected streams", leaked)
+			}
+		})
 	}
 }
