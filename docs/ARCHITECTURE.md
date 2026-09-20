@@ -11,14 +11,8 @@ The architecture must preserve the current local feature-parity target while
 leaving a clean boundary for future team orchestration. The target distributed
 context model is documented in [DISTRIBUTED-CONTEXT.md](DISTRIBUTED-CONTEXT.md).
 
-This document distinguishes two states:
-
-- **Current:** what the code implements today.
-- **Target:** decided architecture that is not implemented yet.
-
-The project is being renamed from `jaflow` to `flow`. Until that rename lands,
-the code still uses the `github.com/jacazul-ai/jaflow` module path, the
-`cmd/jaflow` executable, and `jaflow` runtime paths.
+This document describes what the code implements today. Decided architecture
+that is not implemented yet is marked as such where it appears.
 
 ## Distribution Model
 
@@ -48,7 +42,7 @@ The standalone executable installs with:
 go install github.com/jacazul-ai/flow/cmd/jczl-flow@latest
 ```
 
-## Public API Boundary (Target)
+## Public API Boundary
 
 The module root is the only public package. Everything else stays under
 `internal/`, which the Go toolchain prevents other modules from importing.
@@ -95,15 +89,16 @@ Rules:
 
 ## Runtime Layers
 
-### Current
-
 ```text
-cmd/jaflow/main.go
-    ↓
-internal/config         global options and environment resolution
-internal/cli            command registry and one command type per command
-    ↓
-internal/storage/sqlite Store
+cmd/jczl-flow/main.go   or   jacazul-ai-cli
+            ↓
+        flow.Run(ctx, args, Env, Streams)
+            ↓
+internal/config         option resolution from flags, then the injected Env
+internal/cli            command registry and one command type per command,
+                        every command writing to the injected Streams
+            ↓
+internal/storage/sqlite Store opened from the resolved database path
     └── SQLite database (one file per PROJECT_ID)
         ├── initiatives and tasks
         ├── dependencies and annotations
@@ -116,26 +111,12 @@ internal/migration      Taskwarrior snapshot import
 internal/testharness    isolated fixtures for contract tests
 ```
 
-`cmd/jaflow/main.go` currently owns the process boundary: global option
-parsing, command registration, help and version handling, stderr, and exit
-status. `internal/config` reads `PROJECT_ID`, `TASKDATA`, `JACAZUL_SESSION_ID`,
-and `JACAZUL_HOME` from the process environment, and commands in
-`internal/cli` write directly to process stdout.
-
-### Target
-
-```text
-cmd/jczl-flow/main.go   or   jacazul-ai-cli
-            ↓
-        flow.Run(ctx, args, Env, Streams)
-            ↓
-internal/cli            parser, registry, commands writing to Streams
-            ↓
-internal/storage/sqlite Store opened from Env.DatabasePath
-```
-
-Moving the process boundary into `flow.Run` requires injecting `Env` into
-option resolution and `Streams` into every command that prints.
+The thin main owns the process: it builds `Env` and `Streams`, calls
+`flow.Run`, and turns the returned status into an exit code. Inside `Run`
+nothing reads the process environment or `os.Args`, and nothing writes to the
+process streams: `internal/config` resolves options from flags and then the
+injected `Env`, and every command in `internal/cli` prints through the
+injected `Streams` and passes the invocation context to the store.
 
 ### CLI
 
@@ -182,29 +163,31 @@ provider has ten ordered migration steps:
 The provider uses its own version table and keeps the application silent by
 default.
 
-**Target:** the store refuses to open a database whose schema version is newer
-than the running binary supports and reports actionable `ACTION:` guidance.
-This protects users who roll jacazul back to an older release after a newer
-engine migrated their database.
+Before applying anything, the store compares the version already recorded in
+the database against the highest migration embedded in the binary. A database
+a newer release migrated is refused with both versions and an `ACTION:`,
+rather than opened and written through by a binary that cannot know what the
+newer schema means. A database that is merely behind still migrates up.
 
 ### Database location
 
-| | Current | Target |
-|---|---|---|
-| Default path | `$JACAZUL_HOME/jaflow/<PROJECT_ID>/jaflow.sqlite3` | `$JACAZUL_HOME/flow/<PROJECT_ID>/flow.sqlite3` |
-| Override | `--database-path`, `JAFLOW_DATABASE_PATH` | `--database-path`, `JACAZUL_FLOW_DATABASE_PATH` |
+| | Path |
+|---|---|
+| Default | `$JACAZUL_HOME/flow/<PROJECT_ID>/flow.sqlite3` |
+| Override | `--database-path`, `JACAZUL_FLOW_DATABASE_PATH` |
 
-**Open decision:** whether the engine moves a legacy
-`$JACAZUL_HOME/jaflow/<PROJECT_ID>/jaflow.sqlite3` to the new path on first
-open. No real user data exists at the legacy path today. If adopted, the move
-must happen only when the new path is absent and the legacy file exists, carry
-the `-wal` and `-shm` sidecars, use a same-filesystem atomic rename, and fail
-closed with `ACTION:` guidance when both paths exist or the legacy database is
-locked by another writer.
+A database left at the pre-rename location,
+`$JACAZUL_HOME/jaflow/<PROJECT_ID>/jaflow.sqlite3`, is moved to the current
+path the first time the store opens. The move carries the `-wal` and `-shm`
+sidecars and fails closed with `ACTION:` guidance when both paths exist, the
+legacy database is locked by another writer, or the rename would cross
+filesystems. The legacy path is derived only when the database path itself was
+derived, so an explicit `--database-path` migrates nothing.
 
-Every caller must supply `Home` explicitly. Without `JACAZUL_HOME`, the current
-code falls back to the user home directory, which places the database directly
-under `~/`.
+`flow.Run` requires `Home` from its caller to derive default paths and fails
+with `ACTION:` guidance without it. Only `EnvFromOS`, for standalone
+executables, falls back to the user home directory when `JACAZUL_HOME` is
+unset.
 
 ### SQL layer: sqlok (deferred)
 
