@@ -11,7 +11,7 @@ import (
 
 func TestTaskMetadataControlsReadiness(t *testing.T) {
 	ctx := context.Background()
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	initiative := createTestInitiative(t, store)
 	created := createTestTask(t, store, initiative.ID, "Metadata task")
 
@@ -47,7 +47,7 @@ func TestTaskMetadataControlsReadiness(t *testing.T) {
 
 func TestTaskMetadataUpdateAndDependencyProjectBoundary(t *testing.T) {
 	ctx := context.Background()
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	initiative := createTestInitiative(t, store)
 	created := createTestTask(t, store, initiative.ID, "Original")
 
@@ -81,7 +81,7 @@ func TestTaskMetadataUpdateAndDependencyProjectBoundary(t *testing.T) {
 
 func TestRenameInitiativeRejectsCollisions(t *testing.T) {
 	ctx := context.Background()
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	createTestInitiative(t, store)
 	if _, err := store.GetOrCreateInitiative(ctx, task.CreateInitiativeInput{
 		ProjectID: "project-alpha",

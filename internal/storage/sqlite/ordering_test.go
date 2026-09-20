@@ -7,7 +7,7 @@ import (
 
 func TestReplacePendingTaskOrderPersistsInitiativeSlots(t *testing.T) {
 	ctx := context.Background()
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	initiative := createTestInitiative(t, store)
 	first := createTestTask(t, store, initiative.ID, "First")
 	second := createTestTask(t, store, initiative.ID, "Second")

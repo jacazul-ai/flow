@@ -18,7 +18,7 @@ func TestLegacyTaskDataDoesNotReplaceNativeDatabase(t *testing.T) {
 	if err := config.Resolve(&opts); err != nil {
 		t.Fatalf("resolve options: %v", err)
 	}
-	want := filepath.Join(home, "jaflow", "project-alpha", "jaflow.sqlite3")
+	want := filepath.Join(home, "flow", "project-alpha", "flow.sqlite3")
 	if opts.DatabasePath != want {
 		t.Fatalf("database path = %q, want native path %q", opts.DatabasePath, want)
 	}
@@ -45,7 +45,7 @@ func TestResolveIgnoresProcessEnvironment(t *testing.T) {
 	if opts.ProjectID != "from-runtime" || opts.SessionID != "session-from-runtime" {
 		t.Fatalf("identity = %q/%q, want runtime values", opts.ProjectID, opts.SessionID)
 	}
-	want := filepath.Join(home, "jaflow", "from-runtime", "jaflow.sqlite3")
+	want := filepath.Join(home, "flow", "from-runtime", "flow.sqlite3")
 	if opts.DatabasePath != want {
 		t.Fatalf("database path = %q, want %q derived from runtime home", opts.DatabasePath, want)
 	}
@@ -75,5 +75,36 @@ func TestResolveRequiresHomeForDefaultPaths(t *testing.T) {
 	err := config.Resolve(&opts)
 	if !errors.Is(err, config.ErrHomeRequired) {
 		t.Fatalf("resolve error = %v, want ErrHomeRequired", err)
+	}
+}
+
+func TestResolveDerivesLegacyDatabaseOnlyWithTheDefaultPath(t *testing.T) {
+	home := t.TempDir()
+	opts := config.AppOptions{
+		ProjectID: "project-alpha",
+		Runtime:   config.Runtime{Home: home},
+	}
+	if err := config.Resolve(&opts); err != nil {
+		t.Fatalf("resolve options: %v", err)
+	}
+	want := filepath.Join(home, "jaflow", "project-alpha", "jaflow.sqlite3")
+	if opts.LegacyDatabasePath != want {
+		t.Fatalf("legacy database path = %q, want %q", opts.LegacyDatabasePath, want)
+	}
+
+	chosen := filepath.Join(t.TempDir(), "chosen.sqlite3")
+	explicit := config.AppOptions{
+		ProjectID:    "project-alpha",
+		DatabasePath: chosen,
+		Runtime:      config.Runtime{Home: home},
+	}
+	if err := config.Resolve(&explicit); err != nil {
+		t.Fatalf("resolve explicit options: %v", err)
+	}
+	if explicit.DatabasePath != chosen {
+		t.Fatalf("database path = %q, want the explicit %q", explicit.DatabasePath, chosen)
+	}
+	if explicit.LegacyDatabasePath != "" {
+		t.Fatalf("legacy database path = %q, want none for an explicit database", explicit.LegacyDatabasePath)
 	}
 }

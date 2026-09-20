@@ -34,7 +34,7 @@ func NewHarness(t *testing.T, projectID string, sessionID string) *Harness {
 		TaskData:     filepath.Join(root, "taskdata"),
 		CacheDir:     filepath.Join(root, "cache"),
 		BinDir:       filepath.Join(root, "bin"),
-		DatabasePath: filepath.Join(root, "database", "jaflow.sqlite3"),
+		DatabasePath: filepath.Join(root, "database", "flow.sqlite3"),
 	}
 
 	for _, path := range []string{

@@ -58,7 +58,7 @@ func TestLegacyStateMapsFocusAndSessionNote(t *testing.T) {
 		t.Fatalf("imported session notes = %#v, want acknowledged note", bundle.SessionNotes)
 	}
 
-	store, err := sqlite.Open(context.Background(), filepath.Join(t.TempDir(), "jaflow.sqlite3"))
+	store, err := sqlite.Open(context.Background(), filepath.Join(t.TempDir(), "flow.sqlite3"))
 	if err != nil {
 		t.Fatalf("open state store: %v", err)
 	}

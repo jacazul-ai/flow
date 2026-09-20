@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/jacazul-ai/flow/internal/config"
-	"github.com/jacazul-ai/flow/internal/storage/sqlite"
 	"github.com/jacazul-ai/flow/internal/task"
 )
 
@@ -27,9 +26,9 @@ func (cmd *PlanCommand) Execute(args []string) error {
 		return fmt.Errorf("plan requires a name and at least one task")
 	}
 
-	store, err := sqlite.Open(context.Background(), cmd.appOpts.DatabasePath)
+	store, err := openStore(cmd.appOpts)
 	if err != nil {
-		return fmt.Errorf("open project database: %w", err)
+		return err
 	}
 	defer store.Close()
 

@@ -12,7 +12,7 @@ import (
 
 func TestStorePersistsInitiativesTasksAndDependencies(t *testing.T) {
 	ctx := context.Background()
-	store := openStore(t, filepath.Join(t.TempDir(), "alpha", "jaflow.sqlite3"))
+	store := openStore(t, filepath.Join(t.TempDir(), "alpha", "flow.sqlite3"))
 
 	initiative, err := store.GetOrCreateInitiative(ctx, task.CreateInitiativeInput{
 		ProjectID: "project-alpha",
@@ -115,7 +115,7 @@ func TestTaskModeCatalogPersistsStableCodes(t *testing.T) {
 }
 
 func TestGooseAdoptsLegacyV1Schema(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "legacy-jaflow.sqlite3")
+	path := filepath.Join(t.TempDir(), "legacy-flow.sqlite3")
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatalf("open legacy database: %v", err)
@@ -218,7 +218,7 @@ func TestGooseAdoptsLegacyV1Schema(t *testing.T) {
 }
 
 func TestOpenAppliesAllGooseMigrations(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "migrations", "jaflow.sqlite3")
+	path := filepath.Join(t.TempDir(), "migrations", "flow.sqlite3")
 	store := openStore(t, path)
 	if err := store.Close(); err != nil {
 		t.Fatalf("close migrated store: %v", err)
@@ -270,8 +270,8 @@ func TestOpenAppliesAllGooseMigrations(t *testing.T) {
 
 func TestStoreSeparatesProjectDatabases(t *testing.T) {
 	ctx := context.Background()
-	first := openStore(t, filepath.Join(t.TempDir(), "first", "jaflow.sqlite3"))
-	second := openStore(t, filepath.Join(t.TempDir(), "second", "jaflow.sqlite3"))
+	first := openStore(t, filepath.Join(t.TempDir(), "first", "flow.sqlite3"))
+	second := openStore(t, filepath.Join(t.TempDir(), "second", "flow.sqlite3"))
 
 	initiative, err := first.GetOrCreateInitiative(ctx, task.CreateInitiativeInput{
 		ProjectID: "project-alpha",

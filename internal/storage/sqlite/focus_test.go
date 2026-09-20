@@ -10,7 +10,7 @@ import (
 
 func TestFocusIsolatedBySession(t *testing.T) {
 	ctx := context.Background()
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	state := task.FocusState{
 		ProjectID:     "project-alpha",
 		SessionID:     "session-one",
@@ -48,7 +48,7 @@ func TestFocusIsolatedBySession(t *testing.T) {
 
 func TestCacheIsolatedBySessionAndExpiry(t *testing.T) {
 	ctx := context.Background()
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	if err := store.SetCache(ctx, "project-alpha", "session-one", "status", "alpha", now.Add(time.Minute)); err != nil {
 		t.Fatalf("set cache: %v", err)

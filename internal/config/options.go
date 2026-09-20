@@ -10,6 +10,15 @@ import (
 
 var ErrVersionRequired = errors.New("version required")
 
+// Database locations derived under the runtime home. The legacy pair belongs
+// to the releases that shipped before the engine was renamed to flow.
+const (
+	databaseDirectory       = "flow"
+	databaseFile            = "flow.sqlite3"
+	legacyDatabaseDirectory = "jaflow"
+	legacyDatabaseFile      = "jaflow.sqlite3"
+)
+
 // ErrHomeRequired reports that default paths cannot be derived without a runtime home.
 var ErrHomeRequired = errors.New("runtime home is required\nACTION: Set JACAZUL_HOME or pass a home directory to flow.Run.")
 
@@ -20,6 +29,10 @@ type AppOptions struct {
 	TaskData     string `long:"taskdata" description:"Legacy Taskwarrior data directory"`
 	DatabasePath string `long:"database-path" description:"Project SQLite database path"`
 	SessionID    string `long:"session-id" description:"Workflow session identity"`
+
+	// LegacyDatabasePath is the pre-rename location migrated on first open.
+	// It is derived only when the database path itself was derived.
+	LegacyDatabasePath string `no-flag:"true"`
 
 	// Runtime is the caller-resolved context used when a flag is not supplied.
 	Runtime Runtime `no-flag:"true"`
@@ -105,9 +118,15 @@ func Resolve(opts *AppOptions) error {
 	if opts.DatabasePath == "" {
 		opts.DatabasePath = filepath.Join(
 			home,
-			"jaflow",
+			databaseDirectory,
 			opts.ProjectID,
-			"jaflow.sqlite3",
+			databaseFile,
+		)
+		opts.LegacyDatabasePath = filepath.Join(
+			home,
+			legacyDatabaseDirectory,
+			opts.ProjectID,
+			legacyDatabaseFile,
 		)
 	}
 	return nil

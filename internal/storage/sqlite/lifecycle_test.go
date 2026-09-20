@@ -11,7 +11,7 @@ import (
 
 func TestLifecycleEnforcesDependenciesAndOutcome(t *testing.T) {
 	ctx := context.Background()
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	initiative := createTestInitiative(t, store)
 	first := createTestTask(t, store, initiative.ID, "First")
 	second := createTestTaskWithDependency(t, store, initiative.ID, "Second", first.ID)
@@ -47,7 +47,7 @@ func TestLifecycleEnforcesDependenciesAndOutcome(t *testing.T) {
 
 func TestLifecycleSupportsReopenAndDiscard(t *testing.T) {
 	ctx := context.Background()
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	initiative := createTestInitiative(t, store)
 	reopenable := createTestTask(t, store, initiative.ID, "Reopenable")
 	discardable := createTestTask(t, store, initiative.ID, "Discardable")

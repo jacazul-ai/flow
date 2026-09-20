@@ -132,7 +132,7 @@ func TestApplyIsIdempotentAndPreservesDependenciesAndAnnotations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("build idempotent bundle: %v", err)
 	}
-	store, err := sqlite.Open(context.Background(), t.TempDir()+"/jaflow.sqlite3")
+	store, err := sqlite.Open(context.Background(), t.TempDir()+"/flow.sqlite3")
 	if err != nil {
 		t.Fatalf("open import store: %v", err)
 	}

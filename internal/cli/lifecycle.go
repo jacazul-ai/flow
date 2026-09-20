@@ -192,6 +192,14 @@ func (cmd *DiscardCommand) Execute(args []string) error {
 }
 
 func openStore(opts *config.AppOptions) (*sqlite.Store, error) {
+	moved, err := sqlite.MoveLegacyDatabase(opts.LegacyDatabasePath, opts.DatabasePath)
+	if err != nil {
+		return nil, err
+	}
+	if moved {
+		fmt.Fprintf(opts.Stdout, "Moved legacy database to %s\n", opts.DatabasePath)
+	}
+
 	store, err := sqlite.Open(context.Background(), opts.DatabasePath)
 	if err != nil {
 		return nil, fmt.Errorf("open project database: %w", err)

@@ -10,7 +10,7 @@ import (
 
 func TestHistorySupportsTaskAndInitiativeScopes(t *testing.T) {
 	ctx := context.Background()
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	initiative := createTestInitiative(t, store)
 	created := createTestTask(t, store, initiative.ID, "History task")
 
@@ -75,7 +75,7 @@ func TestHistorySupportsTaskAndInitiativeScopes(t *testing.T) {
 
 func TestInitiativeHistoryResolvesFullAndShortUUIDs(t *testing.T) {
 	ctx := context.Background()
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	initiative := createTestInitiative(t, store)
 
 	for _, reference := range []string{initiative.ID, initiative.ID[:8]} {
@@ -91,7 +91,7 @@ func TestInitiativeHistoryResolvesFullAndShortUUIDs(t *testing.T) {
 
 func TestInitiativeHistoryRejectsAmbiguousUUIDPrefix(t *testing.T) {
 	ctx := context.Background()
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	const projectID = "project-alpha"
 	const firstID = "abcdef01-first"
 	const secondID = "abcdef01-second"
@@ -127,7 +127,7 @@ func TestInitiativeHistoryRejectsAmbiguousUUIDPrefix(t *testing.T) {
 }
 
 func TestInitiativeHistoryRejectsUnknownReference(t *testing.T) {
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	_, err := store.ListInitiativeHistory(context.Background(), "project-alpha", "missing-initiative")
 	if err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("unknown initiative reference error = %v, want not found", err)
@@ -136,8 +136,8 @@ func TestInitiativeHistoryRejectsUnknownReference(t *testing.T) {
 
 func TestInitiativeHistoryIsolatedByProjectReference(t *testing.T) {
 	ctx := context.Background()
-	first := openStore(t, t.TempDir()+"/first/jaflow.sqlite3")
-	second := openStore(t, t.TempDir()+"/second/jaflow.sqlite3")
+	first := openStore(t, t.TempDir()+"/first/flow.sqlite3")
+	second := openStore(t, t.TempDir()+"/second/flow.sqlite3")
 	initiative := createTestInitiative(t, first)
 
 	_, err := second.ListInitiativeHistory(ctx, initiative.ProjectID, initiative.ID)
@@ -148,7 +148,7 @@ func TestInitiativeHistoryIsolatedByProjectReference(t *testing.T) {
 
 func TestLifecycleRecordsNativeHistory(t *testing.T) {
 	ctx := context.Background()
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	initiative := createTestInitiative(t, store)
 	created := createTestTask(t, store, initiative.ID, "Lifecycle history")
 
@@ -185,8 +185,8 @@ func TestLifecycleRecordsNativeHistory(t *testing.T) {
 
 func TestHistoryIsolatedByProjectDatabase(t *testing.T) {
 	ctx := context.Background()
-	first := openStore(t, t.TempDir()+"/first/jaflow.sqlite3")
-	second := openStore(t, t.TempDir()+"/second/jaflow.sqlite3")
+	first := openStore(t, t.TempDir()+"/first/flow.sqlite3")
+	second := openStore(t, t.TempDir()+"/second/flow.sqlite3")
 	initiative := createTestInitiative(t, first)
 	created := createTestTask(t, first, initiative.ID, "Private history")
 	if err := first.AppendHistoryEvent(ctx, task.HistoryEvent{
@@ -205,7 +205,7 @@ func TestHistoryIsolatedByProjectDatabase(t *testing.T) {
 
 func TestImportRollbackLeavesNoPartialHistory(t *testing.T) {
 	ctx := context.Background()
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	initiative := task.ImportedInitiative{
 		ID:        "initiative-import-rollback",
 		ProjectID: "project-alpha",
@@ -251,7 +251,7 @@ func TestImportRollbackLeavesNoPartialHistory(t *testing.T) {
 }
 
 func TestHistoryRejectsMissingScope(t *testing.T) {
-	store := openStore(t, t.TempDir()+"/jaflow.sqlite3")
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
 	err := store.AppendHistoryEvent(context.Background(), task.HistoryEvent{
 		Source:        "taskchampion",
 		SourceEventID: "orphan",
