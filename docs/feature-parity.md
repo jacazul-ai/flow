@@ -250,18 +250,21 @@ first place tests are defined.
 Follow the `nvimim` CLI pattern:
 
 ```text
-cmd/jczl-flow/main.go       parser, global options, command registry, process exit
-internal/cli/             one command type and Execute method per command
-internal/workflow/        small shared workflow behavior
-internal/storage/         project database and persistence boundaries
-internal/storage/sqlok/    sqlok-backed schema, migrations, and queries
-internal/cache/            cache policy and invalidation behavior
-internal/testharness/     isolated project databases and fake externals
+flow.go                    public boundary: Run, Env, Streams, EnvFromOS
+cmd/jczl-flow/main.go      thin main: builds Env and Streams, maps the exit code
+internal/config/           option resolution and the per-invocation handoff
+internal/cli/              one command type and Execute method per command
+internal/task/             domain types and validation
+internal/storage/sqlite/   the project store: schema, migrations, and queries
+internal/migration/        Taskwarrior snapshot import
+internal/testharness/      isolated project databases and fake externals
 ```
 
 The CLI must not infer initiative lifecycle from a Taskwarrior project string.
-Commands call the sqlok-backed local store through focused behavior boundaries
-and render results; they do not manipulate SQL or SQLite tables directly.
+Commands call the local store through focused behavior boundaries and render
+results; they do not manipulate SQL or SQLite tables directly. Derived output
+cache is a store concern, kept in `cache_entries` rather than a package of its
+own.
 
 Do not translate the Python `FlowManager` into a Go monolith. Feature parity is
 measured per command and per contract, not by matching the old class layout.

@@ -73,8 +73,7 @@ jacazul-ai-cli/tw-flow-to-go/skills/taskwarrior-expert
 The migration scope includes:
 
 - one native SQLite database per canonical `PROJECT_ID`
-- `sqlok` as the official SQLAlchemy-like SQL/schema layer
-- a driver owned by `flow`, selected independently from `sqlok`
+- a driver owned by `flow`, with SQL and migrations kept behind one store
 - per-project database isolation
 - plan/initiative creation
 - task focus and anchor management
@@ -92,8 +91,8 @@ The local engine should also be designed so it can connect to a centralized serv
 ## Documentation
 
 - [Vision](docs/VISION.md): mission, operational memory, and team direction.
-- [Architecture](docs/ARCHITECTURE.md): local Coordinator, backends, and
-  future team orchestration.
+- [Architecture](docs/ARCHITECTURE.md): distribution model, the `flow.Run`
+  boundary, runtime layers, persistence, and future team orchestration.
 - [Feature parity](docs/feature-parity.md): reference contracts, test audit,
   implementation backlog, and parity completion criteria.
 - [Migration](docs/migration.md): Taskwarrior mapping, safety, idempotency,
@@ -102,6 +101,10 @@ The local engine should also be designed so it can connect to a centralized serv
   workflow navigation examples.
 - [Task history](docs/task-history.md): native events, TaskChampion extraction,
   import rules, and verification contracts.
+- [Distributed context](docs/DISTRIBUTED-CONTEXT.md): the target multi-agent
+  context model, event log, and connector boundaries.
+- [Agent workflow reference](docs/AGENT-WORKFLOW-REFERENCE.md): the evidence
+  boundary for parity tests against `tw-flow`.
 
 ## Consumer project
 
@@ -156,10 +159,12 @@ $JACAZUL_HOME/flow/<PROJECT_ID>/flow.sqlite3
 ```
 
 The database contains initiatives, tasks, dependencies, annotations, focus,
-sessions, cache, and roadmap state. `sqlok` owns SQL generation, schema
-definitions, migrations, and query/session abstractions over the
-application-provided `database/sql` connection. The workflow engine must not
-embed a second SQL builder or import `sqlok/internal`.
+sessions, cache, and roadmap state. All SQL and the embedded Goose migrations
+stay inside `internal/storage/sqlite`; no command touches database files
+directly. Moving that SQL onto [`sqlok`](https://github.com/candango/sqlok) is
+still the intended direction and is deferred, not abandoned; see
+[Architecture](docs/ARCHITECTURE.md) for the ownership split and what `sqlok`
+has to expose first.
 
 ## Task lifecycle
 
@@ -244,11 +249,17 @@ The existing behavior to preserve:
 
 ## Current status
 
-This repository is in bootstrap.
+The engine runs. The command model, the per-project SQLite store with its
+embedded migrations, the Taskwarrior snapshot importer, and the `flow.Run`
+boundary that lets jacazul embed the engine are all implemented and covered by
+contract tests.
 
-Initial work is focused on:
+The current phase is feature parity with `tw-flow`. Work is focused on:
 
-- creating the Go module
-- defining the CLI command model
-- documenting the migration scope
-- preparing the first project files
+- porting the remaining reference behavior and its contract tests
+- plugging `flow.Run` into `jacazul-ai-cli`
+- preparing the Taskwarrior cutover
+
+Server coordination and live sync are designed but deliberately not
+implemented; see [Architecture](docs/ARCHITECTURE.md) and
+[Distributed context](docs/DISTRIBUTED-CONTEXT.md).

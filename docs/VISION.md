@@ -31,8 +31,9 @@ The current phase is a Go-native feature-parity port of the existing
 `tw-flow` behavior. The local engine must become useful and reliable before
 team orchestration is implemented.
 
-The local workflow is coordinated by a `Coordinator` over one native SQLite
-database per canonical `PROJECT_ID`. Initiatives/plans are first-class domain
+The local workflow runs over one native SQLite database per canonical
+`PROJECT_ID`, reached through a single concrete store rather than a coordinator
+type. Initiatives/plans are first-class domain
 entities with their own identity, lifecycle, metadata, and ticket relationship;
 tasks reference them explicitly. Taskwarrior semantics remain a compatibility
 target, but the Taskwarrior binary and its grouping model are not the local
@@ -49,7 +50,7 @@ same workflow:
 
 ```text
 Agent A ─┐
-Agent B ─┼── Team Coordinator ── Shared TaskBackend
+Agent B ─┼── Team Coordinator ── Shared workflow backend
 Agent C ─┘
 ```
 
@@ -63,9 +64,9 @@ A team Coordinator will eventually provide:
 - audit history;
 - authentication and permissions.
 
-The local Coordinator remains the agent-side workflow boundary. The team
-Coordinator becomes the shared orchestration boundary. Both coordinate
-operational work; neither replaces the project's knowledge repository.
+`flow.Run` remains the agent-side workflow boundary. The team Coordinator
+becomes the shared orchestration boundary. Both coordinate operational work;
+neither replaces the project's knowledge repository.
 
 ## Initiative Transport
 
@@ -96,8 +97,9 @@ state unless a later protocol explicitly opts into those fields.
 ## Evolution Path
 
 1. Establish verified feature parity with `tw-flow`.
-2. Implement a clean local Coordinator over the per-project SQLite store.
+2. Keep the local workflow behind one narrow public boundary over the
+   per-project SQLite store.
 3. Define a portable initiative envelope and explicit send/receive flow.
-4. Add a shared Team Coordinator and server-backed TaskBackend.
+4. Add a shared Team Coordinator and a server-backed workflow store.
 5. Add bidirectional synchronization, leases, conflict resolution, audit, and
    team permissions.
