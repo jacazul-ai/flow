@@ -6,7 +6,7 @@ import (
 	"github.com/jessevdk/go-flags"
 )
 
-// CommandSpec describes one command exposed by the Jaflow CLI.
+// CommandSpec describes one command exposed by the flow CLI.
 type CommandSpec struct {
 	Name           string
 	Summary        string

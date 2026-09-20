@@ -1,4 +1,4 @@
-// Package migration imports legacy Taskwarrior workflow snapshots into Jaflow.
+// Package migration imports legacy Taskwarrior workflow snapshots into flow.
 package migration
 
 import (

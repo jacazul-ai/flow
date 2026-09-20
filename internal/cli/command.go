@@ -663,7 +663,7 @@ var helpEntries = []helpEntry{
 		canonical: "migrate",
 		summary:   "Import legacy workflow state",
 		usage:     "jczl-flow migrate taskwarrior --source <export.json> [--apply]",
-		role:      "Use this explicit boundary to move isolated Taskwarrior state into native Jaflow.",
+		role:      "Use this explicit boundary to move isolated Taskwarrior state into native flow.",
 		preconditions: []string{
 			"Provide an explicit export snapshot; dry-run is the default.",
 			"Use --apply only after reviewing the migration report.",
