@@ -31,7 +31,7 @@ func TestResolveIgnoresProcessEnvironment(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("PROJECT_ID", "from-env")
 	t.Setenv("JACAZUL_SESSION_ID", "session-from-env")
-	t.Setenv("JAFLOW_DATABASE_PATH", filepath.Join(t.TempDir(), "env.sqlite3"))
+	t.Setenv("JACAZUL_FLOW_DATABASE_PATH", filepath.Join(t.TempDir(), "env.sqlite3"))
 	t.Setenv("JACAZUL_HOME", t.TempDir())
 
 	opts := config.AppOptions{Runtime: config.Runtime{

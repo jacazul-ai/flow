@@ -52,7 +52,7 @@ func NewHarness(t *testing.T, projectID string, sessionID string) *Harness {
 	t.Setenv("PROJECT_ID", projectID)
 	t.Setenv("TASKDATA", harness.TaskData)
 	t.Setenv("JAFLOW_CACHE_DIR", harness.CacheDir)
-	t.Setenv("JAFLOW_DATABASE_PATH", harness.DatabasePath)
+	t.Setenv("JACAZUL_FLOW_DATABASE_PATH", harness.DatabasePath)
 	t.Setenv("JACAZUL_SESSION_ID", sessionID)
 	t.Setenv("JACAZUL_HOME", filepath.Join(root, ".jacazul-ai"))
 
@@ -61,7 +61,7 @@ func NewHarness(t *testing.T, projectID string, sessionID string) *Harness {
 		"PROJECT_ID=" + projectID,
 		"TASKDATA=" + harness.TaskData,
 		"JAFLOW_CACHE_DIR=" + harness.CacheDir,
-		"JAFLOW_DATABASE_PATH=" + harness.DatabasePath,
+		"JACAZUL_FLOW_DATABASE_PATH=" + harness.DatabasePath,
 		"JACAZUL_SESSION_ID=" + sessionID,
 		"JACAZUL_HOME=" + filepath.Join(root, ".jacazul-ai"),
 	} {

@@ -46,7 +46,7 @@ func EnvFromOS() Env {
 	env := Env{
 		ProjectID:    os.Getenv("PROJECT_ID"),
 		SessionID:    os.Getenv("JACAZUL_SESSION_ID"),
-		DatabasePath: os.Getenv("JAFLOW_DATABASE_PATH"),
+		DatabasePath: os.Getenv("JACAZUL_FLOW_DATABASE_PATH"),
 		Home:         os.Getenv("JACAZUL_HOME"),
 	}
 	if env.Home != "" {

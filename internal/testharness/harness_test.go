@@ -105,10 +105,10 @@ func TestHarnessProvidesIndependentProjectDatabasePaths(t *testing.T) {
 	if first.DatabasePath == second.DatabasePath {
 		t.Fatal("harnesses must use different project database paths")
 	}
-	if got := environmentValue(first.Environment, "JAFLOW_DATABASE_PATH"); got != first.DatabasePath {
+	if got := environmentValue(first.Environment, "JACAZUL_FLOW_DATABASE_PATH"); got != first.DatabasePath {
 		t.Fatalf("first harness database environment = %q, want %q", got, first.DatabasePath)
 	}
-	if got := environmentValue(second.Environment, "JAFLOW_DATABASE_PATH"); got != second.DatabasePath {
+	if got := environmentValue(second.Environment, "JACAZUL_FLOW_DATABASE_PATH"); got != second.DatabasePath {
 		t.Fatalf("second harness database environment = %q, want %q", got, second.DatabasePath)
 	}
 

@@ -83,7 +83,7 @@ func TestRunRequiresHomeForDefaultPaths(t *testing.T) {
 
 func TestRunUsesEnvInsteadOfProcessEnvironment(t *testing.T) {
 	poisoned := filepath.Join(t.TempDir(), "from-process-env.sqlite3")
-	t.Setenv("JAFLOW_DATABASE_PATH", poisoned)
+	t.Setenv("JACAZUL_FLOW_DATABASE_PATH", poisoned)
 	t.Setenv("PROJECT_ID", "from-process-env")
 
 	database := filepath.Join(t.TempDir(), "from-env.sqlite3")

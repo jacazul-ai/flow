@@ -787,7 +787,7 @@ func writeGlobalOptions(writer io.Writer) {
 	fmt.Fprintln(writer, "  -V, --version        Show version")
 	fmt.Fprintln(writer, "      --project-id=    Project identity")
 	fmt.Fprintln(writer, "      --taskdata=      Legacy Taskwarrior data directory")
-	fmt.Fprintln(writer, "      --database-path= Project SQLite database path [$JAFLOW_DATABASE_PATH]")
+	fmt.Fprintln(writer, "      --database-path= Project SQLite database path [$JACAZUL_FLOW_DATABASE_PATH]")
 	fmt.Fprintln(writer, "      --session-id=    Workflow session identity [$JACAZUL_SESSION_ID]")
 	fmt.Fprintln(writer, "  -h, --help           Show this help message")
 }
