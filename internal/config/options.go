@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"io"
 	"path/filepath"
@@ -34,6 +35,10 @@ type AppOptions struct {
 	// It is derived only when the database path itself was derived.
 	LegacyDatabasePath string `no-flag:"true"`
 
+	// Ctx is the invocation context. go-flags fixes Execute to
+	// (args []string) error, so there is no parameter to thread it through;
+	// AppOptions is the per-invocation handoff that carries it instead.
+	Ctx context.Context `no-flag:"true"`
 	// Runtime is the caller-resolved context used when a flag is not supplied.
 	Runtime Runtime `no-flag:"true"`
 	// Stdout and Stderr receive command output.
@@ -148,4 +153,13 @@ func (opts *AppOptions) Err() io.Writer {
 		return io.Discard
 	}
 	return opts.Stderr
+}
+
+// Context returns the invocation context. It is never nil, so a command built
+// outside Run still has a context to pass to the store.
+func (opts *AppOptions) Context() context.Context {
+	if opts == nil || opts.Ctx == nil {
+		return context.Background()
+	}
+	return opts.Ctx
 }

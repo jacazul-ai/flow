@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -31,21 +30,21 @@ func (cmd *CommitCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	focus, err := store.LoadFocus(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	focus, err := store.LoadFocus(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
 	}
 	if focus.FocusedTaskID == "" {
 		return fmt.Errorf("no focused task found\nACTION: Run 'jczl-flow focus task <uuid>' first.")
 	}
-	task, err := store.GetTask(context.Background(), focus.FocusedTaskID)
+	task, err := store.GetTask(cmd.appOpts.Context(), focus.FocusedTaskID)
 	if err != nil {
 		return err
 	}
 
 	prefix := commitPrefix(task.Description, task.Mode)
 	description := cleanDescription(task.Description)
-	ticket, _, err := store.FindExternalTicket(context.Background(), task.ID)
+	ticket, _, err := store.FindExternalTicket(cmd.appOpts.Context(), task.ID)
 	if err != nil {
 		return err
 	}

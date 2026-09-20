@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -30,7 +29,7 @@ func (cmd *HandoffCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	ctx := context.Background()
+	ctx := cmd.appOpts.Context()
 	current, err := store.GetTask(ctx, args[0])
 	if err != nil {
 		return err

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -32,7 +31,7 @@ func (cmd *PlanCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	initiative, err := store.GetOrCreateInitiative(context.Background(), task.CreateInitiativeInput{
+	initiative, err := store.GetOrCreateInitiative(cmd.appOpts.Context(), task.CreateInitiativeInput{
 		ProjectID: cmd.appOpts.ProjectID,
 		Name:      args[0],
 	})
@@ -50,7 +49,7 @@ func (cmd *PlanCommand) Execute(args []string) error {
 		if previous != "" {
 			dependencies = []string{previous}
 		}
-		created, err := store.CreateTask(context.Background(), task.CreateTaskInput{
+		created, err := store.CreateTask(cmd.appOpts.Context(), task.CreateTaskInput{
 			InitiativeID: initiative.ID,
 			Description:  description,
 			Mode:         mode,

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/jacazul-ai/flow/internal/config"
@@ -32,7 +31,7 @@ func (cmd *NextCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	ready, err := store.ReadyTasks(context.Background(), cmd.appOpts.ProjectID, initiativeName)
+	ready, err := store.ReadyTasks(cmd.appOpts.Context(), cmd.appOpts.ProjectID, initiativeName)
 	if err != nil {
 		return err
 	}

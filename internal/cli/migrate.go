@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -67,7 +66,7 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 		fmt.Fprintf(cmd.appOpts.Out(), "WARNING: %s\n", warning)
 	}
 	if !cmd.Apply {
-		result, err := migration.NewImporter(nil).DryRun(context.Background(), bundle)
+		result, err := migration.NewImporter(nil).DryRun(cmd.appOpts.Context(), bundle)
 		if err != nil {
 			return err
 		}
@@ -88,7 +87,7 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	result, err := migration.NewImporter(store).Apply(context.Background(), bundle)
+	result, err := migration.NewImporter(store).Apply(cmd.appOpts.Context(), bundle)
 	if err != nil {
 		return err
 	}

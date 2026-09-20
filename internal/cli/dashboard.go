@@ -120,7 +120,7 @@ func (cmd *TreeCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	tasks, err := store.ListTasks(context.Background(), cmd.appOpts.ProjectID, initiative)
+	tasks, err := store.ListTasks(cmd.appOpts.Context(), cmd.appOpts.ProjectID, initiative)
 	if err != nil {
 		return err
 	}
@@ -157,7 +157,7 @@ func renderPlans(store *sqlite.Store, opts *config.AppOptions, all bool, closed 
 	if withBacklog {
 		cacheKey += "_backlog"
 	}
-	ctx := context.Background()
+	ctx := opts.Context()
 	if !force {
 		_, found, err := store.GetCache(ctx, opts.ProjectID, opts.SessionID, cacheKey, time.Now().UTC())
 		if err != nil {
@@ -220,7 +220,7 @@ func renderPonder(store *sqlite.Store, opts *config.AppOptions, all bool, withBa
 	if table {
 		cacheKey += "_table"
 	}
-	ctx := context.Background()
+	ctx := opts.Context()
 	if !force {
 		_, found, err := store.GetCache(ctx, opts.ProjectID, opts.SessionID, cacheKey, time.Now().UTC())
 		if err != nil {
@@ -481,10 +481,10 @@ func setInitiativeState(opts *config.AppOptions, args []string, state task.Initi
 		return err
 	}
 	defer store.Close()
-	if err := store.SetInitiativeStatus(context.Background(), opts.ProjectID, args[0], state); err != nil {
+	if err := store.SetInitiativeStatus(opts.Context(), opts.ProjectID, args[0], state); err != nil {
 		return err
 	}
-	if err := store.ClearCache(context.Background(), opts.ProjectID, opts.SessionID, ""); err != nil {
+	if err := store.ClearCache(opts.Context(), opts.ProjectID, opts.SessionID, ""); err != nil {
 		return err
 	}
 	fmt.Fprintf(opts.Out(), "Initiative %s: %s\n", args[0], command)

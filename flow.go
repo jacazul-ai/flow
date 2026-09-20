@@ -71,6 +71,7 @@ func Run(ctx context.Context, args []string, env Env, streams Streams) int {
 	}
 
 	opts := config.AppOptions{
+		Ctx: ctx,
 		Runtime: config.Runtime{
 			ProjectID:    env.ProjectID,
 			SessionID:    env.SessionID,

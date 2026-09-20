@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/jacazul-ai/flow/internal/config"
@@ -28,7 +27,7 @@ func (cmd *CacheCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	ctx := context.Background()
+	ctx := cmd.appOpts.Context()
 	switch args[0] {
 	case "info":
 		if len(args) != 1 {

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -30,11 +29,11 @@ func (cmd *ExecuteCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	current, err := store.GetTask(context.Background(), taskID)
+	current, err := store.GetTask(cmd.appOpts.Context(), taskID)
 	if err != nil {
 		return err
 	}
-	if err := store.StartTask(context.Background(), current.ID); err != nil {
+	if err := store.StartTask(cmd.appOpts.Context(), current.ID); err != nil {
 		return err
 	}
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
@@ -64,11 +63,11 @@ func (cmd *OutcomeCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	current, err := store.GetTask(context.Background(), args[0])
+	current, err := store.GetTask(cmd.appOpts.Context(), args[0])
 	if err != nil {
 		return err
 	}
-	if err := store.RecordOutcome(context.Background(), current.ID, strings.Join(args[1:], " ")); err != nil {
+	if err := store.RecordOutcome(cmd.appOpts.Context(), current.ID, strings.Join(args[1:], " ")); err != nil {
 		return err
 	}
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
@@ -99,11 +98,11 @@ func (cmd *DoneCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	current, err := store.GetTask(context.Background(), taskID)
+	current, err := store.GetTask(cmd.appOpts.Context(), taskID)
 	if err != nil {
 		return err
 	}
-	if err := store.CompleteTask(context.Background(), current.ID); err != nil {
+	if err := store.CompleteTask(cmd.appOpts.Context(), current.ID); err != nil {
 		return err
 	}
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
@@ -111,7 +110,7 @@ func (cmd *DoneCommand) Execute(args []string) error {
 	}
 	fmt.Fprintf(cmd.appOpts.Out(), "Completed task %s\n", shortID(current.ID))
 
-	ready, err := store.ReadyTasks(context.Background(), cmd.appOpts.ProjectID, current.InitiativeName)
+	ready, err := store.ReadyTasks(cmd.appOpts.Context(), cmd.appOpts.ProjectID, current.InitiativeName)
 	if err != nil {
 		return fmt.Errorf("find next ready tasks: %w", err)
 	}
@@ -142,11 +141,11 @@ func (cmd *ReopenCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	current, err := store.GetTask(context.Background(), taskID)
+	current, err := store.GetTask(cmd.appOpts.Context(), taskID)
 	if err != nil {
 		return err
 	}
-	if err := store.ReopenTask(context.Background(), current.ID); err != nil {
+	if err := store.ReopenTask(cmd.appOpts.Context(), current.ID); err != nil {
 		return err
 	}
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
@@ -177,11 +176,11 @@ func (cmd *DiscardCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	current, err := store.GetTask(context.Background(), taskID)
+	current, err := store.GetTask(cmd.appOpts.Context(), taskID)
 	if err != nil {
 		return err
 	}
-	if err := store.DiscardTask(context.Background(), current.ID); err != nil {
+	if err := store.DiscardTask(cmd.appOpts.Context(), current.ID); err != nil {
 		return err
 	}
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
@@ -200,7 +199,7 @@ func openStore(opts *config.AppOptions) (*sqlite.Store, error) {
 		fmt.Fprintf(opts.Stdout, "Moved legacy database to %s\n", opts.DatabasePath)
 	}
 
-	store, err := sqlite.Open(context.Background(), opts.DatabasePath)
+	store, err := sqlite.Open(opts.Context(), opts.DatabasePath)
 	if err != nil {
 		return nil, fmt.Errorf("open project database: %w", err)
 	}

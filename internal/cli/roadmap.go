@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -42,7 +41,7 @@ func (cmd *RoadmapShowCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	entries, err := store.ListRoadmap(context.Background(), cmd.appOpts.ProjectID)
+	entries, err := store.ListRoadmap(cmd.appOpts.Context(), cmd.appOpts.ProjectID)
 	if err != nil {
 		return err
 	}
@@ -77,7 +76,7 @@ func (cmd *RoadmapInitCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	if err := store.InitializeRoadmap(context.Background(), cmd.appOpts.ProjectID); err != nil {
+	if err := store.InitializeRoadmap(cmd.appOpts.Context(), cmd.appOpts.ProjectID); err != nil {
 		return err
 	}
 	fmt.Fprintf(cmd.appOpts.Out(), "Roadmap initialized: %s\n", cmd.appOpts.ProjectID)
@@ -118,7 +117,7 @@ func (cmd *RoadmapAddCommand) Execute(args []string) error {
 	defer store.Close()
 	initiativeID := cmd.InitiativeID
 	if initiativeID == "" && cmd.InitiativeName != "" {
-		initiative, err := store.FindInitiative(context.Background(), cmd.appOpts.ProjectID, cmd.InitiativeName)
+		initiative, err := store.FindInitiative(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.InitiativeName)
 		if err != nil {
 			return err
 		}
@@ -132,7 +131,7 @@ func (cmd *RoadmapAddCommand) Execute(args []string) error {
 		Description:  description,
 		Status:       task.Pending,
 	}
-	if err := store.AddRoadmapEntry(context.Background(), entry); err != nil {
+	if err := store.AddRoadmapEntry(cmd.appOpts.Context(), entry); err != nil {
 		return err
 	}
 	fmt.Fprintf(cmd.appOpts.Out(), "Roadmap phase added: [%s] %s (%s)\n", phase, description, entry.ID)
@@ -159,7 +158,7 @@ func (cmd *RoadmapShipCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	entry, err := store.ShipRoadmapEntry(context.Background(), cmd.appOpts.ProjectID, args[0])
+	entry, err := store.ShipRoadmapEntry(cmd.appOpts.Context(), cmd.appOpts.ProjectID, args[0])
 	if err != nil {
 		return err
 	}

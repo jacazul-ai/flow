@@ -47,7 +47,7 @@ func (cmd *SessionListCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	sessions, err := store.ListSessions(context.Background(), cmd.appOpts.ProjectID)
+	sessions, err := store.ListSessions(cmd.appOpts.Context(), cmd.appOpts.ProjectID)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (cmd *SessionResumeCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	note, found, err := store.GetSessionNote(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	note, found, err := store.GetSessionNote(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil || !found {
 		return err
 	}
@@ -148,7 +148,7 @@ func (cmd *SessionAckCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	note, found, err := store.GetSessionNote(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	note, found, err := store.GetSessionNote(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func (cmd *SessionAckCommand) Execute(args []string) error {
 		fmt.Fprintln(cmd.appOpts.Out(), "Session note already acknowledged.")
 		return nil
 	}
-	if _, _, err := store.AcknowledgeSessionNote(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
+	if _, _, err := store.AcknowledgeSessionNote(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
 		return err
 	}
 	fmt.Fprintln(cmd.appOpts.Out(), "Session note acknowledged. Context loaded.")
@@ -189,7 +189,7 @@ func (cmd *SessionDumpCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	ctx := context.Background()
+	ctx := cmd.appOpts.Context()
 	existing, found, err := store.GetSessionNote(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
@@ -242,7 +242,7 @@ func (cmd *SessionPurgeCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	sessions, err := store.ListSessions(context.Background(), cmd.appOpts.ProjectID)
+	sessions, err := store.ListSessions(cmd.appOpts.Context(), cmd.appOpts.ProjectID)
 	if err != nil {
 		return err
 	}
@@ -270,7 +270,7 @@ func (cmd *SessionPurgeCommand) Execute(args []string) error {
 		return nil
 	}
 	for _, session := range orphans {
-		if err := store.DeleteSession(context.Background(), cmd.appOpts.ProjectID, session.SessionID); err != nil {
+		if err := store.DeleteSession(cmd.appOpts.Context(), cmd.appOpts.ProjectID, session.SessionID); err != nil {
 			return err
 		}
 	}

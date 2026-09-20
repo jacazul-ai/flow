@@ -32,7 +32,7 @@ func (cmd *OnboardCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	ctx := context.Background()
+	ctx := cmd.appOpts.Context()
 	focus, err := store.LoadFocus(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err

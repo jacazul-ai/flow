@@ -45,7 +45,7 @@ func (cmd *StatusCommand) Execute(args []string) error {
 	}
 	if !cmd.Force && !cmd.PendingOnly {
 		_, found, err := store.GetCache(
-			context.Background(),
+			cmd.appOpts.Context(),
 			cmd.appOpts.ProjectID,
 			cmd.appOpts.SessionID,
 			cacheKey,
@@ -60,16 +60,16 @@ func (cmd *StatusCommand) Execute(args []string) error {
 		}
 	}
 
-	tasks, err := store.ListTasks(context.Background(), cmd.appOpts.ProjectID, initiativeName)
+	tasks, err := store.ListTasks(cmd.appOpts.Context(), cmd.appOpts.ProjectID, initiativeName)
 	if err != nil {
 		return err
 	}
-	focus, err := store.LoadFocus(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	focus, err := store.LoadFocus(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
 	}
 	output, err := renderStatus(
-		context.Background(), store, tasks, initiativeName, focus.FocusedTaskID, cmd.PendingOnly,
+		cmd.appOpts.Context(), store, tasks, initiativeName, focus.FocusedTaskID, cmd.PendingOnly,
 	)
 	if err != nil {
 		return err
@@ -77,7 +77,7 @@ func (cmd *StatusCommand) Execute(args []string) error {
 	fmt.Fprint(cmd.appOpts.Out(), output)
 	if !cmd.PendingOnly {
 		if err := store.SetCache(
-			context.Background(),
+			cmd.appOpts.Context(),
 			cmd.appOpts.ProjectID,
 			cmd.appOpts.SessionID,
 			cacheKey,

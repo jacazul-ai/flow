@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -29,10 +28,10 @@ func (cmd *TicketCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	if err := store.SetTaskTicket(context.Background(), args[0], args[1]); err != nil {
+	if err := store.SetTaskTicket(cmd.appOpts.Context(), args[0], args[1]); err != nil {
 		return err
 	}
-	current, err := store.GetTask(context.Background(), args[0])
+	current, err := store.GetTask(cmd.appOpts.Context(), args[0])
 	if err != nil {
 		return err
 	}

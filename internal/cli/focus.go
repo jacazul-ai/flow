@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"sort"
@@ -105,7 +104,7 @@ func (cmd *FocusInterestCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	ctx := context.Background()
+	ctx := cmd.appOpts.Context()
 	state, err := store.LoadFocus(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
@@ -177,13 +176,13 @@ func (cmd *FocusShowCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	state, err := store.LoadFocus(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	state, err := store.LoadFocus(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
 	}
 	initiativeName := displayTaskID(state.InitiativeID)
 	if state.InitiativeID != "" {
-		initiative, err := store.FindInitiativeByID(context.Background(), cmd.appOpts.ProjectID, state.InitiativeID)
+		initiative, err := store.FindInitiativeByID(cmd.appOpts.Context(), cmd.appOpts.ProjectID, state.InitiativeID)
 		if err != nil {
 			return err
 		}
@@ -217,18 +216,18 @@ func (cmd *FocusPlanCommand) execute(args []string, independent bool) error {
 		return err
 	}
 	defer store.Close()
-	initiative, err := store.FindInitiative(context.Background(), cmd.appOpts.ProjectID, args[0])
+	initiative, err := store.FindInitiative(cmd.appOpts.Context(), cmd.appOpts.ProjectID, args[0])
 	if err != nil {
 		return err
 	}
-	state, err := store.LoadFocus(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	state, err := store.LoadFocus(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
 	}
 	state.InitiativeID = initiative.ID
 	state.FocusedTaskID = ""
 	state.TaskStack = []task.FocusEntry{}
-	ready, err := store.ReadyTasks(context.Background(), cmd.appOpts.ProjectID, initiative.Name)
+	ready, err := store.ReadyTasks(cmd.appOpts.Context(), cmd.appOpts.ProjectID, initiative.Name)
 	if err != nil {
 		return err
 	}
@@ -239,7 +238,7 @@ func (cmd *FocusPlanCommand) execute(args []string, independent bool) error {
 			InitiativeID: initiative.ID,
 		}}
 	}
-	if err := store.SaveFocus(context.Background(), state); err != nil {
+	if err := store.SaveFocus(cmd.appOpts.Context(), state); err != nil {
 		return err
 	}
 	if err := clearTaskCaches(store, cmd.appOpts, task.Task{InitiativeName: initiative.Name}); err != nil {
@@ -281,11 +280,11 @@ func (cmd *FocusTaskCommand) execute(args []string, independent bool) error {
 		return err
 	}
 	defer store.Close()
-	current, err := store.GetTask(context.Background(), taskID)
+	current, err := store.GetTask(cmd.appOpts.Context(), taskID)
 	if err != nil {
 		return err
 	}
-	state, err := store.LoadFocus(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	state, err := store.LoadFocus(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
 	}
@@ -295,7 +294,7 @@ func (cmd *FocusTaskCommand) execute(args []string, independent bool) error {
 		TaskID:       current.ID,
 		InitiativeID: current.InitiativeID,
 	})
-	if err := store.SaveFocus(context.Background(), state); err != nil {
+	if err := store.SaveFocus(cmd.appOpts.Context(), state); err != nil {
 		return err
 	}
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
@@ -325,7 +324,7 @@ func (cmd *FocusPopCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	state, err := store.LoadFocus(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	state, err := store.LoadFocus(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
 	}
@@ -338,15 +337,15 @@ func (cmd *FocusPopCommand) Execute(args []string) error {
 		state.FocusedTaskID = state.TaskStack[0].TaskID
 		state.InitiativeID = state.TaskStack[0].InitiativeID
 	}
-	if err := store.SaveFocus(context.Background(), state); err != nil {
+	if err := store.SaveFocus(cmd.appOpts.Context(), state); err != nil {
 		return err
 	}
 	if state.FocusedTaskID == "" {
-		if err := store.ClearCache(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, ""); err != nil {
+		if err := store.ClearCache(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, ""); err != nil {
 			return err
 		}
 	} else {
-		current, err := store.GetTask(context.Background(), state.FocusedTaskID)
+		current, err := store.GetTask(cmd.appOpts.Context(), state.FocusedTaskID)
 		if err != nil {
 			return err
 		}
@@ -381,7 +380,7 @@ func (cmd *FocusBackCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	if err := store.DeleteSession(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
+	if err := store.DeleteSession(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
 		return err
 	}
 	fmt.Fprintln(cmd.appOpts.Out(), "Switched back to global focus")
@@ -413,10 +412,10 @@ func (cmd *FocusClearCommand) Execute(args []string) error {
 		SessionID: cmd.appOpts.SessionID,
 		TaskStack: []task.FocusEntry{},
 	}
-	if err := store.SaveFocus(context.Background(), state); err != nil {
+	if err := store.SaveFocus(cmd.appOpts.Context(), state); err != nil {
 		return err
 	}
-	if err := store.ClearCache(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, ""); err != nil {
+	if err := store.ClearCache(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, ""); err != nil {
 		return err
 	}
 	fmt.Fprintln(cmd.appOpts.Out(), "Focus cleared")

@@ -111,7 +111,7 @@ func organize(opts *config.AppOptions, initiativeRef string, taskRefs []string, 
 	}
 	defer store.Close()
 
-	selected, err := resolvePendingOrganizationTasks(store, initiative, taskRefs)
+	selected, err := resolvePendingOrganizationTasks(opts.Context(), store, initiative, taskRefs)
 	if err != nil {
 		return err
 	}
@@ -133,11 +133,11 @@ func organizeAfterBlock(opts *config.AppOptions, initiativeRef string, taskRefs 
 	}
 	defer store.Close()
 
-	selected, err := resolvePendingOrganizationTasks(store, initiative, taskRefs)
+	selected, err := resolvePendingOrganizationTasks(opts.Context(), store, initiative, taskRefs)
 	if err != nil {
 		return err
 	}
-	anchor, err := resolvePendingOrganizationTasks(store, initiative, []string{anchorRef})
+	anchor, err := resolvePendingOrganizationTasks(opts.Context(), store, initiative, []string{anchorRef})
 	if err != nil {
 		return err
 	}
@@ -153,12 +153,12 @@ func openOrganization(opts *config.AppOptions, initiativeRef string) (*sqlite.St
 	if err != nil {
 		return nil, task.Initiative{}, nil, err
 	}
-	initiative, err := store.FindInitiativeReference(context.Background(), opts.ProjectID, initiativeRef)
+	initiative, err := store.FindInitiativeReference(opts.Context(), opts.ProjectID, initiativeRef)
 	if err != nil {
 		store.Close()
 		return nil, task.Initiative{}, nil, fmt.Errorf("resolve organization initiative: %w\nACTION: Use an initiative name or unambiguous UUID in the selected project.", err)
 	}
-	tasks, err := store.ListTasks(context.Background(), opts.ProjectID, initiative.Name)
+	tasks, err := store.ListTasks(opts.Context(), opts.ProjectID, initiative.Name)
 	if err != nil {
 		store.Close()
 		return nil, task.Initiative{}, nil, err
@@ -172,11 +172,11 @@ func openOrganization(opts *config.AppOptions, initiativeRef string) (*sqlite.St
 	return store, initiative, current, nil
 }
 
-func resolvePendingOrganizationTasks(store *sqlite.Store, initiative task.Initiative, refs []string) ([]string, error) {
+func resolvePendingOrganizationTasks(ctx context.Context, store *sqlite.Store, initiative task.Initiative, refs []string) ([]string, error) {
 	selected := make([]string, 0, len(refs))
 	seen := make(map[string]bool, len(refs))
 	for _, reference := range refs {
-		current, err := store.GetTask(context.Background(), reference)
+		current, err := store.GetTask(ctx, reference)
 		if err != nil {
 			return nil, fmt.Errorf("resolve organization task %q: %w\nACTION: Use a full or unambiguous task UUID in the selected initiative.", reference, err)
 		}
@@ -238,7 +238,7 @@ func persistOrganization(store *sqlite.Store, opts *config.AppOptions, initiativ
 	if sameTaskIDs(current, desired) {
 		return nil
 	}
-	if err := store.ReplacePendingTaskOrder(context.Background(), initiative.ID, desired); err != nil {
+	if err := store.ReplacePendingTaskOrder(opts.Context(), initiative.ID, desired); err != nil {
 		return err
 	}
 	if err := clearTaskCaches(store, opts, task.Task{InitiativeName: initiative.Name}); err != nil {

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -31,7 +30,7 @@ func (cmd *HistoryCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	ctx := context.Background()
+	ctx := cmd.appOpts.Context()
 	switch args[0] {
 	case "task":
 		current, err := store.GetTask(ctx, args[1])

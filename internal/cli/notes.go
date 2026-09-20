@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -33,7 +32,7 @@ func (cmd *NoteCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	current, err := store.GetTask(context.Background(), args[0])
+	current, err := store.GetTask(cmd.appOpts.Context(), args[0])
 	if err != nil {
 		return err
 	}
@@ -42,7 +41,7 @@ func (cmd *NoteCommand) Execute(args []string) error {
 		if len(args) != 3 {
 			return fmt.Errorf("note delete requires one annotation timestamp\nACTION: Run 'jczl-flow notes %s' to list valid timestamps.", shortID(current.ID))
 		}
-		if err := store.DeleteAnnotation(context.Background(), current.ID, args[2]); err != nil {
+		if err := store.DeleteAnnotation(cmd.appOpts.Context(), current.ID, args[2]); err != nil {
 			return err
 		}
 		if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
@@ -63,7 +62,7 @@ func (cmd *NoteCommand) Execute(args []string) error {
 	if body == "" {
 		return errorsForEmptyNote()
 	}
-	if err := store.AddAnnotation(context.Background(), current.ID, canonical, body); err != nil {
+	if err := store.AddAnnotation(cmd.appOpts.Context(), current.ID, canonical, body); err != nil {
 		return err
 	}
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
@@ -94,11 +93,11 @@ func (cmd *NotesCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	current, err := store.GetTask(context.Background(), args[0])
+	current, err := store.GetTask(cmd.appOpts.Context(), args[0])
 	if err != nil {
 		return err
 	}
-	annotations, err := store.ListAnnotations(context.Background(), current.ID)
+	annotations, err := store.ListAnnotations(cmd.appOpts.Context(), current.ID)
 	if err != nil {
 		return err
 	}
@@ -134,15 +133,15 @@ func (cmd *ContextCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	current, err := store.GetTask(context.Background(), args[0])
+	current, err := store.GetTask(cmd.appOpts.Context(), args[0])
 	if err != nil {
 		return err
 	}
-	direct, err := store.ListAnnotations(context.Background(), current.ID)
+	direct, err := store.ListAnnotations(cmd.appOpts.Context(), current.ID)
 	if err != nil {
 		return err
 	}
-	inherited, err := store.InheritedAnnotations(context.Background(), current.ID)
+	inherited, err := store.InheritedAnnotations(cmd.appOpts.Context(), current.ID)
 	if err != nil {
 		return err
 	}
@@ -169,7 +168,7 @@ func errorsForEmptyNote() error {
 }
 
 func clearTaskCaches(store *sqlite.Store, opts *config.AppOptions, current task.Task) error {
-	ctx := context.Background()
+	ctx := opts.Context()
 	if err := store.ClearCacheKey(ctx, opts.ProjectID, opts.SessionID, "status"); err != nil {
 		return err
 	}

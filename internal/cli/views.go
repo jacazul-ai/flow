@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -82,7 +81,7 @@ func listTaskView(
 	}
 	defer store.Close()
 
-	ctx := context.Background()
+	ctx := opts.Context()
 	tasks, err := store.ListTasks(ctx, opts.ProjectID, initiativeName)
 	if err != nil {
 		return err

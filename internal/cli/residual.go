@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -47,7 +46,7 @@ func (cmd *AmendCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	current, err := store.UpdateTaskMetadata(context.Background(), args[0], update)
+	current, err := store.UpdateTaskMetadata(cmd.appOpts.Context(), args[0], update)
 	if err != nil {
 		return err
 	}
@@ -78,10 +77,10 @@ func (cmd *RenameCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	if err := store.RenameInitiative(context.Background(), cmd.appOpts.ProjectID, args[0], args[1]); err != nil {
+	if err := store.RenameInitiative(cmd.appOpts.Context(), cmd.appOpts.ProjectID, args[0], args[1]); err != nil {
 		return err
 	}
-	if err := store.ClearCache(context.Background(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, ""); err != nil {
+	if err := store.ClearCache(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, ""); err != nil {
 		return err
 	}
 	fmt.Fprintf(cmd.appOpts.Out(), "Renamed initiative %s to %s\n", args[0], args[1])
@@ -116,10 +115,10 @@ func (cmd *UrgentCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	if err := store.SetTaskUrgency(context.Background(), args[0], urgency); err != nil {
+	if err := store.SetTaskUrgency(cmd.appOpts.Context(), args[0], urgency); err != nil {
 		return err
 	}
-	current, err := store.GetTask(context.Background(), args[0])
+	current, err := store.GetTask(cmd.appOpts.Context(), args[0])
 	if err != nil {
 		return err
 	}
@@ -150,10 +149,10 @@ func (cmd *BlockCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	if err := store.AddDependency(context.Background(), args[0], args[1]); err != nil {
+	if err := store.AddDependency(cmd.appOpts.Context(), args[0], args[1]); err != nil {
 		return err
 	}
-	current, err := store.GetTask(context.Background(), args[0])
+	current, err := store.GetTask(cmd.appOpts.Context(), args[0])
 	if err != nil {
 		return err
 	}
@@ -184,10 +183,10 @@ func (cmd *UnblockCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	if err := store.RemoveDependency(context.Background(), args[0], args[1]); err != nil {
+	if err := store.RemoveDependency(cmd.appOpts.Context(), args[0], args[1]); err != nil {
 		return err
 	}
-	current, err := store.GetTask(context.Background(), args[0])
+	current, err := store.GetTask(cmd.appOpts.Context(), args[0])
 	if err != nil {
 		return err
 	}
@@ -225,10 +224,10 @@ func (cmd *WaitCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	if err := store.SetTaskWait(context.Background(), args[0], waitUntil); err != nil {
+	if err := store.SetTaskWait(cmd.appOpts.Context(), args[0], waitUntil); err != nil {
 		return err
 	}
-	current, err := store.GetTask(context.Background(), args[0])
+	current, err := store.GetTask(cmd.appOpts.Context(), args[0])
 	if err != nil {
 		return err
 	}
