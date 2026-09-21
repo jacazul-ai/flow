@@ -250,10 +250,13 @@ The existing behavior to preserve:
 ## Building and testing
 
 ```bash
-make build        # go build -o bin/jczl-flow ./cmd/jczl-flow
-make all          # gofmt and goimports, then go vet and go test
-make test-race    # go test -race -v ./...
+make          # list the available targets
+make test     # go clean -testcache && go test -race -v ./...
+make vet      # go vet ./...
+make build    # CGO_ENABLED=0 go build -o bin/jczl-flow ./cmd/jczl-flow
 ```
+
+`make test` always runs with the race detector and without the test cache.
 
 Tests run against temporary directories and fake executables only. They never
 touch a real `JACAZUL_HOME`, a real workflow database, or the network.

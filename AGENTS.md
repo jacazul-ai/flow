@@ -268,19 +268,19 @@ go test ./...
 go vet ./...
 ```
 
-The `Makefile` wraps the same gates: `make fmt`, `make vet`, `make test`,
-`make test-race`, `make build`, and `make all` for the first three together.
+The `Makefile` wraps the same gates; run `make` with no target to list them.
 `make fmt` runs `gofmt` then `goimports`, reporting the skip when `goimports`
-is unavailable.
+is unavailable, and `make vet` reports suspicious constructs.
 
-The race-enabled command for this project is:
+`make test` is the verification gate for this project:
 
 ```bash
-make test-race     # go test -race -v ./...
+make test     # go clean -testcache && go test -race -v ./...
 ```
 
-Run it for behavioral changes; use `make test` and `make vet` as focused local
-checks when appropriate. If `goimports` is unavailable, use
+It always runs with the race detector and without the test cache, so there is
+no separate race target to remember. `make build` produces `bin/jczl-flow`
+with `CGO_ENABLED=0`, which holds the pure-Go driver in place. If `goimports` is unavailable, use
 `gofmt` and report that import organization was skipped. Add focused tests for
 new command behavior and regression tests for compatibility-sensitive workflow
 semantics.
