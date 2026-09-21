@@ -285,9 +285,11 @@ with `CGO_ENABLED=0`, which holds the pure-Go driver in place. If `goimports` is
 new command behavior and regression tests for compatibility-sensitive workflow
 semantics.
 
-The supported Go versions are 1.25 and 1.26. Go versions older than 1.25
-are EOL for this project. Do not claim a change is validated across both
-supported versions unless the relevant runs were actually performed.
+The supported Go versions are 1.25, 1.26 and 1.27, matching the CI matrix in
+`.github/workflows/run_tests.yml`. Go versions older than 1.25 are EOL for this
+project. Do not claim a change is validated across every supported version
+unless the relevant runs were actually performed; locally you have one
+toolchain, and CI is what covers the rest.
 
 ## Runtime Data and Sandbox Safety
 
