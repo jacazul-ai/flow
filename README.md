@@ -247,6 +247,23 @@ The existing behavior to preserve:
 - force refresh should exist, but should not be the default
 - session-scoped cache should avoid cross-session context leaks
 
+## Building and testing
+
+```bash
+make build        # go build -o bin/jczl-flow ./cmd/jczl-flow
+make all          # gofmt and goimports, then go vet and go test
+make test-race    # go test -race -v ./...
+```
+
+Tests run against temporary directories and fake executables only. They never
+touch a real `JACAZUL_HOME`, a real workflow database, or the network.
+
+To install the standalone executable without cloning:
+
+```bash
+go install github.com/jacazul-ai/flow/cmd/jczl-flow@latest
+```
+
 ## Current status
 
 The engine runs. The command model, the per-project SQLite store with its
@@ -263,3 +280,7 @@ The current phase is feature parity with `tw-flow`. Work is focused on:
 Server coordination and live sync are designed but deliberately not
 implemented; see [Architecture](docs/ARCHITECTURE.md) and
 [Distributed context](docs/DISTRIBUTED-CONTEXT.md).
+
+## License
+
+MIT. See [LICENSE](LICENSE).

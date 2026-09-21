@@ -1,0 +1,13 @@
+# Built executables
+/bin/
+/jczl-flow
+
+# Test and profiling output
+*.out
+*.prof
+*.test
+
+# Editors
+.idea/
+.vscode/
+.history/

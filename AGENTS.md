@@ -268,15 +268,19 @@ go test ./...
 go vet ./...
 ```
 
-The repository has no Makefile-specific test target yet. The conventional
-race-enabled command for this project is:
+The `Makefile` wraps the same gates: `make fmt`, `make vet`, `make test`,
+`make test-race`, `make build`, and `make all` for the first three together.
+`make fmt` runs `gofmt` then `goimports`, reporting the skip when `goimports`
+is unavailable.
+
+The race-enabled command for this project is:
 
 ```bash
-go test -race -v ./...
+make test-race     # go test -race -v ./...
 ```
 
-Run it for behavioral changes; use `go test ./...` and `go vet ./...` as
-focused local checks when appropriate. If `goimports` is unavailable, use
+Run it for behavioral changes; use `make test` and `make vet` as focused local
+checks when appropriate. If `goimports` is unavailable, use
 `gofmt` and report that import organization was skipped. Add focused tests for
 new command behavior and regression tests for compatibility-sensitive workflow
 semantics.
