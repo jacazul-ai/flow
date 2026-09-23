@@ -99,6 +99,8 @@ The local engine should also be designed so it can connect to a centralized serv
   verification, cutover, and rollback.
 - [CLI navigation](docs/cli.md): intent-first help taxonomy, aliases, and
   workflow navigation examples.
+- [Output formats](docs/output-formats.md): the text, JSON, JSONL and XML
+  contracts, how a format is selected, and which commands offer one.
 - [Task history](docs/task-history.md): native events, TaskChampion extraction,
   import rules, and verification contracts.
 - [Distributed context](docs/DISTRIBUTED-CONTEXT.md): the target multi-agent
