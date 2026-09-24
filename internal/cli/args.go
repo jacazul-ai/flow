@@ -31,6 +31,10 @@ func NormalizeFocusAlias(args []string) []string {
 			case "show", "plan", "ini", "task", "pop", "clear", "back", "ind", "interest":
 				return result
 			default:
+				if isFormatFlag(result[index+1]) {
+					// The show form is the only focus form that reports.
+					return append(result[:index+1], append([]string{"show"}, result[index+1:]...)...)
+				}
 				if result[index+1] == "" || result[index+1][0] == '-' {
 					return result
 				}
@@ -39,4 +43,8 @@ func NormalizeFocusAlias(args []string) []string {
 		}
 	}
 	return result
+}
+
+func isFormatFlag(arg string) bool {
+	return arg == "--format" || strings.HasPrefix(arg, "--format=")
 }

@@ -53,6 +53,9 @@ type Runtime struct {
 	SessionID    string
 	DatabasePath string
 	Home         string
+	// Format is the default output format for report commands. A report
+	// command's --format flag wins over it.
+	Format string
 }
 
 type AppOptionsAware interface {

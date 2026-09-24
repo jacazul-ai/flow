@@ -12,6 +12,7 @@ import (
 
 // OnboardCommand renders one deterministic agent context briefing.
 type OnboardCommand struct {
+	ReportFormat
 	appOpts *config.AppOptions
 }
 
@@ -24,6 +25,10 @@ func (cmd *OnboardCommand) SetAppOptions(opts *config.AppOptions) {
 func (cmd *OnboardCommand) Execute(args []string) error {
 	if len(args) != 0 {
 		return fmt.Errorf("onboard accepts no arguments")
+	}
+	format, err := cmd.resolve(cmd.appOpts)
+	if err != nil {
+		return err
 	}
 
 	store, err := openStore(cmd.appOpts)
@@ -42,6 +47,10 @@ func (cmd *OnboardCommand) Execute(args []string) error {
 		return err
 	}
 
+	if format != formatText {
+		return cmd.report(store, format, focus, note, found)
+	}
+
 	output, acknowledge, err := renderOnboard(ctx, store, cmd.appOpts, focus, note, found)
 	if err != nil {
 		return err
@@ -55,6 +64,81 @@ func (cmd *OnboardCommand) Execute(args []string) error {
 
 	fmt.Fprint(cmd.appOpts.Out(), output)
 	return nil
+}
+
+// report renders the onboard briefing as one record. A pending handoff is
+// carried in full and acknowledged exactly as the text briefing does.
+func (cmd *OnboardCommand) report(store *sqlite.Store, format string, focus task.FocusState, note task.SessionNote, noteFound bool) error {
+	ctx := cmd.appOpts.Context()
+	acknowledge := noteFound && note.AcknowledgedAt == ""
+	handoff := ""
+	if acknowledge {
+		handoff = note.Content
+	}
+	focusedName, err := onboardFocusedInitiative(ctx, store, cmd.appOpts, focus)
+	if err != nil {
+		return err
+	}
+	contextRecs, err := onboardContextRecords(ctx, store, focus)
+	if err != nil {
+		return err
+	}
+	tasks, initiatives, err := onboardWorkRecords(ctx, store, cmd.appOpts, focus, focusedName)
+	if err != nil {
+		return err
+	}
+	if acknowledge {
+		if _, _, err := store.AcknowledgeSessionNote(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
+			return fmt.Errorf("acknowledge onboard handoff: %w", err)
+		}
+	}
+	return writeReport(cmd.appOpts, format, report{command: "onboard", records: []record{{
+		{"handoff", handoff},
+		{"handoff_acknowledged", acknowledge},
+		{"focus_initiative", focusedName},
+		{"focus_task_id", focus.FocusedTaskID},
+		{"context", contextRecs},
+		{"tasks", tasks},
+		{"initiatives", initiatives},
+	}}})
+}
+
+func onboardContextRecords(ctx context.Context, store *sqlite.Store, focus task.FocusState) ([]record, error) {
+	if focus.FocusedTaskID == "" {
+		return []record{}, nil
+	}
+	current, err := store.GetTask(ctx, focus.FocusedTaskID)
+	if err != nil {
+		return nil, err
+	}
+	direct, err := store.ListAnnotations(ctx, current.ID)
+	if err != nil {
+		return nil, err
+	}
+	inherited, err := store.InheritedAnnotations(ctx, current.ID)
+	if err != nil {
+		return nil, err
+	}
+	return contextRecords(current, direct, inherited), nil
+}
+
+// onboardWorkRecords mirrors the text briefing: the focused initiative's
+// status when there is a focus, the ponder initiatives otherwise.
+func onboardWorkRecords(ctx context.Context, store *sqlite.Store, opts *config.AppOptions, focus task.FocusState, focusedName string) ([]record, []record, error) {
+	if focusedName != "" || focus.FocusedTaskID != "" {
+		tasks, err := store.ListTasks(ctx, opts.ProjectID, focusedName)
+		if err != nil {
+			return nil, nil, err
+		}
+		records, err := taskRecords(ctx, store, statusTasks(tasks, false))
+		return records, []record{}, err
+	}
+	summaries, err := store.ListInitiatives(ctx, opts.ProjectID, false, true)
+	if err != nil {
+		return nil, nil, err
+	}
+	visible, _ := visibleSummaries(summaries, focus, false)
+	return []record{}, initiativeRecords(visible), nil
 }
 
 func renderOnboard(

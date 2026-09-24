@@ -158,6 +158,7 @@ func (cmd *FocusInterestCommand) Execute(args []string) error {
 
 // FocusShowCommand displays the current session anchor.
 type FocusShowCommand struct {
+	ReportFormat
 	appOpts *config.AppOptions
 }
 
@@ -170,6 +171,10 @@ func (cmd *FocusShowCommand) SetAppOptions(opts *config.AppOptions) {
 func (cmd *FocusShowCommand) Execute(args []string) error {
 	if len(args) != 0 {
 		return fmt.Errorf("focus show accepts no arguments")
+	}
+	format, err := cmd.resolve(cmd.appOpts)
+	if err != nil {
+		return err
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
@@ -188,8 +193,30 @@ func (cmd *FocusShowCommand) Execute(args []string) error {
 		}
 		initiativeName = initiative.Name
 	}
+	if format != formatText {
+		return writeReport(cmd.appOpts, format, report{command: "focus", records: []record{focusRecord(state, initiativeName)}})
+	}
 	printFocus(cmd.appOpts.Out(), state, initiativeName)
 	return nil
+}
+
+func focusRecord(state task.FocusState, initiativeName string) record {
+	if state.InitiativeID == "" {
+		initiativeName = ""
+	}
+	stack := make([]string, 0, len(state.TaskStack))
+	for _, entry := range state.TaskStack {
+		stack = append(stack, entry.TaskID)
+	}
+	return record{
+		{"project_id", state.ProjectID},
+		{"session_id", state.SessionID},
+		{"initiative_id", state.InitiativeID},
+		{"initiative", initiativeName},
+		{"task_id", state.FocusedTaskID},
+		{"stack", stack},
+		{"plans_of_interest", nonNilStrings(state.PlansOfInterest)},
+	}
 }
 
 // FocusPlanCommand anchors a session to an initiative and its next ready task.

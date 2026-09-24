@@ -13,6 +13,7 @@ import (
 
 // StatusCommand displays project task state.
 type StatusCommand struct {
+	ReportFormat
 	PendingOnly bool `long:"pending" description:"Show pending tasks only"`
 	Force       bool `long:"force" description:"Bypass the status cache"`
 	appOpts     *config.AppOptions
@@ -29,6 +30,10 @@ func (cmd *StatusCommand) Execute(args []string) error {
 		return fmt.Errorf("status accepts at most one initiative name")
 	}
 
+	format, err := cmd.resolve(cmd.appOpts)
+	if err != nil {
+		return err
+	}
 	initiativeName := ""
 	if len(args) == 1 {
 		initiativeName = args[0]
@@ -42,6 +47,9 @@ func (cmd *StatusCommand) Execute(args []string) error {
 	cacheKey := "status"
 	if initiativeName != "" {
 		cacheKey += "_" + initiativeName
+	}
+	if format != formatText {
+		return cmd.report(store, format, initiativeName, cacheKey)
 	}
 	if !cmd.Force && !cmd.PendingOnly {
 		_, found, err := store.GetCache(
@@ -88,6 +96,59 @@ func (cmd *StatusCommand) Execute(args []string) error {
 		}
 	}
 	return nil
+}
+
+// report renders the status records in a structured format. The cache fact
+// travels as meta.cached with the cached records instead of as prose.
+func (cmd *StatusCommand) report(store *sqlite.Store, format string, initiativeName string, cacheKey string) error {
+	ctx := cmd.appOpts.Context()
+	useCache := !cmd.Force && !cmd.PendingOnly
+	if useCache {
+		cached, found, err := loadCachedReport(ctx, store, cmd.appOpts, cacheKey)
+		if err != nil {
+			return err
+		}
+		if found {
+			cached.command = "status"
+			return writeReport(cmd.appOpts, format, cached)
+		}
+	}
+
+	tasks, err := store.ListTasks(ctx, cmd.appOpts.ProjectID, initiativeName)
+	if err != nil {
+		return err
+	}
+	records, err := taskRecords(ctx, store, statusTasks(tasks, cmd.PendingOnly))
+	if err != nil {
+		return err
+	}
+	if err := writeReport(cmd.appOpts, format, report{command: "status", records: records}); err != nil {
+		return err
+	}
+	if cmd.PendingOnly {
+		return nil
+	}
+	return storeCachedReport(ctx, store, cmd.appOpts, cacheKey, records, 2*time.Minute)
+}
+
+// statusTasks orders tasks as the text status lists them: open work first,
+// then completed work unless only pending work was requested.
+func statusTasks(tasks []task.Task, pendingOnly bool) []task.Task {
+	ordered := make([]task.Task, 0, len(tasks))
+	for _, current := range tasks {
+		if current.Status == task.Pending || current.Status == task.Active {
+			ordered = append(ordered, current)
+		}
+	}
+	if pendingOnly {
+		return ordered
+	}
+	for _, current := range tasks {
+		if current.Status == task.Completed {
+			ordered = append(ordered, current)
+		}
+	}
+	return ordered
 }
 
 func renderStatus(

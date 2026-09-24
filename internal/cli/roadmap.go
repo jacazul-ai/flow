@@ -23,6 +23,7 @@ func (cmd *RoadmapCommand) Execute(args []string) error {
 
 // RoadmapShowCommand displays roadmap phases.
 type RoadmapShowCommand struct {
+	ReportFormat
 	appOpts *config.AppOptions
 }
 
@@ -36,6 +37,10 @@ func (cmd *RoadmapShowCommand) Execute(args []string) error {
 	if len(args) != 0 {
 		return fmt.Errorf("roadmap show accepts no arguments")
 	}
+	format, err := cmd.resolve(cmd.appOpts)
+	if err != nil {
+		return err
+	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
 		return err
@@ -44,6 +49,19 @@ func (cmd *RoadmapShowCommand) Execute(args []string) error {
 	entries, err := store.ListRoadmap(cmd.appOpts.Context(), cmd.appOpts.ProjectID)
 	if err != nil {
 		return err
+	}
+	if format != formatText {
+		records := make([]record, 0, len(entries))
+		for _, entry := range entries {
+			records = append(records, record{
+				{"id", entry.ID},
+				{"initiative_id", entry.InitiativeID},
+				{"phase", entry.Phase},
+				{"description", entry.Description},
+				{"status", string(entry.Status)},
+			})
+		}
+		return writeReport(cmd.appOpts, format, report{command: "roadmap show", records: records})
 	}
 	if len(entries) == 0 {
 		fmt.Fprintln(cmd.appOpts.Out(), "No roadmap found.")

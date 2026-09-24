@@ -74,6 +74,7 @@ func (cmd *NoteCommand) Execute(args []string) error {
 
 // NotesCommand lists all annotations attached to one task.
 type NotesCommand struct {
+	ReportFormat
 	appOpts *config.AppOptions
 }
 
@@ -86,6 +87,10 @@ func (cmd *NotesCommand) SetAppOptions(opts *config.AppOptions) {
 func (cmd *NotesCommand) Execute(args []string) error {
 	if len(args) != 1 {
 		return fmt.Errorf("notes requires exactly one task UUID\nACTION: Run 'jczl-flow help notes'.")
+	}
+	format, err := cmd.resolve(cmd.appOpts)
+	if err != nil {
+		return err
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
@@ -101,6 +106,9 @@ func (cmd *NotesCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	if format != formatText {
+		return writeReport(cmd.appOpts, format, report{command: "notes", records: contextRecords(current, annotations, nil)})
+	}
 	if len(annotations) == 0 {
 		fmt.Fprintf(cmd.appOpts.Out(), "No annotations on task %s.\n", shortID(current.ID))
 		return nil
@@ -114,6 +122,7 @@ func (cmd *NotesCommand) Execute(args []string) error {
 
 // ContextCommand renders direct and inherited context for one task.
 type ContextCommand struct {
+	ReportFormat
 	appOpts *config.AppOptions
 }
 
@@ -126,6 +135,10 @@ func (cmd *ContextCommand) SetAppOptions(opts *config.AppOptions) {
 func (cmd *ContextCommand) Execute(args []string) error {
 	if len(args) != 1 {
 		return fmt.Errorf("context requires exactly one task UUID\nACTION: Run 'jczl-flow help context'.")
+	}
+	format, err := cmd.resolve(cmd.appOpts)
+	if err != nil {
+		return err
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
@@ -144,6 +157,10 @@ func (cmd *ContextCommand) Execute(args []string) error {
 	inherited, err := store.InheritedAnnotations(cmd.appOpts.Context(), current.ID)
 	if err != nil {
 		return err
+	}
+
+	if format != formatText {
+		return writeReport(cmd.appOpts, format, report{command: "context", records: contextRecords(current, direct, inherited)})
 	}
 
 	var output strings.Builder
@@ -169,11 +186,15 @@ func errorsForEmptyNote() error {
 
 func clearTaskCaches(store *sqlite.Store, opts *config.AppOptions, current task.Task) error {
 	ctx := opts.Context()
-	if err := store.ClearCacheKey(ctx, opts.ProjectID, opts.SessionID, "status"); err != nil {
-		return err
-	}
+	keys := []string{"status"}
 	if current.InitiativeName != "" {
-		if err := store.ClearCacheKey(ctx, opts.ProjectID, opts.SessionID, "status_"+current.InitiativeName); err != nil {
+		keys = append(keys, "status_"+current.InitiativeName)
+	}
+	for _, key := range keys {
+		if err := store.ClearCacheKey(ctx, opts.ProjectID, opts.SessionID, key); err != nil {
+			return err
+		}
+		if err := clearStructuredCacheKey(ctx, store, opts, key); err != nil {
 			return err
 		}
 	}

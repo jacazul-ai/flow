@@ -11,6 +11,7 @@ import (
 
 // ActiveCommand lists tasks currently being executed.
 type ActiveCommand struct {
+	ReportFormat
 	appOpts *config.AppOptions
 }
 
@@ -21,13 +22,14 @@ func (cmd *ActiveCommand) SetAppOptions(opts *config.AppOptions) {
 
 // Execute renders active tasks for the current project or initiative.
 func (cmd *ActiveCommand) Execute(args []string) error {
-	return listTaskView(cmd.appOpts, args, "ACTIVE TASKS", "No active tasks.", func(current task.Task, _ map[string]task.Status) bool {
+	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, "ACTIVE TASKS", "No active tasks.", func(current task.Task, _ map[string]task.Status) bool {
 		return current.Status == task.Active
 	})
 }
 
 // BlockedCommand lists pending tasks with unfinished dependencies.
 type BlockedCommand struct {
+	ReportFormat
 	appOpts *config.AppOptions
 }
 
@@ -38,13 +40,14 @@ func (cmd *BlockedCommand) SetAppOptions(opts *config.AppOptions) {
 
 // Execute renders blocked tasks for the current project or initiative.
 func (cmd *BlockedCommand) Execute(args []string) error {
-	return listTaskView(cmd.appOpts, args, "BLOCKED TASKS", "No blocked tasks.", func(current task.Task, states map[string]task.Status) bool {
+	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, "BLOCKED TASKS", "No blocked tasks.", func(current task.Task, states map[string]task.Status) bool {
 		return current.Status == task.Pending && !dependenciesReady(current, states)
 	})
 }
 
 // OverdueCommand lists pending tasks whose due date is before today.
 type OverdueCommand struct {
+	ReportFormat
 	appOpts *config.AppOptions
 }
 
@@ -56,13 +59,14 @@ func (cmd *OverdueCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute renders overdue tasks for the current project or initiative.
 func (cmd *OverdueCommand) Execute(args []string) error {
 	today := time.Now().UTC().Format("2006-01-02")
-	return listTaskView(cmd.appOpts, args, "OVERDUE TASKS", "No overdue tasks.", func(current task.Task, _ map[string]task.Status) bool {
+	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, "OVERDUE TASKS", "No overdue tasks.", func(current task.Task, _ map[string]task.Status) bool {
 		return current.Status == task.Pending && current.DueAt != "" && current.DueAt < today
 	})
 }
 
 func listTaskView(
 	opts *config.AppOptions,
+	reportFormat ReportFormat,
 	args []string,
 	header string,
 	emptyMessage string,
@@ -70,6 +74,10 @@ func listTaskView(
 ) error {
 	if len(args) > 1 {
 		return fmt.Errorf("%s accepts at most one initiative name\nACTION: Run 'jczl-flow help %s'.", strings.ToLower(strings.TrimSuffix(header, " TASKS")), strings.ToLower(strings.TrimSuffix(header, " TASKS")))
+	}
+	format, err := reportFormat.resolve(opts)
+	if err != nil {
+		return err
 	}
 	initiativeName := ""
 	if len(args) == 1 {
@@ -89,6 +97,21 @@ func listTaskView(
 	states := make(map[string]task.Status, len(tasks))
 	for _, current := range tasks {
 		states[current.ID] = current.Status
+	}
+
+	if format != formatText {
+		included := make([]task.Task, 0, len(tasks))
+		for _, current := range tasks {
+			if include(current, states) {
+				included = append(included, current)
+			}
+		}
+		records, err := taskRecords(ctx, store, included)
+		if err != nil {
+			return err
+		}
+		command := strings.ToLower(strings.TrimSuffix(header, " TASKS"))
+		return writeReport(opts, format, report{command: command, records: records})
 	}
 
 	var output strings.Builder

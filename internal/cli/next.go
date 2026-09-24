@@ -8,6 +8,7 @@ import (
 
 // NextCommand lists the next ready tasks for a project or initiative.
 type NextCommand struct {
+	ReportFormat
 	appOpts *config.AppOptions
 }
 
@@ -20,6 +21,10 @@ func (cmd *NextCommand) SetAppOptions(opts *config.AppOptions) {
 func (cmd *NextCommand) Execute(args []string) error {
 	if len(args) > 1 {
 		return fmt.Errorf("next accepts at most one initiative name\nACTION: Run 'jczl-flow next [initiative]'.")
+	}
+	format, err := cmd.resolve(cmd.appOpts)
+	if err != nil {
+		return err
 	}
 	initiativeName := ""
 	if len(args) == 1 {
@@ -34,6 +39,13 @@ func (cmd *NextCommand) Execute(args []string) error {
 	ready, err := store.ReadyTasks(cmd.appOpts.Context(), cmd.appOpts.ProjectID, initiativeName)
 	if err != nil {
 		return err
+	}
+	if format != formatText {
+		records, err := taskRecords(cmd.appOpts.Context(), store, ready)
+		if err != nil {
+			return err
+		}
+		return writeReport(cmd.appOpts, format, report{command: "next", records: records})
 	}
 	if len(ready) == 0 {
 		fmt.Fprintln(cmd.appOpts.Out(), "No tasks ready.")

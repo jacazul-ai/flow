@@ -11,6 +11,7 @@ import (
 
 // HistoryCommand renders immutable history for a task or initiative.
 type HistoryCommand struct {
+	ReportFormat
 	appOpts *config.AppOptions
 }
 
@@ -23,6 +24,10 @@ func (cmd *HistoryCommand) SetAppOptions(opts *config.AppOptions) {
 func (cmd *HistoryCommand) Execute(args []string) error {
 	if len(args) != 2 {
 		return fmt.Errorf("history requires an explicit scope and reference\nACTION: Run 'jczl-flow history task <uuid>' or 'jczl-flow history initiative <reference>'.")
+	}
+	format, err := cmd.resolve(cmd.appOpts)
+	if err != nil {
+		return err
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
@@ -41,6 +46,9 @@ func (cmd *HistoryCommand) Execute(args []string) error {
 		if err != nil {
 			return err
 		}
+		if format != formatText {
+			return writeReport(cmd.appOpts, format, report{command: "history", records: historyRecords(events)})
+		}
 		return renderHistory(cmd.appOpts.Out(), "task "+shortID(current.ID), events)
 	case "initiative", "ini", "plan":
 		initiative, err := store.FindInitiativeReference(ctx, cmd.appOpts.ProjectID, args[1])
@@ -50,6 +58,9 @@ func (cmd *HistoryCommand) Execute(args []string) error {
 		events, err := store.ListInitiativeHistory(ctx, cmd.appOpts.ProjectID, initiative.ID)
 		if err != nil {
 			return err
+		}
+		if format != formatText {
+			return writeReport(cmd.appOpts, format, report{command: "history", records: historyRecords(events)})
 		}
 		return renderHistory(cmd.appOpts.Out(), "initiative "+initiative.Name+" [id:"+shortID(initiative.ID)+"]", events)
 	default:
@@ -77,6 +88,23 @@ func renderHistory(out io.Writer, subject string, events []task.HistoryEvent) er
 		fmt.Fprintln(out, line)
 	}
 	return nil
+}
+
+func historyRecords(events []task.HistoryEvent) []record {
+	records := make([]record, 0, len(events))
+	for _, event := range events {
+		records = append(records, record{
+			{"occurred_at", event.OccurredAt},
+			{"event_type", event.EventType},
+			{"property", event.Property},
+			{"old_value", event.OldValue},
+			{"new_value", event.NewValue},
+			{"task_id", event.TaskID},
+			{"initiative_id", event.InitiativeID},
+			{"source", event.Source},
+		})
+	}
+	return records
 }
 
 func quoteHistoryValue(value string) string {

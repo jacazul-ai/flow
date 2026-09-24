@@ -14,6 +14,7 @@ import (
 
 // PonderCommand renders the project-wide initiative dashboard.
 type PonderCommand struct {
+	ReportFormat
 	All         bool `long:"all" description:"Include completed initiatives"`
 	WithBacklog bool `long:"with-backlog" description:"Include backlog initiatives"`
 	Table       bool `long:"table" description:"Render the tactical readout as a table"`
@@ -31,16 +32,24 @@ func (cmd *PonderCommand) Execute(args []string) error {
 	if len(args) > 1 {
 		return fmt.Errorf("ponder accepts at most one project filter")
 	}
+	format, err := cmd.resolve(cmd.appOpts)
+	if err != nil {
+		return err
+	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
 		return err
 	}
 	defer store.Close()
+	if format != formatText {
+		return reportPonder(store, cmd.appOpts, format, cmd.All, cmd.WithBacklog, cmd.Force)
+	}
 	return renderPonder(store, cmd.appOpts, cmd.All, cmd.WithBacklog, cmd.Table, cmd.Force)
 }
 
 // PlansCommand lists initiatives using the same dashboard model as ponder.
 type PlansCommand struct {
+	ReportFormat
 	All         bool `long:"all" description:"Include completed initiatives"`
 	Closed      bool `long:"closed" description:"Show completed initiatives only"`
 	WithBacklog bool `long:"with-backlog" description:"Include backlog initiatives"`
@@ -58,11 +67,18 @@ func (cmd *PlansCommand) Execute(args []string) error {
 	if len(args) != 0 {
 		return fmt.Errorf("plans accepts no arguments")
 	}
+	format, err := cmd.resolve(cmd.appOpts)
+	if err != nil {
+		return err
+	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
 		return err
 	}
 	defer store.Close()
+	if format != formatText {
+		return reportPlans(store, cmd.appOpts, format, cmd.All, cmd.Closed, cmd.WithBacklog, cmd.Force)
+	}
 	return renderPlans(store, cmd.appOpts, cmd.All, cmd.Closed, cmd.WithBacklog, cmd.Force)
 }
 
@@ -98,6 +114,7 @@ func (cmd *ActivateCommand) Execute(args []string) error {
 
 // TreeCommand renders dependency markers for an initiative.
 type TreeCommand struct {
+	ReportFormat
 	appOpts *config.AppOptions
 }
 
@@ -110,6 +127,10 @@ func (cmd *TreeCommand) SetAppOptions(opts *config.AppOptions) {
 func (cmd *TreeCommand) Execute(args []string) error {
 	if len(args) > 1 {
 		return fmt.Errorf("tree accepts at most one initiative name")
+	}
+	format, err := cmd.resolve(cmd.appOpts)
+	if err != nil {
+		return err
 	}
 	initiative := ""
 	if len(args) == 1 {
@@ -124,39 +145,104 @@ func (cmd *TreeCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	if len(tasks) == 0 {
-		fmt.Fprintln(cmd.appOpts.Out(), "No tasks found.")
-		return nil
-	}
 	states := make(map[string]task.Status, len(tasks))
 	for _, current := range tasks {
 		states[current.ID] = current.Status
 	}
+	if format != formatText {
+		return reportTree(cmd.appOpts, store, format, tasks, states)
+	}
+	if len(tasks) == 0 {
+		fmt.Fprintln(cmd.appOpts.Out(), "No tasks found.")
+		return nil
+	}
 	for _, current := range tasks {
-		marker := "READY"
-		if current.Status == task.Completed {
-			marker = "DONE"
-		} else if current.Status == task.Active {
-			marker = "ACTIVE"
-		} else if !dependenciesReady(current, states) {
-			marker = "BLOCKED"
-		}
-		fmt.Fprintf(cmd.appOpts.Out(), "[%s] %s %s\n", marker, shortID(current.ID), current.Description)
+		fmt.Fprintf(cmd.appOpts.Out(), "[%s] %s %s\n", treeMarker(current, states), shortID(current.ID), current.Description)
 	}
 	return nil
 }
 
+func treeMarker(current task.Task, states map[string]task.Status) string {
+	switch {
+	case current.Status == task.Completed:
+		return "DONE"
+	case current.Status == task.Active:
+		return "ACTIVE"
+	case !dependenciesReady(current, states):
+		return "BLOCKED"
+	}
+	return "READY"
+}
+
+func reportTree(opts *config.AppOptions, store *sqlite.Store, format string, tasks []task.Task, states map[string]task.Status) error {
+	records := make([]record, 0, len(tasks))
+	for _, current := range tasks {
+		built, err := taskRecord(opts.Context(), store, current)
+		if err != nil {
+			return err
+		}
+		records = append(records, append(built, field{"marker", treeMarker(current, states)}))
+	}
+	return writeReport(opts, format, report{command: "tree", records: records})
+}
+
+// reportPlans renders the plans records. It filters exactly as the text
+// list does and carries the cache fact as meta.cached.
+func reportPlans(store *sqlite.Store, opts *config.AppOptions, format string, all bool, closed bool, withBacklog bool, force bool) error {
+	return reportDashboard(store, opts, format, "plans", plansCacheKey(all, closed, withBacklog), force, 5*time.Minute,
+		func(summaries []task.InitiativeSummary, _ task.FocusState) []task.InitiativeSummary {
+			return plansSummaries(summaries, all, closed)
+		}, withBacklog)
+}
+
+// reportPonder renders the initiatives the ponder dashboard shows.
+func reportPonder(store *sqlite.Store, opts *config.AppOptions, format string, all bool, withBacklog bool, force bool) error {
+	return reportDashboard(store, opts, format, "ponder", ponderCacheKey(all, withBacklog, false), force, 10*time.Minute,
+		func(summaries []task.InitiativeSummary, focus task.FocusState) []task.InitiativeSummary {
+			visible, _ := visibleSummaries(summaries, focus, all)
+			return visible
+		}, withBacklog)
+}
+
+func reportDashboard(
+	store *sqlite.Store,
+	opts *config.AppOptions,
+	format string,
+	command string,
+	cacheKey string,
+	force bool,
+	ttl time.Duration,
+	selectSummaries func([]task.InitiativeSummary, task.FocusState) []task.InitiativeSummary,
+	withBacklog bool,
+) error {
+	ctx := opts.Context()
+	if !force {
+		cached, found, err := loadCachedReport(ctx, store, opts, cacheKey)
+		if err != nil {
+			return err
+		}
+		if found {
+			cached.command = command
+			return writeReport(opts, format, cached)
+		}
+	}
+	summaries, err := store.ListInitiatives(ctx, opts.ProjectID, withBacklog, true)
+	if err != nil {
+		return err
+	}
+	focus, err := store.LoadFocus(ctx, opts.ProjectID, opts.SessionID)
+	if err != nil {
+		return err
+	}
+	records := initiativeRecords(selectSummaries(summaries, focus))
+	if err := writeReport(opts, format, report{command: command, records: records}); err != nil {
+		return err
+	}
+	return storeCachedReport(ctx, store, opts, cacheKey, records, ttl)
+}
+
 func renderPlans(store *sqlite.Store, opts *config.AppOptions, all bool, closed bool, withBacklog bool, force bool) error {
-	cacheKey := "plans"
-	if all {
-		cacheKey += "_all"
-	}
-	if closed {
-		cacheKey += "_closed"
-	}
-	if withBacklog {
-		cacheKey += "_backlog"
-	}
+	cacheKey := plansCacheKey(all, closed, withBacklog)
 	ctx := opts.Context()
 	if !force {
 		_, found, err := store.GetCache(ctx, opts.ProjectID, opts.SessionID, cacheKey, time.Now().UTC())
@@ -177,10 +263,24 @@ func renderPlans(store *sqlite.Store, opts *config.AppOptions, all bool, closed 
 	return store.SetCache(ctx, opts.ProjectID, opts.SessionID, cacheKey, output, time.Now().UTC().Add(5*time.Minute))
 }
 
-func renderPlanList(projectID string, summaries []task.InitiativeSummary, all bool, closed bool) string {
-	var output strings.Builder
-	fmt.Fprintf(&output, "PROJECT: %s\n", projectID)
-	shown := 0
+func plansCacheKey(all bool, closed bool, withBacklog bool) string {
+	cacheKey := "plans"
+	if all {
+		cacheKey += "_all"
+	}
+	if closed {
+		cacheKey += "_closed"
+	}
+	if withBacklog {
+		cacheKey += "_backlog"
+	}
+	return cacheKey
+}
+
+// plansSummaries keeps the initiatives the plans list shows: open ones by
+// default, completed ones with --closed, and both with --all.
+func plansSummaries(summaries []task.InitiativeSummary, all bool, closed bool) []task.InitiativeSummary {
+	shown := make([]task.InitiativeSummary, 0, len(summaries))
 	for _, summary := range summaries {
 		isClosed := summary.Initiative.Status == task.InitiativeCompleted
 		if closed && !isClosed {
@@ -189,6 +289,16 @@ func renderPlanList(projectID string, summaries []task.InitiativeSummary, all bo
 		if !all && !closed && isClosed {
 			continue
 		}
+		shown = append(shown, summary)
+	}
+	return shown
+}
+
+func renderPlanList(projectID string, summaries []task.InitiativeSummary, all bool, closed bool) string {
+	var output strings.Builder
+	fmt.Fprintf(&output, "PROJECT: %s\n", projectID)
+	shown := 0
+	for _, summary := range plansSummaries(summaries, all, closed) {
 		if shown == 0 {
 			output.WriteString("INITIATIVES:\n")
 		}
@@ -210,16 +320,7 @@ func renderPlanList(projectID string, summaries []task.InitiativeSummary, all bo
 }
 
 func renderPonder(store *sqlite.Store, opts *config.AppOptions, all bool, withBacklog bool, table bool, force bool) error {
-	cacheKey := "ponder"
-	if all {
-		cacheKey += "_all"
-	}
-	if withBacklog {
-		cacheKey += "_backlog"
-	}
-	if table {
-		cacheKey += "_table"
-	}
+	cacheKey := ponderCacheKey(all, withBacklog, table)
 	ctx := opts.Context()
 	if !force {
 		_, found, err := store.GetCache(ctx, opts.ProjectID, opts.SessionID, cacheKey, time.Now().UTC())
@@ -247,7 +348,23 @@ func renderPonder(store *sqlite.Store, opts *config.AppOptions, all bool, withBa
 	return store.SetCache(ctx, opts.ProjectID, opts.SessionID, cacheKey, output, time.Now().UTC().Add(10*time.Minute))
 }
 
-func renderDashboard(ctx context.Context, store *sqlite.Store, opts *config.AppOptions, summaries []task.InitiativeSummary, focus task.FocusState, showAll bool, table bool) (string, error) {
+func ponderCacheKey(all bool, withBacklog bool, table bool) string {
+	cacheKey := "ponder"
+	if all {
+		cacheKey += "_all"
+	}
+	if withBacklog {
+		cacheKey += "_backlog"
+	}
+	if table {
+		cacheKey += "_table"
+	}
+	return cacheKey
+}
+
+// visibleSummaries keeps the focused initiative and the plans of interest
+// when interests are set, and returns the focused initiative name.
+func visibleSummaries(summaries []task.InitiativeSummary, focus task.FocusState, showAll bool) ([]task.InitiativeSummary, string) {
 	focusedName := ""
 	for _, summary := range summaries {
 		if summary.Initiative.ID == focus.InitiativeID {
@@ -255,13 +372,20 @@ func renderDashboard(ctx context.Context, store *sqlite.Store, opts *config.AppO
 			break
 		}
 	}
-	visibleSummaries := make([]task.InitiativeSummary, 0, len(summaries))
-	visibleNames := make(map[string]struct{}, len(summaries))
+	visible := make([]task.InitiativeSummary, 0, len(summaries))
 	for _, summary := range summaries {
 		if !showAll && len(focus.PlansOfInterest) > 0 && summary.Initiative.Name != focusedName && !containsString(focus.PlansOfInterest, summary.Initiative.Name) {
 			continue
 		}
-		visibleSummaries = append(visibleSummaries, summary)
+		visible = append(visible, summary)
+	}
+	return visible, focusedName
+}
+
+func renderDashboard(ctx context.Context, store *sqlite.Store, opts *config.AppOptions, summaries []task.InitiativeSummary, focus task.FocusState, showAll bool, table bool) (string, error) {
+	visibleSummaries, focusedName := visibleSummaries(summaries, focus, showAll)
+	visibleNames := make(map[string]struct{}, len(visibleSummaries))
+	for _, summary := range visibleSummaries {
 		visibleNames[summary.Initiative.Name] = struct{}{}
 	}
 

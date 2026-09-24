@@ -28,6 +28,7 @@ func (cmd *SessionCommand) Execute(args []string) error {
 
 // SessionListCommand lists persisted sessions for the current project.
 type SessionListCommand struct {
+	ReportFormat
 	appOpts *config.AppOptions
 }
 
@@ -41,6 +42,10 @@ func (cmd *SessionListCommand) Execute(args []string) error {
 	if len(args) != 0 {
 		return fmt.Errorf("session list accepts no arguments")
 	}
+	format, err := cmd.resolve(cmd.appOpts)
+	if err != nil {
+		return err
+	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
 		return err
@@ -51,12 +56,28 @@ func (cmd *SessionListCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	now := time.Now().UTC()
+	if format != formatText {
+		records := make([]record, 0, len(sessions))
+		for _, session := range sessions {
+			age, status := sessionAge(session.UpdatedAt, now)
+			records = append(records, record{
+				{"session_id", session.SessionID},
+				{"current", session.SessionID == cmd.appOpts.SessionID},
+				{"task_id", session.FocusedTaskID},
+				{"initiative_id", session.InitiativeID},
+				{"updated_at", session.UpdatedAt},
+				{"age", age},
+				{"status", status},
+			})
+		}
+		return writeReport(cmd.appOpts, format, report{command: "session list", records: records})
+	}
 	if len(sessions) == 0 {
 		fmt.Fprintln(cmd.appOpts.Out(), "No sessions found.")
 		return nil
 	}
 	fmt.Fprintln(cmd.appOpts.Out(), "SESSIONS:")
-	now := time.Now().UTC()
 	for _, session := range sessions {
 		marker := " "
 		if session.SessionID == cmd.appOpts.SessionID {

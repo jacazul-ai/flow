@@ -31,6 +31,9 @@ type Env struct {
 	DatabasePath string
 	// Home is the runtime root used to derive default paths.
 	Home string
+	// Format is the default output format for report commands: text, json,
+	// jsonl or xml. Empty selects text. A command's --format flag wins.
+	Format string
 }
 
 // Streams are the standard streams of one invocation.
@@ -48,6 +51,7 @@ func EnvFromOS() Env {
 		SessionID:    os.Getenv("JACAZUL_SESSION_ID"),
 		DatabasePath: os.Getenv("JACAZUL_FLOW_DATABASE_PATH"),
 		Home:         os.Getenv("JACAZUL_HOME"),
+		Format:       os.Getenv("JACAZUL_FLOW_FORMAT"),
 	}
 	if env.Home != "" {
 		return env
@@ -77,6 +81,7 @@ func Run(ctx context.Context, args []string, env Env, streams Streams) int {
 			SessionID:    env.SessionID,
 			DatabasePath: env.DatabasePath,
 			Home:         env.Home,
+			Format:       env.Format,
 		},
 		Stdout: stdout,
 		Stderr: stderr,
