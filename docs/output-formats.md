@@ -53,9 +53,17 @@ Resolution order, matching how `config.Resolve` already handles `ProjectID`,
 contract test, and a format preference does not get an exception:
 
 - `flow.Env` carries a `Format` field;
-- `EnvFromOS` reads the environment variable, because it is the one function
+- `EnvFromOS` reads `JACAZUL_FLOW_FORMAT`, because it is the one function
   that exists to do so, and only standalone `jczl-flow` uses it;
 - `jacazul` passes the value it already resolved from its own configuration.
+
+The injected default applies only to report commands. A command that changes
+state keeps its text output whatever `Env.Format` says, so a launcher can set
+one default for a whole session without breaking `plan`, `done` or `note`.
+
+An unknown value fails the command with exit status 1, empty stdout, and an
+`ACTION:` naming `text`, `json`, `jsonl` and `xml`, whether it came from the
+flag or from the injected default.
 
 A launcher-owned configuration file is likewise not parsed here. Bootstrap and
 configuration resolution belong to `jacazul-ai-cli` under the Explicit
@@ -109,12 +117,18 @@ terminal prose, and structured stdout carries no prose. The *fact* it reports
 is the opposite of noise: it is the instruction that saves the round trip.
 
 A cached structured response therefore sets `meta.cached` to `true` and
-`meta.unchanged_since` to the age of the entry, and carries the cached records.
+`meta.unchanged_since` to the RFC 3339 UTC time the cached records were
+generated, and carries those records. `meta.generated_at` is always the time of
+the response itself. `unchanged_since` is absent when `cached` is `false`.
 The consumer reads `cached` and decides whether to reuse what it already holds
 rather than re-reading the payload.
 
 Dropping the signal in structured mode would discard the saving this whole
 contract is built around.
+
+Structured and text cache entries are separate. A `text` render never answers a
+`json` request and the reverse, and every write that clears a text entry clears
+its structured twin.
 
 ## Report commands
 
@@ -131,16 +145,66 @@ contract is built around.
 | `history` | |
 | `context` | |
 | `notes` | |
-| `focus` | the show form only, not the anchoring forms |
+| `focus` | the show form only: `focus --format X` is `focus show --format X`; the anchoring forms reject the flag |
 | `session list` | not `dump`, `ack` or `purge` |
 | `roadmap show` | not `init`, `add` or `ship` |
-| `cache info` | not `cache clear` |
-| `onboard` | the composite briefing |
+| `cache info` | not `cache clear`; bare `cache` is `cache info` |
+| `onboard` | the composite briefing; a pending handoff is acknowledged exactly as in `text` |
 
 Everything else is a state change or a human-facing briefing. A command that
 creates, transitions, annotates or closes work reports what changed in `text`
 and takes no `--format`. `help` renders guidance, not workflow data, and
 `commit` renders a draft message that is itself the artifact.
+
+The `command` field carries the canonical name, not the alias typed:
+`inis` and `initiatives` report `plans`, and subcommand forms report with a
+space (`session list`, `roadmap show`, `cache info`).
+
+## Records
+
+Records are identity first: a task carries its full UUID in `id`, and
+`short_id` is presentation only. Every record of one kind has the same field
+set, and an absent value is an empty string, `false`, `0` or an empty list
+rather than a missing field.
+
+| Record | Used by | Fields |
+|---|---|---|
+| Task | `status`, `next`, `active`, `blocked`, `overdue`, `tree`, `onboard` | `id`, `short_id`, `initiative`, `description`, `status`, `mode`, `priority`, `urgency`, `due_at`, `ticket`, `ticket_inherited`, `dependencies`; `tree` adds `marker` (`READY`, `BLOCKED`, `ACTIVE`, `DONE`) |
+| Initiative | `plans`, `ponder`, `onboard` | `id`, `name`, `status`, `ticket`, `pending`, `active`, `completed`, `blocked` |
+| Annotation | `context`, `notes`, `onboard` | `task_id`, `task_description`, `kind`, `body`, `created_at`, `inherited` |
+| History event | `history` | `occurred_at`, `event_type`, `property`, `old_value`, `new_value`, `task_id`, `initiative_id`, `source` |
+| Focus | `focus` | `project_id`, `session_id`, `initiative_id`, `initiative`, `task_id`, `stack`, `plans_of_interest` |
+| Session | `session list` | `session_id`, `current`, `task_id`, `initiative_id`, `updated_at`, `age`, `status` |
+| Roadmap phase | `roadmap show` | `id`, `initiative_id`, `phase`, `description`, `status` |
+| Cache | `cache info` | `entries`, `location` |
+| Briefing | `onboard` | `handoff`, `handoff_acknowledged`, `focus_initiative`, `focus_task_id`, `context`, `tasks`, `initiatives` |
+
+`status` lists open tasks first and completed tasks after them, as the text
+view does; `--pending` keeps only the open ones. `context` lists direct
+annotations first, then inherited ones with `inherited` set to `true`.
+`onboard` fills `tasks` with the focused initiative's status when there is a
+focus and `initiatives` with the ponder view when there is not.
+
+In `xml`, the root element is `<report>`, every field is a child element, a
+list of records repeats `<record>`, and a list of strings repeats `<item>`.
+
+## Guidance for agents
+
+- **Stay on `text` inside a conversation.** It is the shortest faithful form
+  and the one every example in the workflow uses.
+- **Use `json` when a program parses the whole result**, and `jsonl` when it
+  reads records as a stream or line by line.
+- **Read `meta.cached` before the records.** When it is `true`, the records
+  have not changed since `meta.unchanged_since`: reuse what you already hold
+  instead of re-reading the payload. Pass `--force` only when you have a
+  concrete reason to distrust the cache.
+- **Keep identity in `id`.** Refer to tasks by the full UUID in follow-up
+  commands; `short_id` is for showing a person.
+- **Read failures from stderr.** A failed command writes nothing to stdout in
+  any format, so an empty stdout with a non-zero exit is never a partial
+  document.
+- **Let the launcher choose the default.** Set `Env.Format` or
+  `JACAZUL_FLOW_FORMAT` once per session; the engine applies it to reports only.
 
 ## Rules
 

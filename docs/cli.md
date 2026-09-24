@@ -218,5 +218,19 @@ explains the next valid command. Healthy report commands may be quiet when no
 state changed, while explicit report commands such as `status`, `ponder`, and
 `cache info` render their state.
 
+Report commands (`status`, `ponder`, `plans`, `tree`, `next`, `active`,
+`blocked`, `overdue`, `history`, `context`, `notes`, `focus`, `session list`,
+`roadmap show`, `cache info` and `onboard`) take `--format text|json|jsonl|xml`.
+`text` is the default; `JACAZUL_FLOW_FORMAT` sets another default for
+standalone `jczl-flow`. Commands that change state take no `--format`. The
+envelope, the record fields and the cache signal are specified in
+[Output formats](output-formats.md).
+
+```bash
+jczl-flow status --format json
+jczl-flow next --format jsonl
+JACAZUL_FLOW_FORMAT=xml jczl-flow plans
+```
+
 Use full UUIDs as identity and short UUIDs for display. The root help is a
 navigation map; command-specific help is the detailed operational contract.

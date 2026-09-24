@@ -202,6 +202,21 @@ jczl-flow session list
 Use `JACAZUL_SESSION_ID` to isolate one agent session from another while they
 share the same project database.
 
+## Structured reports
+
+Report commands render `text` by default and accept `--format json`,
+`--format jsonl` or `--format xml` for a program or an agent that parses the
+result. `JACAZUL_FLOW_FORMAT` sets the default for standalone `jczl-flow`;
+embedding callers pass `flow.Env.Format` instead. A cached report keeps its
+records and says so in `meta.cached`:
+
+```bash
+jczl-flow status --format json
+```
+
+[Output formats](docs/output-formats.md) is the contract: envelope, records,
+cache signal, and which commands offer a format.
+
 ## Future server orchestration
 
 The first versions can operate locally, but the design should not block a future centralized coordination layer.
