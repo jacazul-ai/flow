@@ -124,7 +124,7 @@ contract is built around.
 |---|---|
 | `status` | |
 | `ponder` | |
-| `plans` | with the `inis`, `initiatives` and `ini` aliases |
+| `plans` | with the `inis` and `initiatives` aliases; `ini` and `initiative` are aliases of `plan`, which changes state |
 | `tree` | |
 | `next` | |
 | `active`, `blocked`, `overdue` | |
