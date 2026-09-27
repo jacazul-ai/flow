@@ -109,6 +109,7 @@ internal/storage/sqlite Store opened from the resolved database path
 internal/task           domain types and validation
 internal/migration      Taskwarrior snapshot import
 internal/testharness    isolated fixtures for contract tests
+internal/silo           populates a project database through flow.Run
 ```
 
 The thin main owns the process: it builds `Env` and `Streams`, calls

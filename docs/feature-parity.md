@@ -264,6 +264,7 @@ internal/task/             domain types and validation
 internal/storage/sqlite/   the project store: schema, migrations, and queries
 internal/migration/        Taskwarrior snapshot import
 internal/testharness/      isolated project databases and fake externals
+internal/silo/             generated workflow data through flow.Run
 ```
 
 The CLI must not infer initiative lifecycle from a Taskwarrior project string.

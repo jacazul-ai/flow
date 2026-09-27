@@ -156,6 +156,7 @@ flow.go           public boundary: Run, Env, Streams, EnvFromOS
 internal/cli/      command implementations and command routing
 internal/config/   application-wide options and dispatch integration
 internal/testharness/ isolated test fixtures and fake external commands
+internal/silo/     generated workflow data (silos) through flow.Run
 README.md         migration context and public design direction
 go.mod            module and dependency declarations
 ```
