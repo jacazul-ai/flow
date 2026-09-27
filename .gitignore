@@ -1,6 +1,7 @@
 # Built executables
 /bin/
 /jczl-flow
+/jczl-silo
 
 # Test and profiling output
 *.out

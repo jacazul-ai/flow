@@ -103,6 +103,8 @@ The local engine should also be designed so it can connect to a centralized serv
   contracts, how a format is selected, and which commands offer one.
 - [SQLite driver benchmark](docs/sqlite-driver-benchmark.md): pure-Go versus
   cgo driver cost per command, and why the query pattern matters more.
+- [Silos](docs/silo.md): generated workflow data for tests, benchmarks and
+  inspection, and the `jczl-silo` development tool.
 - [Task history](docs/task-history.md): native events, TaskChampion extraction,
   import rules, and verification contracts.
 - [Distributed context](docs/DISTRIBUTED-CONTEXT.md): the target multi-agent

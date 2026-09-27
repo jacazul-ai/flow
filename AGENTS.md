@@ -151,6 +151,7 @@ Preserve these domain contracts unless a design decision explicitly changes
 
 ```text
 cmd/jczl-flow/    CLI executable entry point: main.go only
+cmd/jczl-silo/    development tool that generates silos: main.go only
 flow.go           public boundary: Run, Env, Streams, EnvFromOS
 *_test.go         contract tests at the module root, through flow.Run
 internal/cli/      command implementations and command routing

@@ -23,6 +23,7 @@ installed component that another program discovers at runtime.
 github.com/jacazul-ai/flow          (this repository)
 ├── flow.go                         package flow: public boundary
 ├── cmd/jczl-flow/                  standalone executable
+├── cmd/jczl-silo/                  development tool: generates silos
 └── internal/...                    implementation packages
 
 github.com/jacazul-ai/jacazul-ai-cli
