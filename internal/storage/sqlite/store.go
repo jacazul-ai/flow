@@ -253,14 +253,52 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 	if err := rows.Close(); err != nil {
 		return nil, fmt.Errorf("close task rows: %w", err)
 	}
+	dependencies, err := s.listedDependencies(ctx, projectID, initiativeName)
+	if err != nil {
+		return nil, err
+	}
 	for index := range tasks {
-		dependencies, err := s.dependencies(ctx, tasks[index].ID)
-		if err != nil {
-			return nil, err
-		}
-		tasks[index].Dependencies = dependencies
+		tasks[index].Dependencies = dependencies[tasks[index].ID]
 	}
 	return tasks, nil
+}
+
+// listedDependencies loads, in one query, the dependencies of every task
+// ListTasks selects with the same filter, keyed by task ID and sorted by the
+// dependency ID like dependencies does for a single task.
+func (s *Store) listedDependencies(ctx context.Context, projectID string, initiativeName string) (map[string][]string, error) {
+	query := `
+		SELECT d.task_id, d.depends_on_id
+		FROM task_dependencies d
+		JOIN tasks t ON t.id = d.task_id
+		JOIN initiatives i ON i.id = t.initiative_id
+		WHERE i.project_id = ?
+	`
+	args := []any{projectID}
+	if initiativeName != "" {
+		query += " AND i.name = ?"
+		args = append(args, initiativeName)
+	}
+	query += " ORDER BY d.task_id, d.depends_on_id"
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list dependencies: %w", err)
+	}
+	defer rows.Close()
+
+	dependencies := make(map[string][]string)
+	for rows.Next() {
+		var taskID, dependencyID string
+		if err := rows.Scan(&taskID, &dependencyID); err != nil {
+			return nil, fmt.Errorf("scan dependency: %w", err)
+		}
+		dependencies[taskID] = append(dependencies[taskID], dependencyID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate dependencies: %w", err)
+	}
+	return dependencies, nil
 }
 
 func (s *Store) configure(ctx context.Context) error {
