@@ -1,9 +1,11 @@
 package flow_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
+	"github.com/jacazul-ai/flow/internal/silo"
 	"github.com/jacazul-ai/flow/internal/testharness"
 )
 
@@ -122,47 +124,22 @@ SESSION CONTEXT:
 	}
 }
 
-// buildChainedReportFixture creates the fixture through the real CLI and
-// returns each task's short UUID mapped to a <description> placeholder.
+// buildChainedReportFixture generates the fixture silo and returns each
+// task's short UUID mapped to a <description> placeholder.
 func buildChainedReportFixture(t *testing.T, harness *testharness.Harness) map[string]string {
 	t.Helper()
 
-	ids := make(map[string]string)
-	byName := make(map[string]string)
-	for _, plan := range [][]string{
-		{"alpha", "A1", "A2", "A3", "A4"},
-		{"beta", "B1", "B2", "B3"},
-		{"gamma", "G1", "G2", "G3"},
-	} {
-		output, err := runFlow(t, harness, append([]string{"plan"}, plan...)...)
-		if err != nil {
-			t.Fatalf("create %s plan: %v\n%s", plan[0], err, output)
-		}
-		created := createdTaskIDs(output)
-		if len(created) != len(plan)-1 {
-			t.Fatalf("%s plan output = %q, want %d task IDs", plan[0], output, len(plan)-1)
-		}
-		for i, id := range created {
-			ids[id] = "<" + plan[i+1] + ">"
-			byName[plan[i+1]] = id
-		}
+	created, err := silo.Generate(context.Background(), flowEnv(harness), []silo.Chain{
+		{Name: "alpha", Tasks: []string{"A1", "A2", "A3", "A4"}, Tickets: map[int]string{0: "#ROOT-1", 2: "#MID-3"}, Completed: 1},
+		{Name: "beta", Tasks: []string{"B1", "B2", "B3"}, Completed: 1},
+		{Name: "gamma", Tasks: []string{"G1", "G2", "G3"}, Tickets: map[int]string{1: "#MID-2"}, Active: true},
+	})
+	if err != nil {
+		t.Fatalf("generate report fixture: %v", err)
 	}
-
-	for _, args := range [][]string{
-		{"ticket", byName["A1"], "#ROOT-1"},
-		{"ticket", byName["A3"], "#MID-3"},
-		{"ticket", byName["G2"], "#MID-2"},
-		{"execute", byName["A1"]},
-		{"outcome", byName["A1"], "A1 is complete"},
-		{"done", byName["A1"]},
-		{"execute", byName["B1"]},
-		{"outcome", byName["B1"], "B1 is complete"},
-		{"done", byName["B1"]},
-		{"execute", byName["G1"]},
-	} {
-		if output, err := runFlow(t, harness, args...); err != nil {
-			t.Fatalf("run %v: %v\n%s", args, err, output)
-		}
+	ids := make(map[string]string, len(created))
+	for description, id := range created {
+		ids[id] = "<" + description + ">"
 	}
 	return ids
 }

@@ -20,17 +20,21 @@ func runFlow(t *testing.T, harness *testharness.Harness, args ...string) (string
 	t.Helper()
 
 	var output bytes.Buffer
-	env := flow.Env{
+	streams := flow.Streams{Stdin: strings.NewReader(""), Stdout: &output, Stderr: &output}
+	if code := flow.Run(context.Background(), args, flowEnv(harness), streams); code != 0 {
+		return output.String(), fmt.Errorf("jczl-flow %s: exit status %d", strings.Join(args, " "), code)
+	}
+	return output.String(), nil
+}
+
+// flowEnv selects the harness project, session and database for flow.Run.
+func flowEnv(harness *testharness.Harness) flow.Env {
+	return flow.Env{
 		ProjectID:    harness.ProjectID,
 		SessionID:    harness.SessionID,
 		DatabasePath: harness.DatabasePath,
 		Home:         filepath.Join(harness.Root, ".jacazul-ai"),
 	}
-	streams := flow.Streams{Stdin: strings.NewReader(""), Stdout: &output, Stderr: &output}
-	if code := flow.Run(context.Background(), args, env, streams); code != 0 {
-		return output.String(), fmt.Errorf("jczl-flow %s: exit status %d", strings.Join(args, " "), code)
-	}
-	return output.String(), nil
 }
 
 func TestPlanStateIsIsolatedByProject(t *testing.T) {

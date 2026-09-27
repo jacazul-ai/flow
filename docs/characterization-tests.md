@@ -22,7 +22,8 @@ the code happens to do, bugs included.
 ## Procedure
 
 1. **Build the fixture through the real boundary.** Populate an isolated
-   database in `t.TempDir()` with `flow.Run`, the way an agent would. Never
+   database in `t.TempDir()` with `flow.Run`, the way an agent would;
+   `silo.Generate` does this from a declarative list of chains. Never
    write rows directly and never touch the real `TASKDATA`. Shape the fixture
    around what the refactor reaches: if it changes dependency loading, use
    chains; if it changes ticket resolution, place tickets at the head, in the
@@ -63,7 +64,8 @@ Run the pin several times in a row before relying on it.
 before the query-count refactor of
 [#13](https://github.com/jacazul-ai/flow/issues/13). Its mutation record: of
 four mutations, the existing suite already caught three; only the pin caught
-nearest-ancestor ticket inheritance. The fixture generator moves into
-`internal/testharness` under
-[#14](https://github.com/jacazul-ai/flow/issues/14) so later pins and the
-benchmark fixture share it.
+nearest-ancestor ticket inheritance. Its fixture comes from
+`silo.Generate` in `internal/silo`
+([#14](https://github.com/jacazul-ai/flow/issues/14)), which describes each
+chain declaratively: tasks, ticket positions, completed and active tasks.
+Later pins and the benchmark fixture use the same generator.
