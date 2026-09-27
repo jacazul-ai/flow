@@ -103,6 +103,23 @@ Red-Green-Refactor loop:
 This loop is a temporary rule for the migration phase. It must not be treated
 as a permanent project-wide process requirement after parity is established.
 
+### Refactoring Existing Behavior: Pin First
+
+When a change restructures behavior that already exists (a query pattern, an
+extraction, a move) instead of adding behavior, there is no valid Red step:
+the current output is the contract. Pin it first with a characterization
+test, then refactor with the pin frozen:
+
+- the fixture is built through `flow.Run` in `t.TempDir()`, shaped around what
+  the refactor reaches;
+- the oracle is the exact output, with only generated UUIDs normalized;
+- the mutation check is mandatory, because the pin is born green;
+- if the golden must change, the behavior changed: stop, split that change
+  into its own task, and record a `DECISION` before updating it.
+
+The full procedure and determinism checks are in
+[docs/characterization-tests.md](docs/characterization-tests.md).
+
 ## Migration Scope
 
 The first compatibility target is the behavior exposed by:

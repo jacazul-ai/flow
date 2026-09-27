@@ -42,6 +42,11 @@ Red -> Green -> Refactor -> Mutation Check -> Parity Review
 
 A green build without meaningful parity coverage is not feature completion.
 
+A refactor of behavior that already exists has no valid Red step. Pin the
+current output first with a characterization test, as described in
+[characterization-tests.md](characterization-tests.md), and keep the pin
+frozen during the refactor.
+
 ## Reference Test Audit
 
 The reference suite contains candidate tests for the following core/runtime
