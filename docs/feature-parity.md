@@ -252,6 +252,7 @@ Follow the `nvimim` CLI pattern:
 ```text
 flow.go                    public boundary: Run, Env, Streams, EnvFromOS
 cmd/jczl-flow/main.go      thin main: builds Env and Streams, maps the exit code
+*_test.go                  contract tests at the module root, through flow.Run
 internal/config/           option resolution and the per-invocation handoff
 internal/cli/              one command type and Execute method per command
 internal/task/             domain types and validation

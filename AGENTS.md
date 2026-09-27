@@ -133,7 +133,9 @@ Preserve these domain contracts unless a design decision explicitly changes
 ## Repository Layout
 
 ```text
-cmd/jczl-flow/    CLI executable and global option parsing
+cmd/jczl-flow/    CLI executable entry point: main.go only
+flow.go           public boundary: Run, Env, Streams, EnvFromOS
+*_test.go         contract tests at the module root, through flow.Run
 internal/cli/      command implementations and command routing
 internal/config/   application-wide options and dispatch integration
 internal/testharness/ isolated test fixtures and fake external commands
@@ -164,9 +166,10 @@ or a behavioral source for workflow semantics. The parent
 
 Adopt the following composition style for `flow`:
 
-- Keep `cmd/jczl-flow/main.go` thin: construct global options, configure the
-  `go-flags` parser, register commands, handle help/version, and map final
-  errors to stderr and exit status.
+- Keep `cmd/jczl-flow/` to `main.go` only: build `Env` and `Streams`, call
+  `flow.Run`, and map its result to the exit status. Tests, helpers, and
+  fixtures never live under `cmd/`; another binary gets its own
+  `cmd/<name>/main.go`.
 - Use an explicit command registry as the source of truth for command names,
   summaries, detailed help, routing, and the visible command tree. Parser tags
   support the registry; they must not define the domain model.
@@ -204,9 +207,10 @@ Adopt the following composition style for `flow`:
   stdin behavior, output shape, and failure conditions in `README.md` and a
   focused `docs/cli.md` when the command surface is large enough to need it.
 - Test command behavior at the narrowest reliable boundary: direct command
-  tests for validation and domain calls, plus subprocess contract tests for
-  routing, help, exit status, stdout/stderr, project isolation, and actionable
-  errors.
+  tests for validation and domain calls, plus contract tests through
+  `flow.Run` for routing, help, exit status, stdout/stderr, project isolation,
+  and actionable errors. They run in process with an explicit `Env` and
+  captured `Streams`; do not build the binary to test a command.
 - Use `t.TempDir()`, controlled environment variables, fake executables, local
   HTTP test servers, and controlled stdin. Tests must not use the developer's
   home directory, real Taskwarrior data, live network services, or production

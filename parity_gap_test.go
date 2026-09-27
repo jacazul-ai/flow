@@ -1,4 +1,4 @@
-package main
+package flow_test
 
 import (
 	"context"
@@ -23,7 +23,6 @@ func createdTaskIDs(output string) []string {
 }
 
 func TestReferenceCommandSurfaceIsRoutable(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
 	for _, command := range []string{
@@ -37,7 +36,7 @@ func TestReferenceCommandSurfaceIsRoutable(t *testing.T) {
 		"cache",
 	} {
 		t.Run(command, func(t *testing.T) {
-			output, err := runFlow(t, binary, harness, "help", command)
+			output, err := runFlow(t, harness, "help", command)
 			if err != nil {
 				t.Fatalf("help %s failed: %v\n%s", command, err, output)
 			}
@@ -49,17 +48,16 @@ func TestReferenceCommandSurfaceIsRoutable(t *testing.T) {
 }
 
 func TestReferenceInitiativeAliasesRemainAvailable(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
 	for _, alias := range []string{"initiative", "ini"} {
-		output, err := runFlow(t, binary, harness, alias, alias+"-plan", "Task")
+		output, err := runFlow(t, harness, alias, alias+"-plan", "Task")
 		if err != nil {
 			t.Fatalf("create plan through %s: %v\n%s", alias, err, output)
 		}
 	}
 
-	output, err := runFlow(t, binary, harness, "inis", "--all")
+	output, err := runFlow(t, harness, "inis", "--all")
 	if err != nil {
 		t.Fatalf("list plans through inis: %v\n%s", err, output)
 	}
@@ -69,7 +67,7 @@ func TestReferenceInitiativeAliasesRemainAvailable(t *testing.T) {
 		}
 	}
 
-	output, err = runFlow(t, binary, harness, "initiatives", "--all", "--force")
+	output, err = runFlow(t, harness, "initiatives", "--all", "--force")
 	if err != nil {
 		t.Fatalf("list plans through initiatives: %v\n%s", err, output)
 	}
@@ -79,10 +77,9 @@ func TestReferenceInitiativeAliasesRemainAvailable(t *testing.T) {
 }
 
 func TestNextUsesReadyTasksWithinInitiative(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
-	output, err := runFlow(t, binary, harness, "plan", "parity", "First", "Second")
+	output, err := runFlow(t, harness, "plan", "parity", "First", "Second")
 	if err != nil {
 		t.Fatalf("create parity plan: %v\n%s", err, output)
 	}
@@ -91,7 +88,7 @@ func TestNextUsesReadyTasksWithinInitiative(t *testing.T) {
 		t.Fatalf("plan output = %q, want two task IDs", output)
 	}
 
-	output, err = runFlow(t, binary, harness, "next", "parity")
+	output, err = runFlow(t, harness, "next", "parity")
 	if err != nil {
 		t.Fatalf("find first ready task: %v\n%s", err, output)
 	}
@@ -104,12 +101,12 @@ func TestNextUsesReadyTasksWithinInitiative(t *testing.T) {
 		{"outcome", ids[0], "First is complete"},
 		{"done", ids[0]},
 	} {
-		if output, err := runFlow(t, binary, harness, args...); err != nil {
+		if output, err := runFlow(t, harness, args...); err != nil {
 			t.Fatalf("run %v: %v\n%s", args, err, output)
 		}
 	}
 
-	output, err = runFlow(t, binary, harness, "next", "parity")
+	output, err = runFlow(t, harness, "next", "parity")
 	if err != nil {
 		t.Fatalf("find second ready task: %v\n%s", err, output)
 	}
@@ -119,10 +116,9 @@ func TestNextUsesReadyTasksWithinInitiative(t *testing.T) {
 }
 
 func TestAmendAndRenamePreserveInitiativeMetadata(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
-	output, err := runFlow(t, binary, harness, "plan", "old-initiative", "Original")
+	output, err := runFlow(t, harness, "plan", "old-initiative", "Original")
 	if err != nil {
 		t.Fatalf("create metadata plan: %v\n%s", err, output)
 	}
@@ -133,7 +129,6 @@ func TestAmendAndRenamePreserveInitiativeMetadata(t *testing.T) {
 
 	output, err = runFlow(
 		t,
-		binary,
 		harness,
 		"amend",
 		ids[0],
@@ -144,12 +139,12 @@ func TestAmendAndRenamePreserveInitiativeMetadata(t *testing.T) {
 		t.Fatalf("amend task metadata: %v\n%s", err, output)
 	}
 
-	output, err = runFlow(t, binary, harness, "rename", "old-initiative", "new-initiative")
+	output, err = runFlow(t, harness, "rename", "old-initiative", "new-initiative")
 	if err != nil {
 		t.Fatalf("rename initiative: %v\n%s", err, output)
 	}
 
-	output, err = runFlow(t, binary, harness, "status", "new-initiative", "--force")
+	output, err = runFlow(t, harness, "status", "new-initiative", "--force")
 	if err != nil {
 		t.Fatalf("read renamed initiative: %v\n%s", err, output)
 	}
@@ -161,20 +156,19 @@ func TestAmendAndRenamePreserveInitiativeMetadata(t *testing.T) {
 }
 
 func TestFocusInterestAndCacheControlsAreAvailable(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
-	if output, err := runFlow(t, binary, harness, "plan", "cache", "Task"); err != nil {
+	if output, err := runFlow(t, harness, "plan", "cache", "Task"); err != nil {
 		t.Fatalf("create cache plan: %v\n%s", err, output)
 	}
-	if output, err := runFlow(t, binary, harness, "focus", "plan", "cache"); err != nil {
+	if output, err := runFlow(t, harness, "focus", "plan", "cache"); err != nil {
 		t.Fatalf("focus cache plan: %v\n%s", err, output)
 	}
-	if output, err := runFlow(t, binary, harness, "focus", "interest", "add", "cache"); err != nil {
+	if output, err := runFlow(t, harness, "focus", "interest", "add", "cache"); err != nil {
 		t.Fatalf("add plan interest: %v\n%s", err, output)
 	}
 
-	output, err := runFlow(t, binary, harness, "focus", "interest", "list")
+	output, err := runFlow(t, harness, "focus", "interest", "list")
 	if err != nil {
 		t.Fatalf("list plan interests: %v\n%s", err, output)
 	}
@@ -182,28 +176,27 @@ func TestFocusInterestAndCacheControlsAreAvailable(t *testing.T) {
 		t.Fatalf("interest list = %q, want cache initiative", output)
 	}
 
-	if output, err := runFlow(t, binary, harness, "status", "cache"); err != nil {
+	if output, err := runFlow(t, harness, "status", "cache"); err != nil {
 		t.Fatalf("prime status cache: %v\n%s", err, output)
 	}
-	output, err = runFlow(t, binary, harness, "cache", "info")
+	output, err = runFlow(t, harness, "cache", "info")
 	if err != nil || !strings.Contains(output, "file") {
 		t.Fatalf("cache info = %q, err %v; want file count", output, err)
 	}
 
-	if output, err := runFlow(t, binary, harness, "cache", "clear", "status"); err != nil {
+	if output, err := runFlow(t, harness, "cache", "clear", "status"); err != nil {
 		t.Fatalf("clear status cache: %v\n%s", err, output)
 	}
-	output, err = runFlow(t, binary, harness, "status", "cache")
+	output, err = runFlow(t, harness, "status", "cache")
 	if err != nil || strings.Contains(output, "[cached]") {
 		t.Fatalf("status after cache clear = %q, err %v; want fresh output", output, err)
 	}
 }
 
 func TestDependencyCommandsPreserveReadySelection(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
-	output, err := runFlow(t, binary, harness, "plan", "dependencies", "First", "Second")
+	output, err := runFlow(t, harness, "plan", "dependencies", "First", "Second")
 	if err != nil {
 		t.Fatalf("create dependency plan: %v\n%s", err, output)
 	}
@@ -212,10 +205,10 @@ func TestDependencyCommandsPreserveReadySelection(t *testing.T) {
 		t.Fatalf("plan output = %q, want two task IDs", output)
 	}
 
-	if output, err := runFlow(t, binary, harness, "unblock", ids[1], ids[0]); err != nil {
+	if output, err := runFlow(t, harness, "unblock", ids[1], ids[0]); err != nil {
 		t.Fatalf("remove dependency: %v\n%s", err, output)
 	}
-	output, err = runFlow(t, binary, harness, "next", "dependencies")
+	output, err = runFlow(t, harness, "next", "dependencies")
 	if err != nil {
 		t.Fatalf("list unblocked tasks: %v\n%s", err, output)
 	}
@@ -223,10 +216,10 @@ func TestDependencyCommandsPreserveReadySelection(t *testing.T) {
 		t.Fatalf("unblocked next output = %q, want both tasks", output)
 	}
 
-	if output, err := runFlow(t, binary, harness, "block", ids[1], ids[0]); err != nil {
+	if output, err := runFlow(t, harness, "block", ids[1], ids[0]); err != nil {
 		t.Fatalf("add dependency: %v\n%s", err, output)
 	}
-	output, err = runFlow(t, binary, harness, "next", "dependencies")
+	output, err = runFlow(t, harness, "next", "dependencies")
 	if err != nil {
 		t.Fatalf("list blocked tasks: %v\n%s", err, output)
 	}
@@ -236,10 +229,9 @@ func TestDependencyCommandsPreserveReadySelection(t *testing.T) {
 }
 
 func TestDashboardIncludesSessionAndRecentlyClosedContext(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
-	output, err := runFlow(t, binary, harness, "plan", "dashboard", "Active")
+	output, err := runFlow(t, harness, "plan", "dashboard", "Active")
 	if err != nil {
 		t.Fatalf("create dashboard plan: %v\n%s", err, output)
 	}
@@ -251,12 +243,12 @@ func TestDashboardIncludesSessionAndRecentlyClosedContext(t *testing.T) {
 		{"focus", "task", activeIDs[0]},
 		{"focus", "interest", "add", "dashboard"},
 	} {
-		if output, err := runFlow(t, binary, harness, args...); err != nil {
+		if output, err := runFlow(t, harness, args...); err != nil {
 			t.Fatalf("run %v: %v\n%s", args, err, output)
 		}
 	}
 
-	output, err = runFlow(t, binary, harness, "ponder", "--force")
+	output, err = runFlow(t, harness, "ponder", "--force")
 	if err != nil {
 		t.Fatalf("render active dashboard: %v\n%s", err, output)
 	}
@@ -272,7 +264,7 @@ func TestDashboardIncludesSessionAndRecentlyClosedContext(t *testing.T) {
 		}
 	}
 
-	output, err = runFlow(t, binary, harness, "plan", "closed", "Closed task")
+	output, err = runFlow(t, harness, "plan", "closed", "Closed task")
 	if err != nil {
 		t.Fatalf("create closed plan: %v\n%s", err, output)
 	}
@@ -285,12 +277,12 @@ func TestDashboardIncludesSessionAndRecentlyClosedContext(t *testing.T) {
 		{"outcome", closedIDs[0], "Closed outcome"},
 		{"done", closedIDs[0]},
 	} {
-		if output, err := runFlow(t, binary, harness, args...); err != nil {
+		if output, err := runFlow(t, harness, args...); err != nil {
 			t.Fatalf("run %v: %v\n%s", args, err, output)
 		}
 	}
 
-	output, err = runFlow(t, binary, harness, "ponder", "--force")
+	output, err = runFlow(t, harness, "ponder", "--force")
 	if err != nil {
 		t.Fatalf("render dashboard history: %v\n%s", err, output)
 	}
@@ -302,16 +294,15 @@ func TestDashboardIncludesSessionAndRecentlyClosedContext(t *testing.T) {
 }
 
 func TestRoadmapSupportsReferenceAddAndShipAliases(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
-	if output, err := runFlow(t, binary, harness, "plan", "roadmap-target", "Task"); err != nil {
+	if output, err := runFlow(t, harness, "plan", "roadmap-target", "Task"); err != nil {
 		t.Fatalf("create roadmap target: %v\n%s", err, output)
 	}
-	if output, err := runFlow(t, binary, harness, "roadmap", "init"); err != nil {
+	if output, err := runFlow(t, harness, "roadmap", "init"); err != nil {
 		t.Fatalf("initialize roadmap: %v\n%s", err, output)
 	}
-	output, err := runFlow(t, binary, harness, "roadmap", "add", "next", "Positional phase")
+	output, err := runFlow(t, harness, "roadmap", "add", "next", "Positional phase")
 	if err != nil {
 		t.Fatalf("add positional roadmap phase: %v\n%s", err, output)
 	}
@@ -320,26 +311,25 @@ func TestRoadmapSupportsReferenceAddAndShipAliases(t *testing.T) {
 		t.Fatalf("roadmap add output = %q, want entry ID", output)
 	}
 
-	output, err = runFlow(t, binary, harness, "ship", match[1])
+	output, err = runFlow(t, harness, "ship", match[1])
 	if err != nil {
 		t.Fatalf("ship roadmap phase through alias: %v\n%s", err, output)
 	}
-	output, err = runFlow(t, binary, harness, "roadmap", "show")
+	output, err = runFlow(t, harness, "roadmap", "show")
 	if err != nil || !strings.Contains(output, "[shipped] Positional phase") {
 		t.Fatalf("roadmap after alias ship = %q, err %v; want shipped phase", output, err)
 	}
 }
 
 func TestPlansPreserveFiltersAndListOutput(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
 	for _, plan := range []string{"open-plan", "closed-plan"} {
-		if output, err := runFlow(t, binary, harness, "plan", plan, "Task"); err != nil {
+		if output, err := runFlow(t, harness, "plan", plan, "Task"); err != nil {
 			t.Fatalf("create %s: %v\n%s", plan, err, output)
 		}
 	}
-	planOutput, err := runFlow(t, binary, harness, "plan", "closed-plan-2", "Task")
+	planOutput, err := runFlow(t, harness, "plan", "closed-plan-2", "Task")
 	if err != nil {
 		t.Fatalf("create second closed plan: %v\n%s", err, planOutput)
 	}
@@ -352,12 +342,12 @@ func TestPlansPreserveFiltersAndListOutput(t *testing.T) {
 		{"outcome", ids[0], "Closed"},
 		{"done", ids[0]},
 	} {
-		if output, err := runFlow(t, binary, harness, args...); err != nil {
+		if output, err := runFlow(t, harness, args...); err != nil {
 			t.Fatalf("run %v: %v\n%s", args, err, output)
 		}
 	}
 
-	output, err := runFlow(t, binary, harness, "plans", "--force")
+	output, err := runFlow(t, harness, "plans", "--force")
 	if err != nil {
 		t.Fatalf("list active plans: %v\n%s", err, output)
 	}
@@ -365,7 +355,7 @@ func TestPlansPreserveFiltersAndListOutput(t *testing.T) {
 		t.Fatalf("active plans output = %q, want list-only active output", output)
 	}
 
-	output, err = runFlow(t, binary, harness, "plans", "--closed", "--force")
+	output, err = runFlow(t, harness, "plans", "--closed", "--force")
 	if err != nil {
 		t.Fatalf("list closed plans: %v\n%s", err, output)
 	}
@@ -373,7 +363,7 @@ func TestPlansPreserveFiltersAndListOutput(t *testing.T) {
 		t.Fatalf("closed plans output = %q, want only closed plan", output)
 	}
 
-	output, err = runFlow(t, binary, harness, "plans", "--all", "--force")
+	output, err = runFlow(t, harness, "plans", "--all", "--force")
 	if err != nil {
 		t.Fatalf("list all plans: %v\n%s", err, output)
 	}
@@ -383,21 +373,20 @@ func TestPlansPreserveFiltersAndListOutput(t *testing.T) {
 }
 
 func TestFocusCompatibilityAliasesAndDefaultShow(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
-	if output, err := runFlow(t, binary, harness, "plan", "focus-alias", "Task"); err != nil {
+	if output, err := runFlow(t, harness, "plan", "focus-alias", "Task"); err != nil {
 		t.Fatalf("create focus alias plan: %v\n%s", err, output)
 	}
 	for _, args := range [][]string{
 		{"focus", "ini", "focus-alias"},
 		{"focus", "focus-alias"},
 	} {
-		if output, err := runFlow(t, binary, harness, args...); err != nil {
+		if output, err := runFlow(t, harness, args...); err != nil {
 			t.Fatalf("run %v: %v\n%s", args, err, output)
 		}
 	}
-	output, err := runFlow(t, binary, harness, "focus")
+	output, err := runFlow(t, harness, "focus")
 	if err != nil {
 		t.Fatalf("show default focus: %v\n%s", err, output)
 	}
@@ -409,19 +398,18 @@ func TestFocusCompatibilityAliasesAndDefaultShow(t *testing.T) {
 }
 
 func TestPlansCacheInvalidatesAfterInitiativeCreation(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
-	if output, err := runFlow(t, binary, harness, "plan", "first-plan", "First"); err != nil {
+	if output, err := runFlow(t, harness, "plan", "first-plan", "First"); err != nil {
 		t.Fatalf("create first plan: %v\n%s", err, output)
 	}
-	if output, err := runFlow(t, binary, harness, "plans"); err != nil {
+	if output, err := runFlow(t, harness, "plans"); err != nil {
 		t.Fatalf("prime plans cache: %v\n%s", err, output)
 	}
-	if output, err := runFlow(t, binary, harness, "plan", "second-plan", "Second"); err != nil {
+	if output, err := runFlow(t, harness, "plan", "second-plan", "Second"); err != nil {
 		t.Fatalf("create second plan: %v\n%s", err, output)
 	}
-	output, err := runFlow(t, binary, harness, "plans")
+	output, err := runFlow(t, harness, "plans")
 	if err != nil {
 		t.Fatalf("read refreshed plans: %v\n%s", err, output)
 	}
@@ -431,13 +419,12 @@ func TestPlansCacheInvalidatesAfterInitiativeCreation(t *testing.T) {
 }
 
 func TestPonderTableOutputMatchesReferenceColumns(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
-	if output, err := runFlow(t, binary, harness, "plan", "table-plan", "Task"); err != nil {
+	if output, err := runFlow(t, harness, "plan", "table-plan", "Task"); err != nil {
 		t.Fatalf("create table plan: %v\n%s", err, output)
 	}
-	output, err := runFlow(t, binary, harness, "ponder", "--table", "--force")
+	output, err := runFlow(t, harness, "ponder", "--table", "--force")
 	if err != nil {
 		t.Fatalf("render table dashboard: %v\n%s", err, output)
 	}
@@ -447,7 +434,6 @@ func TestPonderTableOutputMatchesReferenceColumns(t *testing.T) {
 }
 
 func TestFocusPlanNeverSelectsBlockedTask(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 	ctx := context.Background()
 	store, err := sqlite.Open(ctx, harness.DatabasePath)
@@ -488,7 +474,7 @@ func TestFocusPlanNeverSelectsBlockedTask(t *testing.T) {
 		t.Fatalf("close focus safety database: %v", err)
 	}
 
-	output, err := runFlow(t, binary, harness, "focus", "plan", "focus-safety")
+	output, err := runFlow(t, harness, "focus", "plan", "focus-safety")
 	if err != nil {
 		t.Fatalf("focus safety plan: %v\n%s", err, output)
 	}

@@ -1,4 +1,4 @@
-package main
+package flow_test
 
 import (
 	"os"
@@ -10,7 +10,6 @@ import (
 )
 
 func TestMigrationDryRunDoesNotCreateTargetDatabase(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project-alpha", "session")
 	source := harness.WriteFile(t, "source.json", []byte(`[
   {
@@ -22,7 +21,7 @@ func TestMigrationDryRunDoesNotCreateTargetDatabase(t *testing.T) {
   }
 ]`))
 
-	output, err := runFlow(t, binary, harness, "migrate", "taskwarrior", "--source", source)
+	output, err := runFlow(t, harness, "migrate", "taskwarrior", "--source", source)
 	if err != nil {
 		t.Fatalf("migration dry-run: %v\n%s", err, output)
 	}
@@ -35,7 +34,6 @@ func TestMigrationDryRunDoesNotCreateTargetDatabase(t *testing.T) {
 }
 
 func TestMigrationApplyIsRepeatableAndPreservesNativeState(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project-alpha", "session")
 	source := harness.WriteFile(t, "source.json", []byte(`[
   {
@@ -55,7 +53,7 @@ func TestMigrationApplyIsRepeatableAndPreservesNativeState(t *testing.T) {
 		{"migrate", "taskwarrior", "--source", source, "--apply"},
 		{"migrate", "taskwarrior", "--source", source, "--apply"},
 	} {
-		output, err := runFlow(t, binary, harness, args...)
+		output, err := runFlow(t, harness, args...)
 		if err != nil {
 			t.Fatalf("run %v: %v\n%s", args, err, output)
 		}
@@ -64,7 +62,7 @@ func TestMigrationApplyIsRepeatableAndPreservesNativeState(t *testing.T) {
 		}
 	}
 
-	output, err := runFlow(t, binary, harness, "status", "parity", "--force")
+	output, err := runFlow(t, harness, "status", "parity", "--force")
 	if err != nil {
 		t.Fatalf("read imported state: %v\n%s", err, output)
 	}
@@ -73,14 +71,13 @@ func TestMigrationApplyIsRepeatableAndPreservesNativeState(t *testing.T) {
 			t.Fatalf("imported status = %q, want %s", output, expected)
 		}
 	}
-	output, err = runFlow(t, binary, harness, "notes", "11111111-1111-4111-8111-111111111111")
+	output, err = runFlow(t, harness, "notes", "11111111-1111-4111-8111-111111111111")
 	if err != nil || !strings.Contains(output, "DECISION: Keep UUID") {
 		t.Fatalf("imported notes = %q, err %v; want one decision", output, err)
 	}
 }
 
 func TestMigrationIsolatedByProject(t *testing.T) {
-	binary := buildFlow(t)
 	first := testharness.NewHarness(t, "project-alpha", "session")
 	second := testharness.NewHarness(t, "project-beta", "session")
 	source := first.WriteFile(t, "source.json", []byte(`[
@@ -92,15 +89,15 @@ func TestMigrationIsolatedByProject(t *testing.T) {
   }
 ]`))
 
-	output, err := runFlow(t, binary, first, "migrate", "taskwarrior", "--source", source, "--apply")
+	output, err := runFlow(t, first, "migrate", "taskwarrior", "--source", source, "--apply")
 	if err != nil {
 		t.Fatalf("apply alpha migration: %v\n%s", err, output)
 	}
-	output, err = runFlow(t, binary, first, "status", "private", "--force")
+	output, err = runFlow(t, first, "status", "private", "--force")
 	if err != nil || !strings.Contains(output, "Alpha imported task") {
 		t.Fatalf("alpha status = %q, err %v; want imported task", output, err)
 	}
-	output, err = runFlow(t, binary, second, "status", "--force")
+	output, err = runFlow(t, second, "status", "--force")
 	if err != nil {
 		t.Fatalf("read beta status: %v\n%s", err, output)
 	}
@@ -110,7 +107,6 @@ func TestMigrationIsolatedByProject(t *testing.T) {
 }
 
 func TestMigrationTransfersFocusAndSessionNote(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project-alpha", "global")
 	source := harness.WriteFile(t, "source.json", []byte(`[
   {
@@ -136,26 +132,25 @@ func TestMigrationTransfersFocusAndSessionNote(t *testing.T) {
 		t.Fatalf("write legacy session note: %v", err)
 	}
 
-	output, err := runFlow(t, binary, harness, "migrate", "taskwarrior", "--source", source, "--legacy-data-dir", legacyDir, "--apply")
+	output, err := runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--legacy-data-dir", legacyDir, "--apply")
 	if err != nil {
 		t.Fatalf("apply focus migration: %v\n%s", err, output)
 	}
-	output, err = runFlow(t, binary, harness, "focus")
+	output, err = runFlow(t, harness, "focus")
 	if err != nil || !strings.Contains(output, "Initiative: parity") || !strings.Contains(output, "Task: 11111111") {
 		t.Fatalf("migrated focus = %q, err %v; want parity anchor", output, err)
 	}
-	output, err = runFlow(t, binary, harness, "session", "resume")
+	output, err = runFlow(t, harness, "session", "resume")
 	if err != nil || !strings.Contains(output, "Resume imported task.") {
 		t.Fatalf("migrated session note = %q, err %v; want handoff note", output, err)
 	}
 }
 
 func TestMigrationRejectsConflictingModes(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project-alpha", "session")
 	source := harness.WriteFile(t, "source.json", []byte("[]"))
 
-	output, err := runFlow(t, binary, harness, "migrate", "taskwarrior", "--source", source, "--apply", "--dry-run")
+	output, err := runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--apply", "--dry-run")
 	if err == nil || !strings.Contains(output, "cannot be combined") || !strings.Contains(output, "ACTION:") {
 		t.Fatalf("conflicting migration flags = %q, err %v; want actionable error", output, err)
 	}

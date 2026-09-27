@@ -1,4 +1,4 @@
-package main
+package flow_test
 
 import (
 	"regexp"
@@ -9,10 +9,9 @@ import (
 )
 
 func TestOnboardPresentsHandoffBeforeFocusAndAcknowledgesIt(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
-	planOutput, err := runFlow(t, binary, harness, "plan", "parity", "First")
+	planOutput, err := runFlow(t, harness, "plan", "parity", "First")
 	if err != nil {
 		t.Fatalf("create plan: %v\n%s", err, planOutput)
 	}
@@ -20,14 +19,14 @@ func TestOnboardPresentsHandoffBeforeFocusAndAcknowledgesIt(t *testing.T) {
 	if len(match) != 2 {
 		t.Fatalf("plan output = %q, want task UUID", planOutput)
 	}
-	if output, err := runFlow(t, binary, harness, "focus", "task", match[1]); err != nil {
+	if output, err := runFlow(t, harness, "focus", "task", match[1]); err != nil {
 		t.Fatalf("focus task: %v\n%s", err, output)
 	}
-	if output, err := runFlow(t, binary, harness, "session", "dump"); err != nil {
+	if output, err := runFlow(t, harness, "session", "dump"); err != nil {
 		t.Fatalf("session dump: %v\n%s", err, output)
 	}
 
-	output, err := runFlow(t, binary, harness, "onboard")
+	output, err := runFlow(t, harness, "onboard")
 	if err != nil {
 		t.Fatalf("onboard: %v\n%s", err, output)
 	}
@@ -40,7 +39,7 @@ func TestOnboardPresentsHandoffBeforeFocusAndAcknowledgesIt(t *testing.T) {
 		t.Fatalf("onboard rendered focus before handoff: %q", output)
 	}
 
-	resume, err := runFlow(t, binary, harness, "session", "resume")
+	resume, err := runFlow(t, harness, "session", "resume")
 	if err != nil {
 		t.Fatalf("resume after onboard: %v\n%s", err, resume)
 	}
@@ -50,10 +49,9 @@ func TestOnboardPresentsHandoffBeforeFocusAndAcknowledgesIt(t *testing.T) {
 }
 
 func TestOnboardUsesPonderWhenFocusIsEmpty(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
-	output, err := runFlow(t, binary, harness, "onboard")
+	output, err := runFlow(t, harness, "onboard")
 	if err != nil {
 		t.Fatalf("onboard without focus: %v\n%s", err, output)
 	}

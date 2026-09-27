@@ -1,4 +1,4 @@
-package main
+package flow_test
 
 import (
 	"regexp"
@@ -9,9 +9,8 @@ import (
 )
 
 func TestRootHelpGroupsCanonicalCommandsByIntent(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
-	output, err := runFlow(t, binary, harness, "help")
+	output, err := runFlow(t, harness, "help")
 	if err != nil {
 		t.Fatalf("root help: %v\n%s", err, output)
 	}
@@ -98,14 +97,13 @@ func TestRootHelpGroupsCanonicalCommandsByIntent(t *testing.T) {
 }
 
 func TestEmptyInvocationMatchesHelpCommandExactly(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 
-	expected, err := runFlow(t, binary, harness, "help")
+	expected, err := runFlow(t, harness, "help")
 	if err != nil {
 		t.Fatalf("explicit help: %v\n%s", err, expected)
 	}
-	actual, err := runFlow(t, binary, harness)
+	actual, err := runFlow(t, harness)
 	if err != nil {
 		t.Fatalf("empty invocation: %v\n%s", err, actual)
 	}
@@ -115,10 +113,9 @@ func TestEmptyInvocationMatchesHelpCommandExactly(t *testing.T) {
 }
 
 func TestHelpAliasesRemainDetailedAndRoutable(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
 	for _, alias := range []string{"initiative", "ini", "inis", "initiatives", "ship"} {
-		output, err := runFlow(t, binary, harness, "help", alias)
+		output, err := runFlow(t, harness, "help", alias)
 		if err != nil {
 			t.Fatalf("help %s: %v\n%s", alias, err, output)
 		}

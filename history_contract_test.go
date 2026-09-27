@@ -1,4 +1,4 @@
-package main
+package flow_test
 
 import (
 	"context"
@@ -10,9 +10,8 @@ import (
 )
 
 func TestHistoryReportsTaskAndInitiativeEvents(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
-	output, err := runFlow(t, binary, harness, "plan", "history-plan", "History task")
+	output, err := runFlow(t, harness, "plan", "history-plan", "History task")
 	if err != nil {
 		t.Fatalf("create history plan: %v\n%s", err, output)
 	}
@@ -21,7 +20,7 @@ func TestHistoryReportsTaskAndInitiativeEvents(t *testing.T) {
 		t.Fatalf("plan output = %q, want one task ID", output)
 	}
 
-	output, err = runFlow(t, binary, harness, "history", "task", ids[0])
+	output, err = runFlow(t, harness, "history", "task", ids[0])
 	if err != nil {
 		t.Fatalf("read task history: %v\n%s", err, output)
 	}
@@ -31,7 +30,7 @@ func TestHistoryReportsTaskAndInitiativeEvents(t *testing.T) {
 		}
 	}
 
-	output, err = runFlow(t, binary, harness, "history", "initiative", "history-plan")
+	output, err = runFlow(t, harness, "history", "initiative", "history-plan")
 	if err != nil {
 		t.Fatalf("read initiative history: %v\n%s", err, output)
 	}
@@ -41,9 +40,8 @@ func TestHistoryReportsTaskAndInitiativeEvents(t *testing.T) {
 }
 
 func TestHistoryRejectsImplicitTaskScope(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
-	output, err := runFlow(t, binary, harness, "plan", "history-plan", "History task")
+	output, err := runFlow(t, harness, "plan", "history-plan", "History task")
 	if err != nil {
 		t.Fatalf("create history plan: %v\n%s", err, output)
 	}
@@ -52,16 +50,15 @@ func TestHistoryRejectsImplicitTaskScope(t *testing.T) {
 		t.Fatalf("plan output = %q, want one task ID", output)
 	}
 
-	output, err = runFlow(t, binary, harness, "history", ids[0])
+	output, err = runFlow(t, harness, "history", ids[0])
 	if err == nil || !strings.Contains(output, "history task") || !strings.Contains(output, "ACTION:") {
 		t.Fatalf("implicit task history = %q, err %v; want explicit-scope guidance", output, err)
 	}
 }
 
 func TestHistoryResolvesInitiativeAliasesAndReferences(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
-	output, err := runFlow(t, binary, harness, "plan", "history-plan", "History task")
+	output, err := runFlow(t, harness, "plan", "history-plan", "History task")
 	if err != nil {
 		t.Fatalf("create history plan: %v\n%s", err, output)
 	}
@@ -69,7 +66,7 @@ func TestHistoryResolvesInitiativeAliasesAndReferences(t *testing.T) {
 	shortID := initiativeID[:8]
 	for _, scope := range []string{"initiative", "ini", "plan"} {
 		for _, reference := range []string{"history-plan", initiativeID, shortID} {
-			output, err = runFlow(t, binary, harness, "history", scope, reference)
+			output, err = runFlow(t, harness, "history", scope, reference)
 			if err != nil {
 				t.Fatalf("read initiative history with %s %s: %v\n%s", scope, reference, err, output)
 			}
@@ -83,15 +80,14 @@ func TestHistoryResolvesInitiativeAliasesAndReferences(t *testing.T) {
 }
 
 func TestInitiativeListingsShowShortUUIDs(t *testing.T) {
-	binary := buildFlow(t)
 	harness := testharness.NewHarness(t, "project", "session")
-	output, err := runFlow(t, binary, harness, "plan", "listed-plan", "Listed task")
+	output, err := runFlow(t, harness, "plan", "listed-plan", "Listed task")
 	if err != nil {
 		t.Fatalf("create listed plan: %v\n%s", err, output)
 	}
 	shortID := initiativeIDForTest(t, harness, "listed-plan")[:8]
 	for _, command := range []string{"plans", "inis", "initiatives"} {
-		output, err = runFlow(t, binary, harness, command, "--force")
+		output, err = runFlow(t, harness, command, "--force")
 		if err != nil {
 			t.Fatalf("list initiatives through %s: %v\n%s", command, err, output)
 		}
