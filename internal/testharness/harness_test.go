@@ -17,9 +17,6 @@ func TestNewHarnessProvidesDistinctFixtureRoots(t *testing.T) {
 	if first.Root == second.Root {
 		t.Fatal("harnesses must use different roots")
 	}
-	if first.TaskData == second.TaskData {
-		t.Fatal("harnesses must use different task data directories")
-	}
 
 	firstData, err := os.ReadFile(firstFile)
 	if err != nil {

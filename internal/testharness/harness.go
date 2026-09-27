@@ -15,14 +15,12 @@ type Harness struct {
 	Root         string
 	ProjectID    string
 	SessionID    string
-	TaskData     string
-	CacheDir     string
 	BinDir       string
 	DatabasePath string
 	Environment  []string
 }
 
-// NewHarness creates isolated project, session, cache, and executable state.
+// NewHarness creates isolated project, session, database, and executable state.
 func NewHarness(t *testing.T, projectID string, sessionID string) *Harness {
 	t.Helper()
 
@@ -31,15 +29,11 @@ func NewHarness(t *testing.T, projectID string, sessionID string) *Harness {
 		Root:         root,
 		ProjectID:    projectID,
 		SessionID:    sessionID,
-		TaskData:     filepath.Join(root, "taskdata"),
-		CacheDir:     filepath.Join(root, "cache"),
 		BinDir:       filepath.Join(root, "bin"),
 		DatabasePath: filepath.Join(root, "database", "flow.sqlite3"),
 	}
 
 	for _, path := range []string{
-		harness.TaskData,
-		harness.CacheDir,
 		harness.BinDir,
 		filepath.Dir(harness.DatabasePath),
 	} {
@@ -50,8 +44,6 @@ func NewHarness(t *testing.T, projectID string, sessionID string) *Harness {
 
 	t.Setenv("HOME", root)
 	t.Setenv("PROJECT_ID", projectID)
-	t.Setenv("TASKDATA", harness.TaskData)
-	t.Setenv("JACAZUL_FLOW_CACHE_DIR", harness.CacheDir)
 	t.Setenv("JACAZUL_FLOW_DATABASE_PATH", harness.DatabasePath)
 	t.Setenv("JACAZUL_SESSION_ID", sessionID)
 	t.Setenv("JACAZUL_HOME", filepath.Join(root, ".jacazul-ai"))
@@ -59,8 +51,6 @@ func NewHarness(t *testing.T, projectID string, sessionID string) *Harness {
 	harness.Environment = os.Environ()
 	for _, entry := range []string{
 		"PROJECT_ID=" + projectID,
-		"TASKDATA=" + harness.TaskData,
-		"JACAZUL_FLOW_CACHE_DIR=" + harness.CacheDir,
 		"JACAZUL_FLOW_DATABASE_PATH=" + harness.DatabasePath,
 		"JACAZUL_SESSION_ID=" + sessionID,
 		"JACAZUL_HOME=" + filepath.Join(root, ".jacazul-ai"),
