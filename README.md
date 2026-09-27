@@ -101,6 +101,10 @@ The local engine should also be designed so it can connect to a centralized serv
   workflow navigation examples.
 - [Output formats](docs/output-formats.md): the text, JSON, JSONL and XML
   contracts, how a format is selected, and which commands offer one.
+- [Characterization tests](docs/characterization-tests.md): the pin-first
+  method for refactoring existing behavior.
+- [Dates and timestamps](docs/dates.md): UTC storage, text ordering, local
+  display, and the Taskwarrior date model.
 - [SQLite driver benchmark](docs/sqlite-driver-benchmark.md): pure-Go versus
   cgo driver cost per command, and why the query pattern matters more.
 - [Silos](docs/silo.md): generated workflow data for tests, benchmarks and
