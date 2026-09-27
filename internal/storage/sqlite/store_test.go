@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/jacazul-ai/flow/internal/storage/sqlite"
@@ -309,4 +311,57 @@ func openStore(t *testing.T, path string) *sqlite.Store {
 		}
 	})
 	return store
+}
+
+// TestListTasksDependenciesMatchGetTask pins ListTasks dependencies to the
+// single-task path: every listed task carries the same dependencies GetTask
+// loads, sorted by ID, with nil for none, with and without an initiative
+// filter.
+func TestListTasksDependenciesMatchGetTask(t *testing.T) {
+	ctx := context.Background()
+	store := openStore(t, filepath.Join(t.TempDir(), "flow.sqlite3"))
+
+	create := func(initiativeID string, description string, dependencies ...string) task.Task {
+		t.Helper()
+		created, err := store.CreateTask(ctx, task.CreateTaskInput{
+			InitiativeID: initiativeID,
+			Description:  description,
+			Dependencies: dependencies,
+		})
+		if err != nil {
+			t.Fatalf("create %s: %v", description, err)
+		}
+		return created
+	}
+	var initiatives []string
+	for _, name := range []string{"left", "right"} {
+		initiative, err := store.GetOrCreateInitiative(ctx, task.CreateInitiativeInput{ProjectID: "project", Name: name})
+		if err != nil {
+			t.Fatalf("create initiative %s: %v", name, err)
+		}
+		initiatives = append(initiatives, initiative.ID)
+	}
+	first := create(initiatives[0], "first")
+	second := create(initiatives[0], "second")
+	create(initiatives[0], "joined", second.ID, first.ID)
+	create(initiatives[1], "other")
+
+	for _, filter := range []string{"", "left", "right"} {
+		tasks, err := store.ListTasks(ctx, "project", filter)
+		if err != nil {
+			t.Fatalf("list tasks %q: %v", filter, err)
+		}
+		for _, listed := range tasks {
+			loaded, err := store.GetTask(ctx, listed.ID)
+			if err != nil {
+				t.Fatalf("get task %s: %v", listed.Description, err)
+			}
+			if !reflect.DeepEqual(listed.Dependencies, loaded.Dependencies) {
+				t.Fatalf("filter %q: %s dependencies = %#v, GetTask = %#v", filter, listed.Description, listed.Dependencies, loaded.Dependencies)
+			}
+			if listed.Description == "joined" && (len(listed.Dependencies) != 2 || !sort.StringsAreSorted(listed.Dependencies)) {
+				t.Fatalf("joined dependencies = %#v, want both, sorted by ID", listed.Dependencies)
+			}
+		}
+	}
 }
