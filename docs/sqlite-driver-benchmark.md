@@ -16,31 +16,24 @@ the numbers and take the question to a separate design decision.
 
 ## Verdict
 
-**Keep `modernc.org/sqlite`. The driver is not the problem worth solving
-first; the query pattern is.**
+**Keep `modernc.org/sqlite`. The query pattern was the first bottleneck, and
+it is now bounded.**
 
-- Per operation, the cgo driver is 1.5x to 2.3x faster in process
-  (geomean -45%). That matches public benchmarks, and it is real.
-- For the commands an agent runs most, the cached `status` and `ponder`
-  paths, `help`, and single-task reads and writes, the end-to-end
-  difference is between 0.1 ms and 10 ms, inside the decision threshold.
-- The threshold is crossed only by uncached dashboards: `plans --force`
-  (+19 ms), `ponder --force` (+37 ms) and `status --force` (+628 ms). Those
-  commands issue hundreds to thousands of queries because task dependencies
-  are loaded one task at a time. The driver multiplies a per-query cost; the
-  query count is what makes that cost visible.
-- `status --force` takes 0.7 s even with the cgo driver on a 400-task
-  project. Switching drivers halves it and leaves it slow. Removing the
-  per-task queries helps both drivers and grows with the project.
+- The baseline cgo driver was 1.5x to 2.3x faster in process (geomean -45%),
+  but uncached dashboards amplified that per-query difference.
+- The post-fix rerun reduced the 400-task `status --force` median from
+  1335.71 ms to 50.45 ms on `modernc`, with one task-list query and one
+  dependency query instead of 4600 dependency queries.
+- Across `status`, `plans`, `ponder`, and `next`, the post-fix modernc versus
+  mattn median delta stayed below 10 ms on every path. The driver question is
+  closed for this workload; static, cgo-free builds still win operationally.
 - Against the reference `tw-flow` on a fixture of the same shape,
-  `jczl-flow` on the pure-Go driver is 2x to 173x faster per command. The
-  driver choice is noise next to that.
+  `jczl-flow` remains 2x to 173x faster per command. The query-bound fix
+  removes the Go port's quadratic ticket-resolution artifact.
 
-By the agreed rule the threshold was crossed, so this is recorded as a
-decision input rather than a silent pass. The recommendation is to fix the
-access pattern first, then re-measure: if the driver gap per command falls
-under the threshold once the query count is bounded, the pure-Go driver
-stays with no further cost.
+The benchmark records the driver result rather than silently discarding it:
+keep `modernc.org/sqlite` and revisit the choice only with a new workload or
+an explicit driver decision.
 
 ## Environment
 
@@ -74,7 +67,7 @@ Both builds rendered byte-identical output for `status`, `plans`, `next`,
 `ponder --force` and `context` on this fixture, so the comparison measures
 the same work.
 
-## End-to-end wall time
+## Baseline end-to-end wall time (before query-bound changes)
 
 Each command ran as a real process with a controlled environment
 (`PROJECT_ID`, `JACAZUL_SESSION_ID`, `JACAZUL_FLOW_DATABASE_PATH`,
@@ -103,7 +96,23 @@ A first run measured `status` and `plans` without `--force` and reported
 about 5 ms for both. Those numbers were the cache path, not the query path.
 The table above separates the two explicitly.
 
-## In-process store cost
+## Post-fix end-to-end wall time
+
+The query-bound rerun was performed on 2026-09-29 at commit `200f125`,
+using the same 20-initiative, 400-task fixture. The modernc and mattn
+binaries were interleaved for 100 measured runs after five warm-ups. Timing
+used a nanosecond wall clock around each isolated process invocation.
+
+| Command | modernc median | mattn median | Delta | modernc p95 | mattn p95 |
+|---|---:|---:|---:|---:|---:|
+| `status --force` | 50.45 ms | 46.38 ms | +4.07 ms | 61.39 ms | 54.29 ms |
+| `plans --force` | 51.16 ms | 49.29 ms | +1.87 ms | 57.42 ms | 53.62 ms |
+| `ponder --force` | 52.02 ms | 49.57 ms | +2.45 ms | 79.62 ms | 76.78 ms |
+| `next` | 13.29 ms | 10.05 ms | +3.24 ms | 23.42 ms | 20.35 ms |
+
+Outputs were byte-identical across both drivers for every command.
+
+## Baseline in-process store cost
 
 `go test -bench` against the same fixture, copied into a temporary
 directory per benchmark, `-benchmem -count 10`, compared with `benchstat`.
@@ -123,7 +132,22 @@ Every difference is significant at `p=0.000`.
 Allocations were within about 10% of each other; neither driver wins on
 memory in a way that matters here.
 
-## Where the time goes
+## Post-fix in-process store cost
+
+The in-process rerun used `go test -benchmem -count=10` and `benchstat` on
+copies of the same fixture. The benchmark isolates store calls after opening
+the database.
+
+| Benchmark | modernc | mattn | Change |
+|---|---:|---:|---:|
+| `ListInitiatives` (fixture) | 9.695 ms | 5.649 ms | -41.73% |
+| `ListTasks` (fixture) | 7.807 ms | 4.707 ms | -39.71% |
+| geomean | 8.700 ms | 5.157 ms | -40.73% |
+
+Allocations remained effectively equal: 1.392 MiB versus 1.392 MiB for
+`ListInitiatives`, and 725.9 KiB versus 726.2 KiB for `ListTasks`.
+
+## Baseline query count
 
 A throwaway build counted calls to the per-task dependency loader
 (`Store.dependencies`) and to `Store.ListTasks` for one uncached run of each
@@ -149,7 +173,7 @@ end-to-end gap. The count grows with the number of tasks, so the gap grows
 with the project. A driver change shrinks the multiplier; bounding the
 query count removes it.
 
-## Where `status --force` spends its time
+## Baseline `status --force` cost
 
 `status` resolves the ticket for every listed task through
 `Store.FindExternalTicket`. When a task has no ticket, the lookup climbs
@@ -172,6 +196,23 @@ account for about 1.4 s and 0.6 s, which matches the measured 1.34 s and
 0.71 s. This is the worst case: in a real project a ticket usually sits
 near the head of the chain and the climb stops there. The repetition is
 real in every case.
+
+## Post-fix query count and status path
+
+A disposable instrumented build counted store calls for one uncached run on
+the 400-task fixture. Both drivers produced the same counts:
+
+| Command | `ListTasks` calls | Dependency queries | `GetTask` calls |
+|---|---:|---:|---:|
+| `status --force` | 1 | 1 | 0 |
+| `plans --force` | 1 | 1 | 0 |
+| `ponder --force` | 1 | 1 | 0 |
+| `next` | 1 | 1 | 0 |
+
+`status` now resolves inherited tickets from the loaded task graph with a
+memoized depth-first traversal. The prior per-task `GetTask` climb is gone;
+its old 4600 dependency-query count is retained above as the historical
+baseline.
 
 ## Comparison with the reference `tw-flow`
 
@@ -211,15 +252,12 @@ a property of the storage layer.
 
 1. Keep `modernc.org/sqlite` and `CGO_ENABLED=0`. Static binaries and
    cross-compilation for every launcher without a C toolchain are worth
-   more than a sub-10 ms gap on the common commands.
-2. Open a separate task to bound the query count on the dashboard paths:
-   load all dependencies for a project or initiative in one query and join
-   them in memory, stop listing tasks twice per initiative, and resolve
-   inherited tickets once per chain instead of climbing it again for every
-   task.
-3. Re-run this benchmark after that change. If the per-command gap on the
-   uncached dashboards falls under the threshold, close the driver question.
-   If it does not, the numbers here are the baseline for a driver decision.
+   more than the measured sub-10 ms end-to-end driver gap.
+2. The query-bound work is complete: dependencies are loaded in one query,
+   task snapshots are reused across dashboard sections, and inherited
+   tickets resolve once per task graph.
+3. The driver question is closed for this fixture and workload. Reopen it
+   only for a new measured workload or an explicit architecture decision.
 4. If a driver change is ever reconsidered, measure
    `github.com/ncruces/go-sqlite3` as well. It runs real SQLite compiled to
    WebAssembly on `wazero` and also needs no cgo; it was not measured here.
