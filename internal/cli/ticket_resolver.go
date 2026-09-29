@@ -34,7 +34,7 @@ func (r *ticketResolver) resolve(current task.Task) (string, bool, error) {
 
 	seen := map[string]bool{current.ID: true}
 	for _, dependencyID := range current.Dependencies {
-		ticket, found, err := r.resolveDependency(dependencyID, seen)
+		ticket, found, _, err := r.resolveDependency(dependencyID, seen)
 		if err != nil {
 			return "", false, err
 		}
@@ -45,39 +45,46 @@ func (r *ticketResolver) resolve(current task.Task) (string, bool, error) {
 	return "", false, nil
 }
 
-func (r *ticketResolver) resolveDependency(taskID string, seen map[string]bool) (string, bool, error) {
+func (r *ticketResolver) resolveDependency(taskID string, seen map[string]bool) (string, bool, bool, error) {
 	if seen[taskID] {
-		return "", false, nil
+		return "", false, true, nil
 	}
 	if cached, ok := r.memo[taskID]; ok {
-		return cached.ticket, cached.found, nil
+		return cached.ticket, cached.found, false, nil
 	}
 
 	current, ok := r.tasks[taskID]
 	if !ok {
-		return "", false, fmt.Errorf("task %q not found", taskID)
+		return "", false, false, fmt.Errorf("task %q not found", taskID)
 	}
 	seen[taskID] = true
 	if current.ExternalTicket != "" {
 		resolved := ticketResolution{ticket: current.ExternalTicket, found: true}
 		r.memo[taskID] = resolved
-		return resolved.ticket, resolved.found, nil
+		return resolved.ticket, resolved.found, false, nil
 	}
 
+	truncated := false
 	for _, dependencyID := range current.Dependencies {
-		ticket, found, err := r.resolveDependency(dependencyID, seen)
+		ticket, found, childTruncated, err := r.resolveDependency(dependencyID, seen)
 		if err != nil {
-			return "", false, err
+			return "", false, false, err
 		}
+		truncated = truncated || childTruncated
 		if found {
 			resolved := ticketResolution{ticket: ticket, found: true}
-			r.memo[taskID] = resolved
-			return resolved.ticket, resolved.found, nil
+			if !truncated {
+				r.memo[taskID] = resolved
+			}
+			return resolved.ticket, resolved.found, truncated, nil
 		}
+	}
+	if truncated {
+		return "", false, true, nil
 	}
 	resolved := ticketResolution{}
 	r.memo[taskID] = resolved
-	return resolved.ticket, resolved.found, nil
+	return resolved.ticket, resolved.found, false, nil
 }
 
 func tasksForInitiative(tasks []task.Task, initiativeName string) []task.Task {
