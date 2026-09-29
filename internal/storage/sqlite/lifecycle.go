@@ -104,7 +104,10 @@ func (s *Store) ReadyTasks(ctx context.Context, projectID string, initiativeName
 	if err != nil {
 		return nil, err
 	}
+	return readyTasks(tasks), nil
+}
 
+func readyTasks(tasks []task.Task) []task.Task {
 	byID := make(map[string]task.Task, len(tasks))
 	for _, current := range tasks {
 		byID[current.ID] = current
@@ -121,7 +124,7 @@ func (s *Store) ReadyTasks(ctx context.Context, projectID string, initiativeName
 		}
 		ready = append(ready, current)
 	}
-	return ready, nil
+	return ready
 }
 
 // StartTask marks a ready task active.

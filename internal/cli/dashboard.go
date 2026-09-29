@@ -332,7 +332,7 @@ func renderPonder(store *sqlite.Store, opts *config.AppOptions, all bool, withBa
 			return nil
 		}
 	}
-	summaries, err := store.ListInitiatives(ctx, opts.ProjectID, withBacklog, true)
+	summaries, tasks, err := store.ListInitiativesWithTasks(ctx, opts.ProjectID, withBacklog, true)
 	if err != nil {
 		return err
 	}
@@ -340,7 +340,7 @@ func renderPonder(store *sqlite.Store, opts *config.AppOptions, all bool, withBa
 	if err != nil {
 		return err
 	}
-	output, err := renderDashboard(ctx, store, opts, summaries, focus, all, table)
+	output, err := renderDashboard(ctx, store, opts, summaries, tasks, focus, all, table)
 	if err != nil {
 		return err
 	}
@@ -382,17 +382,13 @@ func visibleSummaries(summaries []task.InitiativeSummary, focus task.FocusState,
 	return visible, focusedName
 }
 
-func renderDashboard(ctx context.Context, store *sqlite.Store, opts *config.AppOptions, summaries []task.InitiativeSummary, focus task.FocusState, showAll bool, table bool) (string, error) {
+func renderDashboard(ctx context.Context, store *sqlite.Store, opts *config.AppOptions, summaries []task.InitiativeSummary, tasks []task.Task, focus task.FocusState, showAll bool, table bool) (string, error) {
 	visibleSummaries, focusedName := visibleSummaries(summaries, focus, showAll)
 	visibleNames := make(map[string]struct{}, len(visibleSummaries))
 	for _, summary := range visibleSummaries {
 		visibleNames[summary.Initiative.Name] = struct{}{}
 	}
 
-	tasks, err := store.ListTasks(ctx, opts.ProjectID, "")
-	if err != nil {
-		return "", err
-	}
 	visibleTasks := make([]task.Task, 0, len(tasks))
 	for _, current := range tasks {
 		if _, ok := visibleNames[current.InitiativeName]; ok {
@@ -404,11 +400,9 @@ func renderDashboard(ctx context.Context, store *sqlite.Store, opts *config.AppO
 	output.WriteString(renderInitiatives(opts.ProjectID, visibleSummaries))
 	appendSessionContext(&output, focus, focusedName)
 	appendPulseSummary(&output, visibleTasks, summaries, focusedName)
-	if err := appendTaskLandscape(ctx, store, &output, visibleSummaries); err != nil {
-		return "", err
-	}
+	appendTaskLandscape(&output, visibleSummaries, tasks)
 	appendTacticalReadout(&output, visibleTasks, table)
-	if err := appendRecentlyClosed(ctx, store, &output, summaries); err != nil {
+	if err := appendRecentlyClosed(ctx, store, &output, summaries, tasks); err != nil {
 		return "", err
 	}
 	return output.String(), nil
@@ -495,21 +489,14 @@ func appendPulseSummary(output *strings.Builder, tasks []task.Task, summaries []
 	fmt.Fprintf(output, "  Registry | Initiatives: %d\n\n", len(summaries))
 }
 
-func appendTaskLandscape(ctx context.Context, store *sqlite.Store, output *strings.Builder, summaries []task.InitiativeSummary) error {
+func appendTaskLandscape(output *strings.Builder, summaries []task.InitiativeSummary, tasks []task.Task) {
+	tasksByInitiative := groupTasksByInitiative(tasks)
 	output.WriteString("[TASK LANDSCAPE]\n")
 	for _, summary := range summaries {
-		tasks, err := store.ListTasks(ctx, summary.Initiative.ProjectID, summary.Initiative.Name)
-		if err != nil {
-			return err
-		}
-		ready, err := store.ReadyTasks(ctx, summary.Initiative.ProjectID, summary.Initiative.Name)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(output, "  %s | Active: %d | Ready: %d | Total: %d\n", summary.Initiative.Name, summary.Active, len(ready), len(tasks))
+		ready := summary.Pending - summary.Blocked
+		fmt.Fprintf(output, "  %s | Active: %d | Ready: %d | Total: %d\n", summary.Initiative.Name, summary.Active, ready, len(tasksByInitiative[summary.Initiative.ID]))
 	}
 	output.WriteString("\n")
-	return nil
 }
 
 func appendTacticalReadout(output *strings.Builder, tasks []task.Task, table bool) {
@@ -539,7 +526,7 @@ func appendTacticalReadout(output *strings.Builder, tasks []task.Task, table boo
 	output.WriteString("\n")
 }
 
-func appendRecentlyClosed(ctx context.Context, store *sqlite.Store, output *strings.Builder, summaries []task.InitiativeSummary) error {
+func appendRecentlyClosed(ctx context.Context, store *sqlite.Store, output *strings.Builder, summaries []task.InitiativeSummary, tasks []task.Task) error {
 	closed := make([]task.InitiativeSummary, 0)
 	for _, summary := range summaries {
 		if summary.Initiative.Status == task.InitiativeCompleted {
@@ -549,16 +536,22 @@ func appendRecentlyClosed(ctx context.Context, store *sqlite.Store, output *stri
 	if len(closed) == 0 {
 		return nil
 	}
+
+	tasksByInitiative := groupTasksByInitiative(tasks)
+	taskIDs := make([]string, 0)
+	for _, summary := range closed {
+		for _, current := range tasksByInitiative[summary.Initiative.ID] {
+			taskIDs = append(taskIDs, current.ID)
+		}
+	}
+	annotations, err := store.ListAnnotationsForTasks(ctx, taskIDs)
+	if err != nil {
+		return err
+	}
+
 	output.WriteString("[RECENTLY CLOSED]\n")
 	for _, summary := range closed {
-		tasks, err := store.ListTasks(ctx, summary.Initiative.ProjectID, summary.Initiative.Name)
-		if err != nil {
-			return err
-		}
-		outcome, err := latestOutcome(ctx, store, tasks)
-		if err != nil {
-			return err
-		}
+		outcome := latestOutcome(tasksByInitiative[summary.Initiative.ID], annotations)
 		fmt.Fprintf(output, "  ✓ %s completed:%d", summary.Initiative.Name, summary.Completed)
 		if outcome != "" {
 			fmt.Fprintf(output, " — %s", outcome)
@@ -569,22 +562,26 @@ func appendRecentlyClosed(ctx context.Context, store *sqlite.Store, output *stri
 	return nil
 }
 
-func latestOutcome(ctx context.Context, store *sqlite.Store, tasks []task.Task) (string, error) {
+func latestOutcome(tasks []task.Task, annotationsByTask map[string][]task.Annotation) string {
 	latest := ""
 	latestAt := ""
 	for _, current := range tasks {
-		annotations, err := store.ListAnnotations(ctx, current.ID)
-		if err != nil {
-			return "", err
-		}
-		for _, annotation := range annotations {
+		for _, annotation := range annotationsByTask[current.ID] {
 			if annotation.Kind == "OUTCOME" && annotation.CreatedAt >= latestAt {
 				latest = annotation.Body
 				latestAt = annotation.CreatedAt
 			}
 		}
 	}
-	return latest, nil
+	return latest
+}
+
+func groupTasksByInitiative(tasks []task.Task) map[string][]task.Task {
+	grouped := make(map[string][]task.Task)
+	for _, current := range tasks {
+		grouped[current.InitiativeID] = append(grouped[current.InitiativeID], current)
+	}
+	return grouped
 }
 
 func containsString(values []string, wanted string) bool {

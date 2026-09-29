@@ -182,11 +182,11 @@ func renderOnboard(
 		return output.String(), acknowledge, nil
 	}
 
-	summaries, err := store.ListInitiatives(ctx, opts.ProjectID, false, true)
+	summaries, tasks, err := store.ListInitiativesWithTasks(ctx, opts.ProjectID, false, true)
 	if err != nil {
 		return "", false, err
 	}
-	dashboard, err := renderDashboard(ctx, store, opts, summaries, focus, false, false)
+	dashboard, err := renderDashboard(ctx, store, opts, summaries, tasks, focus, false, false)
 	if err != nil {
 		return "", false, err
 	}

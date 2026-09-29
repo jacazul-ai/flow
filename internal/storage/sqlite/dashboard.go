@@ -10,6 +10,26 @@ import (
 
 // ListInitiatives returns dashboard summaries for one project.
 func (s *Store) ListInitiatives(ctx context.Context, projectID string, includeBacklog bool, includeCompleted bool) ([]task.InitiativeSummary, error) {
+	summaries, _, err := s.ListInitiativesWithTasks(ctx, projectID, includeBacklog, includeCompleted)
+	return summaries, err
+}
+
+// ListInitiativesWithTasks returns dashboard summaries and the project task
+// snapshot used to calculate them. Callers that render more dashboard sections
+// can reuse the snapshot instead of listing tasks again.
+func (s *Store) ListInitiativesWithTasks(ctx context.Context, projectID string, includeBacklog bool, includeCompleted bool) ([]task.InitiativeSummary, []task.Task, error) {
+	initiatives, err := s.listInitiatives(ctx, projectID, includeBacklog, includeCompleted)
+	if err != nil {
+		return nil, nil, err
+	}
+	tasks, err := s.ListTasks(ctx, projectID, "")
+	if err != nil {
+		return nil, nil, err
+	}
+	return summarizeInitiatives(initiatives, tasks), tasks, nil
+}
+
+func (s *Store) listInitiatives(ctx context.Context, projectID string, includeBacklog bool, includeCompleted bool) ([]task.Initiative, error) {
 	if projectID == "" {
 		return nil, errors.New("project ID is required")
 	}
@@ -57,16 +77,7 @@ func (s *Store) ListInitiatives(ctx context.Context, projectID string, includeBa
 	if err := rows.Close(); err != nil {
 		return nil, fmt.Errorf("close initiative rows: %w", err)
 	}
-
-	summaries := make([]task.InitiativeSummary, 0, len(initiatives))
-	for _, initiative := range initiatives {
-		summary, err := s.summary(ctx, initiative)
-		if err != nil {
-			return nil, err
-		}
-		summaries = append(summaries, summary)
-	}
-	return summaries, nil
+	return initiatives, nil
 }
 
 // SetInitiativeStatus changes an initiative lifecycle marker.
@@ -98,35 +109,37 @@ func (s *Store) SetInitiativeStatus(ctx context.Context, projectID string, name 
 	return nil
 }
 
-func (s *Store) summary(ctx context.Context, initiative task.Initiative) (task.InitiativeSummary, error) {
-	tasks, err := s.ListTasks(ctx, initiative.ProjectID, initiative.Name)
-	if err != nil {
-		return task.InitiativeSummary{}, err
-	}
-	ready, err := s.ReadyTasks(ctx, initiative.ProjectID, initiative.Name)
-	if err != nil {
-		return task.InitiativeSummary{}, err
-	}
-	readyIDs := make(map[string]struct{}, len(ready))
-	for _, current := range ready {
-		readyIDs[current.ID] = struct{}{}
+func summarizeInitiatives(initiatives []task.Initiative, tasks []task.Task) []task.InitiativeSummary {
+	tasksByInitiative := make(map[string][]task.Task, len(initiatives))
+	for _, current := range tasks {
+		tasksByInitiative[current.InitiativeID] = append(tasksByInitiative[current.InitiativeID], current)
 	}
 
-	summary := task.InitiativeSummary{Initiative: initiative}
-	for _, current := range tasks {
-		switch current.Status {
-		case task.Pending:
-			summary.Pending++
-			if _, ok := readyIDs[current.ID]; !ok {
-				summary.Blocked++
-			}
-		case task.Active:
-			summary.Active++
-		case task.Completed:
-			summary.Completed++
+	summaries := make([]task.InitiativeSummary, 0, len(initiatives))
+	for _, initiative := range initiatives {
+		initiativeTasks := tasksByInitiative[initiative.ID]
+		readyIDs := make(map[string]struct{})
+		for _, current := range readyTasks(initiativeTasks) {
+			readyIDs[current.ID] = struct{}{}
 		}
+
+		summary := task.InitiativeSummary{Initiative: initiative}
+		for _, current := range initiativeTasks {
+			switch current.Status {
+			case task.Pending:
+				summary.Pending++
+				if _, ok := readyIDs[current.ID]; !ok {
+					summary.Blocked++
+				}
+			case task.Active:
+				summary.Active++
+			case task.Completed:
+				summary.Completed++
+			}
+		}
+		summaries = append(summaries, summary)
 	}
-	return summary, nil
+	return summaries
 }
 
 func (s *Store) refreshInitiativeStatus(ctx context.Context, initiativeID string) error {

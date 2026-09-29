@@ -47,6 +47,49 @@ func (s *Store) ListAnnotations(ctx context.Context, taskID string) ([]task.Anno
 	return annotations, nil
 }
 
+// ListAnnotationsForTasks returns annotations for multiple known tasks in
+// insertion order per task.
+func (s *Store) ListAnnotationsForTasks(ctx context.Context, taskIDs []string) (map[string][]task.Annotation, error) {
+	annotations := make(map[string][]task.Annotation, len(taskIDs))
+	if len(taskIDs) == 0 {
+		return annotations, nil
+	}
+
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(taskIDs)), ",")
+	args := make([]any, len(taskIDs))
+	for index, taskID := range taskIDs {
+		args[index] = taskID
+	}
+	rows, err := s.db.QueryContext(ctx, fmt.Sprintf(`
+		SELECT id, task_id, kind, body, created_at
+		FROM annotations
+		WHERE task_id IN (%s)
+		ORDER BY task_id, id
+	`, placeholders), args...)
+	if err != nil {
+		return nil, fmt.Errorf("list annotations: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var annotation task.Annotation
+		if err := rows.Scan(
+			&annotation.ID,
+			&annotation.TaskID,
+			&annotation.Kind,
+			&annotation.Body,
+			&annotation.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan annotation: %w", err)
+		}
+		annotations[annotation.TaskID] = append(annotations[annotation.TaskID], annotation)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate annotations: %w", err)
+	}
+	return annotations, nil
+}
+
 // DeleteAnnotation removes one annotation identified by its creation timestamp.
 func (s *Store) DeleteAnnotation(ctx context.Context, taskID string, createdAt string) error {
 	current, err := s.GetTask(ctx, taskID)
