@@ -68,16 +68,17 @@ func (cmd *StatusCommand) Execute(args []string) error {
 		}
 	}
 
-	tasks, err := store.ListTasks(cmd.appOpts.Context(), cmd.appOpts.ProjectID, initiativeName)
+	allTasks, err := store.ListTasks(cmd.appOpts.Context(), cmd.appOpts.ProjectID, "")
 	if err != nil {
 		return err
 	}
+	tasks := tasksForInitiative(allTasks, initiativeName)
 	focus, err := store.LoadFocus(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
 	}
 	output, err := renderStatus(
-		cmd.appOpts.Context(), store, tasks, initiativeName, focus.FocusedTaskID, cmd.PendingOnly,
+		cmd.appOpts.Context(), store, tasks, allTasks, initiativeName, focus.FocusedTaskID, cmd.PendingOnly,
 	)
 	if err != nil {
 		return err
@@ -114,11 +115,13 @@ func (cmd *StatusCommand) report(store *sqlite.Store, format string, initiativeN
 		}
 	}
 
-	tasks, err := store.ListTasks(ctx, cmd.appOpts.ProjectID, initiativeName)
+	allTasks, err := store.ListTasks(ctx, cmd.appOpts.ProjectID, "")
 	if err != nil {
 		return err
 	}
-	records, err := taskRecords(ctx, store, statusTasks(tasks, cmd.PendingOnly))
+	tasks := tasksForInitiative(allTasks, initiativeName)
+	resolver := newTicketResolver(allTasks)
+	records, err := taskRecordsWithResolver(resolver, statusTasks(tasks, cmd.PendingOnly))
 	if err != nil {
 		return err
 	}
@@ -155,10 +158,12 @@ func renderStatus(
 	ctx context.Context,
 	store *sqlite.Store,
 	tasks []task.Task,
+	allTasks []task.Task,
 	initiativeName string,
 	focusedTaskID string,
 	pendingOnly bool,
 ) (string, error) {
+	resolver := newTicketResolver(allTasks)
 	var output strings.Builder
 	if initiativeName == "" {
 		initiativeName = "ALL ACTIVE"
@@ -170,7 +175,7 @@ func renderStatus(
 	}
 
 	if focusedTaskID != "" {
-		if err := appendFocusedContext(ctx, store, tasks, focusedTaskID, &output); err != nil {
+		if err := appendFocusedContext(ctx, store, tasks, focusedTaskID, resolver, &output); err != nil {
 			return "", err
 		}
 	}
@@ -191,7 +196,7 @@ func renderStatus(
 			if current.Status != task.Pending && current.Status != task.Active {
 				continue
 			}
-			line, err := formatStatusTask(ctx, store, current)
+			line, err := formatStatusTask(resolver, current)
 			if err != nil {
 				return "", err
 			}
@@ -204,7 +209,7 @@ func renderStatus(
 			if current.Status != task.Completed {
 				continue
 			}
-			line, err := formatStatusTask(ctx, store, current)
+			line, err := formatStatusTask(resolver, current)
 			if err != nil {
 				return "", err
 			}
@@ -217,8 +222,8 @@ func renderStatus(
 	return output.String(), nil
 }
 
-func formatStatusTask(ctx context.Context, store *sqlite.Store, current task.Task) (string, error) {
-	ticket, _, err := store.FindExternalTicket(ctx, current.ID)
+func formatStatusTask(resolver *ticketResolver, current task.Task) (string, error) {
+	ticket, _, err := resolver.resolve(current)
 	if err != nil {
 		return "", err
 	}
@@ -234,6 +239,7 @@ func appendFocusedContext(
 	store *sqlite.Store,
 	tasks []task.Task,
 	focusedTaskID string,
+	resolver *ticketResolver,
 	output *strings.Builder,
 ) error {
 	focused, err := store.GetTask(ctx, focusedTaskID)
@@ -244,7 +250,7 @@ func appendFocusedContext(
 		if current.ID != focused.ID {
 			continue
 		}
-		ticket, inheritedTicket, err := store.FindExternalTicket(ctx, focused.ID)
+		ticket, inheritedTicket, err := resolver.resolve(focused)
 		if err != nil {
 			return err
 		}

@@ -90,10 +90,12 @@ func listTaskView(
 	defer store.Close()
 
 	ctx := opts.Context()
-	tasks, err := store.ListTasks(ctx, opts.ProjectID, initiativeName)
+	allTasks, err := store.ListTasks(ctx, opts.ProjectID, "")
 	if err != nil {
 		return err
 	}
+	tasks := tasksForInitiative(allTasks, initiativeName)
+	resolver := newTicketResolver(allTasks)
 	states := make(map[string]task.Status, len(tasks))
 	for _, current := range tasks {
 		states[current.ID] = current.Status
@@ -106,7 +108,7 @@ func listTaskView(
 				included = append(included, current)
 			}
 		}
-		records, err := taskRecords(ctx, store, included)
+		records, err := taskRecordsWithResolver(resolver, included)
 		if err != nil {
 			return err
 		}
@@ -120,7 +122,7 @@ func listTaskView(
 		if !include(current, states) {
 			continue
 		}
-		line, err := formatStatusTask(ctx, store, current)
+		line, err := formatStatusTask(resolver, current)
 		if err != nil {
 			return err
 		}

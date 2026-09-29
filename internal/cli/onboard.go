@@ -169,11 +169,12 @@ func renderOnboard(
 	}
 
 	if focusedName != "" || focus.FocusedTaskID != "" {
-		tasks, err := store.ListTasks(ctx, opts.ProjectID, focusedName)
+		allTasks, err := store.ListTasks(ctx, opts.ProjectID, "")
 		if err != nil {
 			return "", false, err
 		}
-		status, err := renderStatus(ctx, store, tasks, focusedName, focus.FocusedTaskID, false)
+		tasks := tasksForInitiative(allTasks, focusedName)
+		status, err := renderStatus(ctx, store, tasks, allTasks, focusedName, focus.FocusedTaskID, false)
 		if err != nil {
 			return "", false, err
 		}

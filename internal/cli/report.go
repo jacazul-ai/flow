@@ -392,6 +392,10 @@ func taskRecord(ctx context.Context, store *sqlite.Store, current task.Task) (re
 	if err != nil {
 		return nil, err
 	}
+	return taskRecordWithTicket(current, ticket, inherited), nil
+}
+
+func taskRecordWithTicket(current task.Task, ticket string, inherited bool) record {
 	return record{
 		{"id", current.ID},
 		{"short_id", shortID(current.ID)},
@@ -405,7 +409,7 @@ func taskRecord(ctx context.Context, store *sqlite.Store, current task.Task) (re
 		{"ticket", ticket},
 		{"ticket_inherited", inherited},
 		{"dependencies", nonNilStrings(current.Dependencies)},
-	}, nil
+	}
 }
 
 func taskRecords(ctx context.Context, store *sqlite.Store, tasks []task.Task) ([]record, error) {
@@ -416,6 +420,18 @@ func taskRecords(ctx context.Context, store *sqlite.Store, tasks []task.Task) ([
 			return nil, err
 		}
 		records = append(records, built)
+	}
+	return records, nil
+}
+
+func taskRecordsWithResolver(resolver *ticketResolver, tasks []task.Task) ([]record, error) {
+	records := make([]record, 0, len(tasks))
+	for _, current := range tasks {
+		ticket, inherited, err := resolver.resolve(current)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, taskRecordWithTicket(current, ticket, inherited))
 	}
 	return records, nil
 }
