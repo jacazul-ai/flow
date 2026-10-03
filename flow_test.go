@@ -85,7 +85,7 @@ func TestRunRequiresHomeForDefaultPaths(t *testing.T) {
 func TestRunUsesEnvInsteadOfProcessEnvironment(t *testing.T) {
 	poisoned := filepath.Join(t.TempDir(), "from-process-env.sqlite3")
 	t.Setenv("JACAZUL_FLOW_DATABASE_PATH", poisoned)
-	t.Setenv("PROJECT_ID", "from-process-env")
+	t.Setenv("JACAZUL_PROJECT", "from-process-env")
 
 	database := filepath.Join(t.TempDir(), "from-env.sqlite3")
 	env := flow.Env{ProjectID: "project-alpha", DatabasePath: database, Home: t.TempDir()}
@@ -99,6 +99,47 @@ func TestRunUsesEnvInsteadOfProcessEnvironment(t *testing.T) {
 	}
 	if _, err := os.Stat(poisoned); !os.IsNotExist(err) {
 		t.Fatalf("process environment database was touched: %v", err)
+	}
+}
+
+func TestEnvFromOSUsesCanonicalDefaults(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "parent", "project")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("create project directory: %v", err)
+	}
+	home := t.TempDir()
+	t.Chdir(root)
+	t.Setenv("HOME", home)
+	t.Setenv("JACAZUL_PROJECT", "")
+	t.Setenv("JACAZUL_HOME", "")
+	t.Setenv("JACAZUL_SESSION", "")
+
+	env := flow.EnvFromOS()
+	if env.ProjectID != "parent_project" {
+		t.Fatalf("project ID = %q, want %q", env.ProjectID, "parent_project")
+	}
+	if env.Home != filepath.Join(home, ".jacazul-ai") {
+		t.Fatalf("home = %q, want %q", env.Home, filepath.Join(home, ".jacazul-ai"))
+	}
+	if env.SessionID != "" {
+		t.Fatalf("session ID = %q, want empty for global scope", env.SessionID)
+	}
+}
+
+func TestEnvFromOSHonorsLauncherEnvironment(t *testing.T) {
+	t.Setenv("JACAZUL_PROJECT", "launcher-project")
+	t.Setenv("JACAZUL_HOME", filepath.Join(t.TempDir(), "runtime"))
+	t.Setenv("JACAZUL_SESSION", "launcher-session")
+
+	env := flow.EnvFromOS()
+	if env.ProjectID != "launcher-project" {
+		t.Fatalf("project ID = %q, want launcher value", env.ProjectID)
+	}
+	if env.Home != os.Getenv("JACAZUL_HOME") {
+		t.Fatalf("home = %q, want launcher value %q", env.Home, os.Getenv("JACAZUL_HOME"))
+	}
+	if env.SessionID != "launcher-session" {
+		t.Fatalf("session ID = %q, want launcher value", env.SessionID)
 	}
 }
 

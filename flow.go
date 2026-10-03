@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 
 	"github.com/jacazul-ai/flow/internal/cli"
@@ -46,20 +47,25 @@ type Streams struct {
 // EnvFromOS builds Env from the process environment for standalone
 // executables. Embedding callers build Env from their own resolved context.
 func EnvFromOS() Env {
-	env := Env{
-		ProjectID:    os.Getenv("PROJECT_ID"),
-		SessionID:    os.Getenv("JACAZUL_SESSION_ID"),
+	home := os.Getenv("JACAZUL_HOME")
+	if home == "" {
+		if userHome, err := os.UserHomeDir(); err == nil {
+			home = filepath.Join(userHome, ".jacazul-ai")
+		}
+	}
+
+	project := os.Getenv("JACAZUL_PROJECT")
+	if project == "" {
+		project = config.ResolveProjectID("")
+	}
+
+	return Env{
+		ProjectID:    project,
+		SessionID:    os.Getenv("JACAZUL_SESSION"),
 		DatabasePath: os.Getenv("JACAZUL_FLOW_DATABASE_PATH"),
-		Home:         os.Getenv("JACAZUL_HOME"),
+		Home:         home,
 		Format:       os.Getenv("JACAZUL_FLOW_FORMAT"),
 	}
-	if env.Home != "" {
-		return env
-	}
-	if home, err := os.UserHomeDir(); err == nil {
-		env.Home = home
-	}
-	return env
 }
 
 // Run executes one command with args and returns its exit status.
