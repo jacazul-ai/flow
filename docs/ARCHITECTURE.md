@@ -120,6 +120,37 @@ process streams: `internal/config` resolves options from flags and then the
 injected `Env`, and every command in `internal/cli` prints through the
 injected `Streams` and passes the invocation context to the store.
 
+### Strong runtime defaults (design contract)
+
+Standalone launchers and future canonical CLI flags use this precedence:
+
+```text
+explicit CLI parameter > environment variable > configuration file > default
+```
+
+The configuration-file layer is deliberately not part of the strong-defaults
+delivery. Its format, location, and schema are tracked separately in
+[flow-config-layer / GitHub #18](https://github.com/jacazul-ai/flow/issues/18).
+Until that feature is implemented, no launcher or engine component should
+invent a configuration-file path.
+
+The planned runtime resolution is:
+
+- `--project` > `JACAZUL_PROJECT` > canonical project resolution;
+- `--home` > `JACAZUL_HOME` > `$HOME/.jacazul-ai`;
+- `--session` > `JACAZUL_SESSION` > `global`.
+
+Canonical project resolution uses the canonical current directory for
+non-Git paths, the Git top level for normal repositories, and the shared root
+(parent of `git-common-dir` when it ends in `.git` or `.bare`) for linked
+worktrees. The project identity is
+`basename(parent(anchor))_basename(anchor)`, so the `flow/master` worktree
+resolves to `jacazul-ai_flow`, not `jacazul-ai_master`.
+
+The launcher owns and preserves a named session identity. The flow engine does
+not generate a session ID per process; an absent launcher session uses stable
+`global` scope.
+
 ### CLI
 
 `internal/cli` owns one concrete command type per command. Each command owns

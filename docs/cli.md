@@ -27,6 +27,26 @@ Compatibility aliases remain routable and are documented with
 `jczl-flow help <alias>` without appearing as duplicate canonical commands in the
 root taxonomy.
 
+### Runtime-default design target
+
+The strong-defaults design will replace the legacy project/session option names
+with `--project`, `--session`, and `--home`. Its precedence contract is:
+
+```text
+explicit CLI parameter > environment variable > configuration file > default
+```
+
+The planned defaults are:
+
+- `--project` > `JACAZUL_PROJECT` > canonical project resolution;
+- `--home` > `JACAZUL_HOME` > `$HOME/.jacazul-ai`;
+- `--session` > `JACAZUL_SESSION` > `global`.
+
+This is a design target, not a claim about the current parser surface. The
+persisted configuration layer is deferred to
+[flow-config-layer / GitHub #18](https://github.com/jacazul-ai/flow/issues/18);
+no config-file path or schema is defined in this delivery.
+
 ## Deterministic agent onboarding
 
 `jczl-flow onboard` is the one-shot bootstrap briefing for an agent. It composes
