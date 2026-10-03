@@ -178,38 +178,22 @@ has to expose first.
 
 ## Runtime defaults
 
-The strong-defaults design gives standalone launchers a deterministic runtime
-without requiring a client harness or a persisted configuration file. The
-precedence contract is:
+The strong runtime defaults are implemented in the `flow-strong-defaults`
+initiative. The canonical contract, project/worktree resolution, launcher
+inputs, legacy-name migration table, and explicit configuration deferral are
+maintained in [Runtime Defaults](docs/runtime-defaults.md).
 
-```text
-explicit CLI parameter > environment variable > configuration file > default
-```
+At a glance, the current canonical names are:
 
-The persisted configuration layer is intentionally deferred to the separate
-[`flow-config-layer`](https://github.com/jacazul-ai/flow/issues/18) initiative.
-Until that feature lands, launchers must not invent a configuration-file path
-or schema.
-
-The runtime inputs and defaults are:
-
-| Value | Precedence and default |
+| Legacy runtime name | Canonical runtime name |
 |---|---|
-| Project | `--project` > `JACAZUL_PROJECT` > canonical project resolution |
-| Home | `--home` > `JACAZUL_HOME` > `$HOME/.jacazul-ai` |
-| Session | `--session` > `JACAZUL_SESSION` > `global` |
+| `PROJECT_ID` | `JACAZUL_PROJECT` |
+| `JACAZUL_SESSION_ID` | `JACAZUL_SESSION` |
+| `--project-id` | `--project` |
+| `--session-id` | `--session` |
 
-Canonical project resolution uses the current directory for non-Git paths,
-`git rev-parse --show-toplevel` for normal repositories, and the shared root
-(the parent of `git-common-dir` ending in `.git` or `.bare`) for linked
-worktrees. The identity is always
-`basename(parent(anchor))_basename(anchor)`. For example,
-`flow/master` resolves to `jacazul-ai_flow`, not `jacazul-ai_master`.
-
-The launcher owns and preserves a named `JACAZUL_SESSION`; `flow` never
-creates a new session ID per process. These defaults are implemented and
-covered by focused boundary tests; the persisted configuration feature remains
-deferred.
+The persisted configuration layer is a separate feature tracked in
+[`flow-config-layer` / GitHub #18](https://github.com/jacazul-ai/flow/issues/18).
 
 ## Task lifecycle
 

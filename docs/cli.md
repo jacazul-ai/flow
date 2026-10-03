@@ -26,26 +26,16 @@ primary help presentation. Root help includes these global options:
 
 Compatibility aliases remain routable and are documented with
 `jczl-flow help <alias>` without appearing as duplicate canonical commands in the
-root taxonomy.
+root taxonomy. Legacy runtime flags are different: `--project-id` and
+`--session-id` are rejected by the new CLI.
 
 ### Runtime defaults
 
-The standalone runtime uses `--project`, `--session`, and `--home`. Its
-precedence contract is:
-
-```text
-explicit CLI parameter > environment variable > configuration file > default
-```
-
-The planned defaults are:
-
-- `--project` > `JACAZUL_PROJECT` > canonical project resolution;
-- `--home` > `JACAZUL_HOME` > `$HOME/.jacazul-ai`;
-- `--session` > `JACAZUL_SESSION` > `global`.
-
-The persisted configuration layer is deferred to
-[flow-config-layer / GitHub #18](https://github.com/jacazul-ai/flow/issues/18);
-no config-file path or schema is defined in this delivery.
+The implemented standalone runtime contract is maintained in
+[Runtime Defaults](runtime-defaults.md). It covers canonical names,
+precedence, project/worktree resolution, launcher-owned sessions, and the
+legacy-name migration table. The persisted configuration layer is explicitly
+deferred to [flow-config-layer / GitHub #18](https://github.com/jacazul-ai/flow/issues/18).
 
 ## Deterministic agent onboarding
 
