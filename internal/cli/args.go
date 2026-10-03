@@ -8,17 +8,18 @@ func NormalizeFocusAlias(args []string) []string {
 	result := append([]string(nil), args...)
 	index := 0
 	for index < len(result) {
-		if strings.HasPrefix(result[index], "--project-id=") ||
+		if strings.HasPrefix(result[index], "--project=") ||
 			strings.HasPrefix(result[index], "--taskdata=") ||
 			strings.HasPrefix(result[index], "--database-path=") ||
-			strings.HasPrefix(result[index], "--session-id=") {
+			strings.HasPrefix(result[index], "--session=") ||
+			strings.HasPrefix(result[index], "--home=") {
 			index++
 			continue
 		}
 		switch result[index] {
 		case "-v", "--verbose", "-V", "--version":
 			index++
-		case "--project-id", "--taskdata", "--database-path", "--session-id":
+		case "--project", "--taskdata", "--database-path", "--session", "--home":
 			index += 2
 		default:
 			if result[index] != "focus" {

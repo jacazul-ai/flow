@@ -29,8 +29,8 @@ func TestLegacyTaskDataDoesNotReplaceNativeDatabase(t *testing.T) {
 
 func TestResolveIgnoresProcessEnvironment(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("PROJECT_ID", "from-env")
-	t.Setenv("JACAZUL_SESSION_ID", "session-from-env")
+	t.Setenv("JACAZUL_PROJECT", "from-env")
+	t.Setenv("JACAZUL_SESSION", "session-from-env")
 	t.Setenv("JACAZUL_FLOW_DATABASE_PATH", filepath.Join(t.TempDir(), "env.sqlite3"))
 	t.Setenv("JACAZUL_HOME", t.TempDir())
 
@@ -67,6 +67,23 @@ func TestFlagsOverrideRuntimeContext(t *testing.T) {
 	}
 	if opts.ProjectID != "from-flag" || opts.DatabasePath != flagPath {
 		t.Fatalf("options = %q/%q, want flag values", opts.ProjectID, opts.DatabasePath)
+	}
+}
+
+func TestHomeFlagOverridesRuntimeHome(t *testing.T) {
+	flagHome := t.TempDir()
+	runtimeHome := t.TempDir()
+	opts := config.AppOptions{
+		Home:      flagHome,
+		ProjectID: "project-alpha",
+		Runtime:   config.Runtime{Home: runtimeHome},
+	}
+	if err := config.Resolve(&opts); err != nil {
+		t.Fatalf("resolve options: %v", err)
+	}
+	want := filepath.Join(flagHome, "flow", "project-alpha", "flow.sqlite3")
+	if opts.DatabasePath != want {
+		t.Fatalf("database path = %q, want %q", opts.DatabasePath, want)
 	}
 }
 

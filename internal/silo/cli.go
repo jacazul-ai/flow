@@ -68,7 +68,7 @@ func Run(ctx context.Context, args []string, stdout io.Writer, stderr io.Writer)
 	fmt.Fprintf(stdout, "Generated silo %s\n", env.DatabasePath)
 	fmt.Fprintf(stdout, "  project: %s | chains: %d | tasks per chain: %d | completed: %d | active: %t\n",
 		env.ProjectID, *chains, *size, *completed, *active)
-	fmt.Fprintf(stdout, "Inspect it with:\n  PROJECT_ID=%s JACAZUL_FLOW_DATABASE_PATH=%s jczl-flow ponder --force\n",
+	fmt.Fprintf(stdout, "Inspect it with:\n  JACAZUL_PROJECT=%s JACAZUL_FLOW_DATABASE_PATH=%s jczl-flow ponder --force\n",
 		env.ProjectID, env.DatabasePath)
 	return 0
 }

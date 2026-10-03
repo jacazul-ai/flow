@@ -21,15 +21,16 @@ const (
 )
 
 // ErrHomeRequired reports that default paths cannot be derived without a runtime home.
-var ErrHomeRequired = errors.New("runtime home is required\nACTION: Set JACAZUL_HOME or pass a home directory to flow.Run.")
+var ErrHomeRequired = errors.New("runtime home is required\nACTION: Set JACAZUL_HOME, pass --home, or provide Home to flow.Run.")
 
 type AppOptions struct {
 	Verbose      bool   `short:"v" long:"verbose" description:"Enable verbose mode"`
 	Version      bool   `short:"V" long:"version" description:"Show version"`
-	ProjectID    string `long:"project-id" description:"Project identity"`
+	ProjectID    string `long:"project" description:"Project identity"`
 	TaskData     string `long:"taskdata" description:"Legacy Taskwarrior data directory"`
 	DatabasePath string `long:"database-path" description:"Project SQLite database path"`
-	SessionID    string `long:"session-id" description:"Workflow session identity"`
+	SessionID    string `long:"session" description:"Workflow session identity"`
+	Home         string `long:"home" description:"Runtime home directory"`
 
 	// LegacyDatabasePath is the pre-rename location migrated on first open.
 	// It is derived only when the database path itself was derived.
@@ -116,22 +117,24 @@ func Resolve(opts *AppOptions) error {
 		return nil
 	}
 
-	home := opts.Runtime.Home
-	if home == "" {
+	if opts.Home == "" {
+		opts.Home = opts.Runtime.Home
+	}
+	if opts.Home == "" {
 		return ErrHomeRequired
 	}
 	if opts.TaskData == "" {
-		opts.TaskData = filepath.Join(home, ".task", opts.ProjectID)
+		opts.TaskData = filepath.Join(opts.Home, ".task", opts.ProjectID)
 	}
 	if opts.DatabasePath == "" {
 		opts.DatabasePath = filepath.Join(
-			home,
+			opts.Home,
 			databaseDirectory,
 			opts.ProjectID,
 			databaseFile,
 		)
 		opts.LegacyDatabasePath = filepath.Join(
-			home,
+			opts.Home,
 			legacyDatabaseDirectory,
 			opts.ProjectID,
 			legacyDatabaseFile,

@@ -110,7 +110,7 @@ var helpEntries = []helpEntry{
 		usage:     "jczl-flow plan <initiative> <task> [<task>...]",
 		role:      "Use this to create a first-class initiative and its ordered work chain.",
 		preconditions: []string{
-			"A project identity must resolve from --project-id or PROJECT_ID.",
+			"A project identity must resolve from --project or JACAZUL_PROJECT.",
 			"Provide an initiative name and at least one non-empty task description.",
 		},
 		effects: []string{
@@ -156,7 +156,7 @@ var helpEntries = []helpEntry{
 		usage:     "jczl-flow status [initiative]",
 		role:      "Use this as the hands-on view before switching focus or starting work.",
 		preconditions: []string{
-			"The project database is selected from --database-path or PROJECT_ID.",
+			"The project database is selected from --database-path or JACAZUL_PROJECT.",
 		},
 		effects: []string{
 			"Reads only the selected project's task state; another project's database is not queried.",
@@ -378,7 +378,7 @@ var helpEntries = []helpEntry{
 		usage:     "jczl-flow focus [<initiative>|show|plan|ini|task|pop|clear|back|ind|interest] [value]",
 		role:      "Use this to move or inspect the agent anchor without losing the initiative chain.",
 		preconditions: []string{
-			"Focus is scoped to the selected PROJECT_ID and session ID.",
+			"Focus is scoped to the selected project identity and session ID.",
 			"focus task accepts a full UUID or an unambiguous short UUID.",
 		},
 		effects: []string{
@@ -778,10 +778,11 @@ func writeGlobalOptions(writer io.Writer) {
 	fmt.Fprintln(writer, "GLOBAL OPTIONS")
 	fmt.Fprintln(writer, "  -v, --verbose        Enable verbose mode")
 	fmt.Fprintln(writer, "  -V, --version        Show version")
-	fmt.Fprintln(writer, "      --project-id=    Project identity")
+	fmt.Fprintln(writer, "      --project=       Project identity [$JACAZUL_PROJECT]")
 	fmt.Fprintln(writer, "      --taskdata=      Legacy Taskwarrior data directory")
 	fmt.Fprintln(writer, "      --database-path= Project SQLite database path [$JACAZUL_FLOW_DATABASE_PATH]")
-	fmt.Fprintln(writer, "      --session-id=    Workflow session identity [$JACAZUL_SESSION_ID]")
+	fmt.Fprintln(writer, "      --session=       Workflow session identity [$JACAZUL_SESSION]")
+	fmt.Fprintln(writer, "      --home=          Runtime home directory [$JACAZUL_HOME]")
 	fmt.Fprintln(writer, "  -h, --help           Show this help message")
 }
 

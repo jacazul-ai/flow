@@ -42,6 +42,41 @@ func TestRunWritesHelpToProvidedStreams(t *testing.T) {
 	}
 }
 
+func TestCanonicalRuntimeFlagsOverrideInjectedContext(t *testing.T) {
+	runtimeHome := t.TempDir()
+	flagHome := t.TempDir()
+	code, _, stderr := run(
+		t,
+		context.Background(),
+		flow.Env{ProjectID: "runtime-project", SessionID: "runtime-session", Home: runtimeHome},
+		"--project", "flag-project",
+		"--session", "flag-session",
+		"--home", flagHome,
+		"plan", "alpha", "Alpha task",
+	)
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0; stderr = %q", code, stderr)
+	}
+	flagDatabase := filepath.Join(flagHome, "flow", "flag-project", "flow.sqlite3")
+	if _, err := os.Stat(flagDatabase); err != nil {
+		t.Fatalf("flag database was not created: %v", err)
+	}
+	runtimeDatabase := filepath.Join(runtimeHome, "flow", "runtime-project", "flow.sqlite3")
+	if _, err := os.Stat(runtimeDatabase); !os.IsNotExist(err) {
+		t.Fatalf("runtime database was unexpectedly touched: %v", err)
+	}
+}
+
+func TestLegacyRuntimeFlagsAreRejected(t *testing.T) {
+	code, _, stderr := run(t, context.Background(), flow.Env{Home: t.TempDir()}, "--project-id", "legacy", "help")
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1", code)
+	}
+	if !strings.Contains(stderr, "unknown option") && !strings.Contains(stderr, "unknown flag") {
+		t.Fatalf("stderr = %q, want legacy option rejection", stderr)
+	}
+}
+
 func TestRunReportsUnknownCommandOnStderr(t *testing.T) {
 	code, stdout, stderr := run(t, context.Background(), flow.Env{Home: t.TempDir()}, "no-such-command")
 	if code != 1 {

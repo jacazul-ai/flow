@@ -71,7 +71,7 @@ func TestFakeCommandsResolveOnlyThroughIsolatedPath(t *testing.T) {
 
 func TestHarnessCommandEnvironmentUsesFixtureValues(t *testing.T) {
 	harness := NewHarness(t, "project-alpha", "session")
-	harness.FakeCommand(t, "print-project", "#!/bin/sh\nprintf '%s\\n' \"$PROJECT_ID\"\n")
+	harness.FakeCommand(t, "print-project", "#!/bin/sh\nprintf '%s\\n' \"$JACAZUL_PROJECT\"\n")
 
 	output, err := harness.RunCommand(context.Background(), "print-project")
 	if err != nil {

@@ -400,7 +400,7 @@ func (cmd *FocusBackCommand) Execute(args []string) error {
 		return fmt.Errorf("focus back accepts no arguments")
 	}
 	if cmd.appOpts.SessionID == "global" {
-		return fmt.Errorf("cannot leave the global focus\nACTION: Set JACAZUL_SESSION_ID before using 'jczl-flow focus back'.")
+		return fmt.Errorf("cannot leave the global focus\nACTION: Set JACAZUL_SESSION before using 'jczl-flow focus back'.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {

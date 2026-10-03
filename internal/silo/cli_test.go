@@ -27,7 +27,7 @@ func TestRunGeneratesUniformChainsIntoANewDatabase(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit = %d, stderr = %q", code, stderr)
 	}
-	for _, want := range []string{"Generated silo " + database, "project: bench | chains: 2 | tasks per chain: 3", "PROJECT_ID=bench JACAZUL_FLOW_DATABASE_PATH=" + database} {
+	for _, want := range []string{"Generated silo " + database, "project: bench | chains: 2 | tasks per chain: 3", "JACAZUL_PROJECT=bench JACAZUL_FLOW_DATABASE_PATH=" + database} {
 		if !strings.Contains(stdout, want) {
 			t.Fatalf("stdout = %q, want %q", stdout, want)
 		}
