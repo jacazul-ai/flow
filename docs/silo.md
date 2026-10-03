@@ -66,7 +66,7 @@ Chains are named `chain-1`, `chain-2`, and so on, and tasks
 On success, stdout names the database and the command to inspect it:
 
 ```bash
-PROJECT_ID=silo JACAZUL_FLOW_DATABASE_PATH=/tmp/bench/flow.sqlite3 jczl-flow ponder --force
+JACAZUL_PROJECT=silo JACAZUL_FLOW_DATABASE_PATH=/tmp/bench/flow.sqlite3 jczl-flow ponder --force
 ```
 
 ### Safety

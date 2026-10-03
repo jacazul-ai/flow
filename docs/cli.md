@@ -17,20 +17,21 @@ primary help presentation. Root help includes these global options:
 
 - `-v`, `--verbose`: enable verbose mode;
 - `-V`, `--version`: show the version;
-- `--project-id`: select the project identity;
+- `--project`: select the project identity;
 - `--taskdata`: select the legacy Taskwarrior data directory;
 - `--database-path`: select the project SQLite database;
-- `--session-id`: select the workflow session identity;
+- `--session`: select the workflow session identity;
+- `--home`: select the runtime home directory;
 - `-h`, `--help`: show the root briefing.
 
 Compatibility aliases remain routable and are documented with
 `jczl-flow help <alias>` without appearing as duplicate canonical commands in the
 root taxonomy.
 
-### Runtime-default design target
+### Runtime defaults
 
-The strong-defaults design will replace the legacy project/session option names
-with `--project`, `--session`, and `--home`. Its precedence contract is:
+The standalone runtime uses `--project`, `--session`, and `--home`. Its
+precedence contract is:
 
 ```text
 explicit CLI parameter > environment variable > configuration file > default
@@ -42,8 +43,7 @@ The planned defaults are:
 - `--home` > `JACAZUL_HOME` > `$HOME/.jacazul-ai`;
 - `--session` > `JACAZUL_SESSION` > `global`.
 
-This is a design target, not a claim about the current parser surface. The
-persisted configuration layer is deferred to
+The persisted configuration layer is deferred to
 [flow-config-layer / GitHub #18](https://github.com/jacazul-ai/flow/issues/18);
 no config-file path or schema is defined in this delivery.
 

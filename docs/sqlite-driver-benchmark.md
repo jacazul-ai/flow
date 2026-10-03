@@ -70,7 +70,7 @@ the same work.
 ## Baseline end-to-end wall time (before query-bound changes)
 
 Each command ran as a real process with a controlled environment
-(`PROJECT_ID`, `JACAZUL_SESSION_ID`, `JACAZUL_FLOW_DATABASE_PATH`,
+(`JACAZUL_PROJECT`, `JACAZUL_SESSION`, `JACAZUL_FLOW_DATABASE_PATH`,
 `JACAZUL_HOME` and `HOME` all pointing into the sandbox). The two builds
 were interleaved on every iteration so machine drift affected both evenly.
 Each command had 5 warm-up runs and 100 measured runs. `context` and `note`
@@ -220,8 +220,8 @@ To put the numbers in context, the reference Python engine was measured on
 a fixture of the same shape: 20 initiatives, 400 chained tasks, 800 notes,
 160 completed with an outcome, built through `tw-flow` itself. It ran in an
 isolated Taskwarrior sandbox using the isolation recipe of the reference
-test suite (`TASKDATA`, `TASKRC`, `JACAZUL_HOME` and `PROJECT_ID` pointed at
-the sandbox, `JACAZUL_SESSION_ID` unset). `jczl-flow` used the `modernc`
+test suite (`TASKDATA`, `TASKRC`, `JACAZUL_HOME` and `JACAZUL_PROJECT`
+pointed at the sandbox, `JACAZUL_SESSION` unset). `jczl-flow` used the `modernc`
 build. The engines were interleaved on every iteration: 2 warm-up runs and
 20 measured runs per command.
 

@@ -78,8 +78,8 @@ design decision for the implementation slice that owns that mapping.
 The first importer interface should expose the following modes:
 
 ```text
-jczl-flow migrate taskwarrior --source <export.json> --project-id <id> --dry-run
-jczl-flow migrate taskwarrior --source <export.json> --project-id <id> --apply
+jczl-flow migrate taskwarrior --source <export.json> --project <id> --dry-run
+jczl-flow migrate taskwarrior --source <export.json> --project <id> --apply
 ```
 
 - **Dry-run is the default.** It validates the snapshot, resolves references,
@@ -213,7 +213,7 @@ to keep the operation read-only; `--dry-run` may be supplied for clarity.
 
 ```bash
 jczl-flow \
-  --project-id "$PROJECT_ID" \
+  --project "$JACAZUL_PROJECT" \
   --database-path "$TARGET_DB" \
   migrate taskwarrior \
   --source "$TASK_EXPORT" \
@@ -240,7 +240,7 @@ SQLite database and available `-wal`/`-shm` sidecars before applying.
 
 ```bash
 jczl-flow \
-  --project-id "$PROJECT_ID" \
+  --project "$JACAZUL_PROJECT" \
   --database-path "$TARGET_DB" \
   migrate taskwarrior \
   --source "$TASK_EXPORT" \
@@ -258,11 +258,11 @@ Run the state and behavior checks in a new process using the same project and
 session identity:
 
 ```bash
-jczl-flow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" status --force
-jczl-flow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" next <initiative>
-jczl-flow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" focus
-jczl-flow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" session list
-jczl-flow --project-id "$PROJECT_ID" --database-path "$TARGET_DB" session resume
+jczl-flow --project "$JACAZUL_PROJECT" --database-path "$TARGET_DB" status --force
+jczl-flow --project "$JACAZUL_PROJECT" --database-path "$TARGET_DB" next <initiative>
+jczl-flow --project "$JACAZUL_PROJECT" --database-path "$TARGET_DB" focus
+jczl-flow --project "$JACAZUL_PROJECT" --database-path "$TARGET_DB" session list
+jczl-flow --project "$JACAZUL_PROJECT" --database-path "$TARGET_DB" session resume
 ```
 
 Confirm that:

@@ -191,7 +191,7 @@ The persisted configuration layer is intentionally deferred to the separate
 Until that feature lands, launchers must not invent a configuration-file path
 or schema.
 
-The planned runtime inputs and defaults are:
+The runtime inputs and defaults are:
 
 | Value | Precedence and default |
 |---|---|
@@ -207,9 +207,9 @@ worktrees. The identity is always
 `flow/master` resolves to `jacazul-ai_flow`, not `jacazul-ai_master`.
 
 The launcher owns and preserves a named `JACAZUL_SESSION`; `flow` never
-creates a new session ID per process. These defaults are the current design
-contract; implementation and focused boundary tests are tracked separately
-from the deferred configuration feature.
+creates a new session ID per process. These defaults are implemented and
+covered by focused boundary tests; the persisted configuration feature remains
+deferred.
 
 ## Task lifecycle
 
@@ -240,7 +240,7 @@ jczl-flow focus clear
 jczl-flow session list
 ```
 
-Use `JACAZUL_SESSION_ID` to isolate one agent session from another while they
+Use `JACAZUL_SESSION` to isolate one agent session from another while they
 share the same project database.
 
 ## Structured reports

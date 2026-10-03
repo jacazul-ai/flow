@@ -120,7 +120,7 @@ process streams: `internal/config` resolves options from flags and then the
 injected `Env`, and every command in `internal/cli` prints through the
 injected `Streams` and passes the invocation context to the store.
 
-### Strong runtime defaults (design contract)
+### Strong runtime defaults
 
 Standalone launchers and future canonical CLI flags use this precedence:
 
@@ -134,7 +134,7 @@ delivery. Its format, location, and schema are tracked separately in
 Until that feature is implemented, no launcher or engine component should
 invent a configuration-file path.
 
-The planned runtime resolution is:
+Runtime resolution is:
 
 - `--project` > `JACAZUL_PROJECT` > canonical project resolution;
 - `--home` > `JACAZUL_HOME` > `$HOME/.jacazul-ai`;
@@ -217,10 +217,10 @@ legacy database is locked by another writer, or the rename would cross
 filesystems. The legacy path is derived only when the database path itself was
 derived, so an explicit `--database-path` migrates nothing.
 
-`flow.Run` requires `Home` from its caller to derive default paths and fails
-with `ACTION:` guidance without it. Only `EnvFromOS`, for standalone
-executables, falls back to the user home directory when `JACAZUL_HOME` is
-unset.
+`flow.Run` requires a home from `--home` or its injected `Env` to derive
+default paths and fails with `ACTION:` guidance without it. `EnvFromOS`, for
+standalone executables, resolves `JACAZUL_HOME` or falls back to
+`$HOME/.jacazul-ai`.
 
 ### SQL layer: sqlok (deferred)
 
