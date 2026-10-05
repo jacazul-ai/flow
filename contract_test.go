@@ -446,6 +446,105 @@ func TestHandoffExecutesAndAnnotates(t *testing.T) {
 	}
 }
 
+func TestSessionListRendersTableAndHandoffState(t *testing.T) {
+	harness := testharness.NewHarness(t, "project", "current")
+
+	output, err := runFlow(t, harness, "plan", "session-list-table", "Render session table")
+	if err != nil {
+		t.Fatalf("create session plan: %v\n%s", err, output)
+	}
+	taskID := regexp.MustCompile(`Created task ([0-9a-f]{8})`).FindStringSubmatch(output)
+	if len(taskID) != 2 {
+		t.Fatalf("session plan output = %q, want task UUID", output)
+	}
+	if output, err := runFlow(t, harness, "focus", "task", taskID[1]); err != nil {
+		t.Fatalf("focus session task: %v\n%s", err, output)
+	}
+	if output, err := runFlow(t, harness, "session", "dump"); err != nil {
+		t.Fatalf("session dump: %v\n%s", err, output)
+	}
+
+	output, err = runFlow(t, harness, "session", "list")
+	if err != nil {
+		t.Fatalf("list sessions: %v\n%s", err, output)
+	}
+	if !regexp.MustCompile(`SESSION\s+PLAN\s+TASK\s+AGE\s+STATUS\s+HANDOFF`).MatchString(output) {
+		t.Fatalf("session list = %q, want session table header", output)
+	}
+	for _, expected := range []string{
+		"* current",
+		"session-list-table",
+		taskID[1],
+		"active",
+		"pending",
+	} {
+		if !strings.Contains(output, expected) {
+			t.Fatalf("session list = %q, want %q", output, expected)
+		}
+	}
+
+	if output, err := runFlow(t, harness, "session", "ack"); err != nil {
+		t.Fatalf("ack session handoff: %v\n%s", err, output)
+	}
+	output, err = runFlow(t, harness, "session", "list")
+	if err != nil {
+		t.Fatalf("list acknowledged session: %v\n%s", err, output)
+	}
+	if !strings.Contains(output, "acknowledged") {
+		t.Fatalf("acknowledged session list = %q, want acknowledged handoff", output)
+	}
+
+	output, err = runFlow(t, harness, "session", "list", "--format", "json")
+	if err != nil {
+		t.Fatalf("structured session list: %v\n%s", err, output)
+	}
+	for _, expected := range []string{`"plan":"session-list-table"`, `"task":"` + taskID[1] + `"`, `"handoff":"acknowledged"`} {
+		if !strings.Contains(output, expected) {
+			t.Fatalf("structured session list = %q, want %q", output, expected)
+		}
+	}
+}
+
+func TestSessionListKeepsProjectSessionsIsolated(t *testing.T) {
+	first := testharness.NewHarness(t, "project-alpha", "alpha-session")
+	second := testharness.NewHarness(t, "project-beta", "beta-session")
+
+	firstOutput, err := runFlow(t, first, "plan", "alpha-plan", "Alpha task")
+	if err != nil {
+		t.Fatalf("create alpha plan: %v\n%s", err, firstOutput)
+	}
+	firstTask := regexp.MustCompile(`Created task ([0-9a-f]{8})`).FindStringSubmatch(firstOutput)
+	if len(firstTask) != 2 {
+		t.Fatalf("alpha plan output = %q, want task UUID", firstOutput)
+	}
+	if output, err := runFlow(t, first, "focus", "task", firstTask[1]); err != nil {
+		t.Fatalf("focus alpha task: %v\n%s", err, output)
+	}
+
+	secondOutput, err := runFlow(t, second, "plan", "beta-plan", "Beta task")
+	if err != nil {
+		t.Fatalf("create beta plan: %v\n%s", err, secondOutput)
+	}
+	secondTask := regexp.MustCompile(`Created task ([0-9a-f]{8})`).FindStringSubmatch(secondOutput)
+	if len(secondTask) != 2 {
+		t.Fatalf("beta plan output = %q, want task UUID", secondOutput)
+	}
+	if output, err := runFlow(t, second, "focus", "task", secondTask[1]); err != nil {
+		t.Fatalf("focus beta task: %v\n%s", err, output)
+	}
+
+	firstOutput, err = runFlow(t, first, "session", "list")
+	if err != nil {
+		t.Fatalf("list alpha sessions: %v\n%s", err, firstOutput)
+	}
+	if !strings.Contains(firstOutput, "alpha-session") || strings.Contains(firstOutput, "beta-session") {
+		t.Fatalf("alpha session list crossed project boundary: %q", firstOutput)
+	}
+	if strings.Contains(firstOutput, "beta-plan") {
+		t.Fatalf("alpha session list exposed beta plan: %q", firstOutput)
+	}
+}
+
 func TestIndependentFocusAndNativeSessionLifecycle(t *testing.T) {
 	harness := testharness.NewHarness(t, "project", "session")
 

@@ -406,7 +406,8 @@ var helpEntries = []helpEntry{
 			"session purge requires --confirm before deleting orphan sessions.",
 		},
 		effects: []string{
-			"session list shows persisted sessions, anchors, age, and activity status.",
+			"session list renders SESSION, PLAN, TASK, AGE, STATUS, and HANDOFF columns.",
+			"session list marks the current session and distinguishes pending and acknowledged handoffs.",
 			"session resume and session ack expose the handoff lifecycle without replaying acknowledged notes.",
 			"session dump creates a resumable handoff; session purge removes non-current sessions older than eight hours.",
 		},

@@ -200,11 +200,13 @@ type InitiativeSummary struct {
 
 // SessionInfo describes one persisted project session.
 type SessionInfo struct {
-	ProjectID     string
-	SessionID     string
-	InitiativeID  string
-	FocusedTaskID string
-	UpdatedAt     string
+	ProjectID      string
+	SessionID      string
+	InitiativeID   string
+	InitiativeName string
+	FocusedTaskID  string
+	UpdatedAt      string
+	Handoff        string
 }
 
 // SessionNote stores a resumable handoff note for one project session.

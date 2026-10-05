@@ -153,11 +153,22 @@ func (s *Store) ListSessions(ctx context.Context, projectID string) ([]task.Sess
 		return nil, errors.New("project ID is required")
 	}
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT project_id, session_id, focused_initiative_id,
-		       focused_task_id, updated_at
-		FROM sessions
-		WHERE project_id = ?
-		ORDER BY updated_at DESC, session_id
+		SELECT s.project_id, s.session_id, s.focused_initiative_id,
+		       COALESCE(i.name, ''), s.focused_task_id, s.updated_at,
+		       CASE
+		           WHEN n.session_id IS NULL THEN ''
+		           WHEN n.acknowledged_at = '' THEN 'pending'
+		           ELSE 'acknowledged'
+		       END
+		FROM sessions s
+		LEFT JOIN initiatives i
+		       ON i.project_id = s.project_id
+		      AND i.id = s.focused_initiative_id
+		LEFT JOIN session_notes n
+		       ON n.project_id = s.project_id
+		      AND n.session_id = s.session_id
+		WHERE s.project_id = ?
+		ORDER BY s.updated_at DESC, s.session_id
 	`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list sessions: %w", err)
@@ -171,8 +182,10 @@ func (s *Store) ListSessions(ctx context.Context, projectID string) ([]task.Sess
 			&current.ProjectID,
 			&current.SessionID,
 			&current.InitiativeID,
+			&current.InitiativeName,
 			&current.FocusedTaskID,
 			&current.UpdatedAt,
+			&current.Handoff,
 		); err != nil {
 			return nil, fmt.Errorf("scan session: %w", err)
 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/jacazul-ai/flow/internal/config"
@@ -66,9 +67,12 @@ func (cmd *SessionListCommand) Execute(args []string) error {
 				{"current", session.SessionID == cmd.appOpts.SessionID},
 				{"task_id", session.FocusedTaskID},
 				{"initiative_id", session.InitiativeID},
+				{"plan", session.InitiativeName},
+				{"task", displaySessionTaskID(session.FocusedTaskID)},
 				{"updated_at", session.UpdatedAt},
 				{"age", age},
 				{"status", status},
+				{"handoff", session.Handoff},
 			})
 		}
 		return writeReport(cmd.appOpts, format, report{command: "session list", records: records})
@@ -77,24 +81,25 @@ func (cmd *SessionListCommand) Execute(args []string) error {
 		fmt.Fprintln(cmd.appOpts.Out(), "No sessions found.")
 		return nil
 	}
-	fmt.Fprintln(cmd.appOpts.Out(), "SESSIONS:")
+	writer := tabwriter.NewWriter(cmd.appOpts.Out(), 0, 4, 2, ' ', 0)
+	fmt.Fprintln(writer, "SESSION\tPLAN\tTASK\tAGE\tSTATUS\tHANDOFF")
 	for _, session := range sessions {
-		marker := " "
+		marker := "  "
 		if session.SessionID == cmd.appOpts.SessionID {
-			marker = "*"
+			marker = "* "
 		}
 		age, status := sessionAge(session.UpdatedAt, now)
-		fmt.Fprintf(cmd.appOpts.Out(), "%s %s task:%s initiative:%s updated:%s age:%s status:%s\n",
+		fmt.Fprintf(writer, "%s%s\t%s\t%s\t%s\t%s\t%s\n",
 			marker,
 			session.SessionID,
-			displayTaskID(session.FocusedTaskID),
-			displayTaskID(session.InitiativeID),
-			session.UpdatedAt,
+			displaySessionValue(session.InitiativeName),
+			displaySessionTaskID(session.FocusedTaskID),
 			age,
 			status,
+			displaySessionValue(session.Handoff),
 		)
 	}
-	return nil
+	return writer.Flush()
 }
 
 // SessionShowCommand shows the current session focus.
@@ -297,6 +302,20 @@ func (cmd *SessionPurgeCommand) Execute(args []string) error {
 	}
 	fmt.Fprintf(cmd.appOpts.Out(), "Purged %d orphan session(s).\n", len(orphans))
 	return nil
+}
+
+func displaySessionValue(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "-"
+	}
+	return value
+}
+
+func displaySessionTaskID(id string) string {
+	if strings.TrimSpace(id) == "" {
+		return "-"
+	}
+	return shortID(id)
 }
 
 func sessionAge(updatedAt string, now time.Time) (string, string) {
