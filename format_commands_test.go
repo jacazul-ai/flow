@@ -33,6 +33,7 @@ var reportCommands = []struct {
 	{command: "context", args: []string{"context", "TASK"}},
 	{command: "notes", args: []string{"notes", "TASK"}},
 	{command: "focus", args: []string{"focus"}},
+	{command: "info", args: []string{"info"}},
 	{command: "session list", args: []string{"session", "list"}},
 	{command: "roadmap show", args: []string{"roadmap", "show"}},
 	{command: "cache info", args: []string{"cache", "info"}},

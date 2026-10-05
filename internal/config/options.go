@@ -57,6 +57,14 @@ type Runtime struct {
 	// Format is the default output format for report commands. A report
 	// command's --format flag wins over it.
 	Format string
+
+	ProjectSource  string
+	SessionSource  string
+	DatabaseSource string
+	HomeSource     string
+	TaskDataSource string
+	FormatSource   string
+	Version        string
 }
 
 type AppOptionsAware interface {
@@ -98,33 +106,76 @@ func Resolve(opts *AppOptions) error {
 	if opts.Stderr == nil {
 		opts.Stderr = io.Discard
 	}
-	if opts.ProjectID == "" {
+	if opts.ProjectID != "" {
+		opts.Runtime.ProjectSource = "flag"
+	} else {
 		opts.ProjectID = opts.Runtime.ProjectID
+		if opts.ProjectID == "" {
+			opts.ProjectID = "global"
+			opts.Runtime.ProjectSource = "default"
+		} else if opts.Runtime.ProjectSource == "" {
+			opts.Runtime.ProjectSource = "runtime"
+		}
 	}
-	if opts.ProjectID == "" {
-		opts.ProjectID = "global"
-	}
-	if opts.SessionID == "" {
+	if opts.SessionID != "" {
+		opts.Runtime.SessionSource = "flag"
+	} else {
 		opts.SessionID = opts.Runtime.SessionID
+		if opts.SessionID == "" {
+			opts.SessionID = "global"
+			opts.Runtime.SessionSource = "default"
+		} else if opts.Runtime.SessionSource == "" {
+			opts.Runtime.SessionSource = "runtime"
+		}
 	}
-	if opts.SessionID == "" {
-		opts.SessionID = "global"
-	}
-	if opts.DatabasePath == "" {
+	if opts.DatabasePath != "" {
+		opts.Runtime.DatabaseSource = "flag"
+	} else {
 		opts.DatabasePath = opts.Runtime.DatabasePath
+		if opts.DatabasePath != "" {
+			if opts.Runtime.DatabaseSource == "" {
+				opts.Runtime.DatabaseSource = "runtime"
+			}
+		}
 	}
 	if opts.TaskData != "" && opts.DatabasePath != "" {
+		opts.Runtime.TaskDataSource = "flag"
+		if opts.Home != "" {
+			opts.Runtime.HomeSource = "flag"
+		} else {
+			opts.Home = opts.Runtime.Home
+			if opts.Home != "" && opts.Runtime.HomeSource == "" {
+				opts.Runtime.HomeSource = "runtime"
+			}
+		}
+		if opts.Runtime.FormatSource == "" {
+			if opts.Runtime.Format == "" {
+				opts.Runtime.FormatSource = "default"
+			} else {
+				opts.Runtime.FormatSource = "runtime"
+			}
+		}
 		return nil
 	}
 
-	if opts.Home == "" {
+	if opts.Home != "" {
+		opts.Runtime.HomeSource = "flag"
+	} else {
 		opts.Home = opts.Runtime.Home
+		if opts.Home != "" {
+			if opts.Runtime.HomeSource == "" {
+				opts.Runtime.HomeSource = "runtime"
+			}
+		}
 	}
 	if opts.Home == "" {
 		return ErrHomeRequired
 	}
-	if opts.TaskData == "" {
+	if opts.TaskData != "" {
+		opts.Runtime.TaskDataSource = "flag"
+	} else {
 		opts.TaskData = filepath.Join(opts.Home, ".task", opts.ProjectID)
+		opts.Runtime.TaskDataSource = "default"
 	}
 	if opts.DatabasePath == "" {
 		opts.DatabasePath = filepath.Join(
@@ -133,12 +184,20 @@ func Resolve(opts *AppOptions) error {
 			opts.ProjectID,
 			databaseFile,
 		)
+		opts.Runtime.DatabaseSource = "default"
 		opts.LegacyDatabasePath = filepath.Join(
 			opts.Home,
 			legacyDatabaseDirectory,
 			opts.ProjectID,
 			legacyDatabaseFile,
 		)
+	}
+	if opts.Runtime.FormatSource == "" {
+		if opts.Runtime.Format == "" {
+			opts.Runtime.FormatSource = "default"
+		} else {
+			opts.Runtime.FormatSource = "runtime"
+		}
 	}
 	return nil
 }

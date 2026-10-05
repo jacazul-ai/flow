@@ -88,6 +88,26 @@ var helpEntries = []helpEntry{
 		next:     "Run 'jczl-flow status' to inspect the current project state.",
 	},
 	{
+		name:      "info",
+		group:     groupExamineState,
+		canonical: "info",
+		summary:   "Show resolved runtime defaults",
+		usage:     "jczl-flow info [--format text|json|jsonl|xml]",
+		role:      "Use this before touching workflow state to inspect the runtime context selected for the invocation.",
+		preconditions: []string{
+			"Runtime values resolve from flags, launcher environment, or safe defaults.",
+		},
+		effects: []string{
+			"Reports project, session, home, Taskwarrior, database, format, and path existence values.",
+			"Does not open SQLite, migrate legacy state, export tasks, or write runtime data.",
+		},
+		examples: []string{
+			"jczl-flow info",
+			"jczl-flow info --format json",
+		},
+		next: "Run 'jczl-flow focus' only after confirming the resolved database and project paths.",
+	},
+	{
 		name:      "onboard",
 		group:     groupExamineState,
 		canonical: "onboard",

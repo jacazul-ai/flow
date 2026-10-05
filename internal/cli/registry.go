@@ -43,6 +43,7 @@ var commandAliases = map[string][]string{
 
 var commandFactories = map[string]func() flags.Commander{
 	"help":     func() flags.Commander { return NewHelpCommand() },
+	"info":     func() flags.Commander { return &InfoCommand{} },
 	"onboard":  func() flags.Commander { return &OnboardCommand{} },
 	"plan":     func() flags.Commander { return &PlanCommand{} },
 	"organize": func() flags.Commander { return &OrganizeCommand{} },

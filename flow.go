@@ -32,9 +32,20 @@ type Env struct {
 	DatabasePath string
 	// Home is the runtime root used to derive default paths.
 	Home string
-	// Format is the default output format for report commands: text, json,
+	// Format is the default format for report commands: text, json,
 	// jsonl or xml. Empty selects text. A command's --format flag wins.
 	Format string
+	// Sources identifies where standalone runtime values came from.
+	Sources RuntimeSources
+}
+
+// RuntimeSources identifies the source of resolved standalone runtime values.
+type RuntimeSources struct {
+	ProjectID    string
+	SessionID    string
+	DatabasePath string
+	Home         string
+	Format       string
 }
 
 // Streams are the standard streams of one invocation.
@@ -48,23 +59,50 @@ type Streams struct {
 // executables. Embedding callers build Env from their own resolved context.
 func EnvFromOS() Env {
 	home := os.Getenv("JACAZUL_HOME")
+	homeSource := "environment"
 	if home == "" {
+		homeSource = "default"
 		if userHome, err := os.UserHomeDir(); err == nil {
 			home = filepath.Join(userHome, ".jacazul-ai")
 		}
 	}
 
 	project := os.Getenv("JACAZUL_PROJECT")
+	projectSource := "environment"
 	if project == "" {
+		projectSource = "default"
 		project = config.ResolveProjectID("")
+	}
+
+	session := os.Getenv("JACAZUL_SESSION")
+	sessionSource := "environment"
+	if session == "" {
+		sessionSource = "default"
+	}
+	databasePath := os.Getenv("JACAZUL_FLOW_DATABASE_PATH")
+	databaseSource := "environment"
+	if databasePath == "" {
+		databaseSource = "default"
+	}
+	format := os.Getenv("JACAZUL_FLOW_FORMAT")
+	formatSource := "environment"
+	if format == "" {
+		formatSource = "default"
 	}
 
 	return Env{
 		ProjectID:    project,
-		SessionID:    os.Getenv("JACAZUL_SESSION"),
-		DatabasePath: os.Getenv("JACAZUL_FLOW_DATABASE_PATH"),
+		SessionID:    session,
+		DatabasePath: databasePath,
 		Home:         home,
-		Format:       os.Getenv("JACAZUL_FLOW_FORMAT"),
+		Format:       format,
+		Sources: RuntimeSources{
+			ProjectID:    projectSource,
+			SessionID:    sessionSource,
+			DatabasePath: databaseSource,
+			Home:         homeSource,
+			Format:       formatSource,
+		},
 	}
 }
 
@@ -83,11 +121,17 @@ func Run(ctx context.Context, args []string, env Env, streams Streams) int {
 	opts := config.AppOptions{
 		Ctx: ctx,
 		Runtime: config.Runtime{
-			ProjectID:    env.ProjectID,
-			SessionID:    env.SessionID,
-			DatabasePath: env.DatabasePath,
-			Home:         env.Home,
-			Format:       env.Format,
+			ProjectID:      env.ProjectID,
+			SessionID:      env.SessionID,
+			DatabasePath:   env.DatabasePath,
+			Home:           env.Home,
+			Format:         env.Format,
+			ProjectSource:  env.Sources.ProjectID,
+			SessionSource:  env.Sources.SessionID,
+			DatabaseSource: env.Sources.DatabasePath,
+			HomeSource:     env.Sources.Home,
+			FormatSource:   env.Sources.Format,
+			Version:        version(),
 		},
 		Stdout: stdout,
 		Stderr: stderr,
