@@ -55,6 +55,22 @@ replacing the individual commands:
 remains available for explicit acknowledgement and diagnostics. A failed
 onboard briefing does not acknowledge a pending handoff.
 
+### Runtime info report
+
+`jczl-flow info` resolves and reports the invocation context without opening
+SQLite or mutating runtime state. It shows project and session identity, home,
+Taskwarrior data, native and legacy database paths, output format, working
+directory, version, path existence, and the source of each resolved value.
+
+```bash
+jczl-flow info
+jczl-flow info --format json
+```
+
+Sources are reported as `flag`, `environment`, `runtime`, `default`, or
+`derived`. This command does not run Taskwarrior export, migrate legacy state,
+read focus files, or create missing directories.
+
 ### Session list report
 
 `jczl-flow session list` renders the current project's persisted sessions as a
@@ -96,6 +112,7 @@ The root help exposes canonical commands once in this fixed order:
 
 - `help`: show the agent workflow briefing;
 - `status`: inspect project task state;
+- `info`: inspect resolved runtime defaults without opening storage;
 - `ponder`: render the project dashboard;
 - `plans`: list initiative summaries with short UUID references;
 - `next`: list ready tasks;

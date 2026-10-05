@@ -174,6 +174,7 @@ rather than a missing field.
 | Annotation | `context`, `notes`, `onboard` | `task_id`, `task_description`, `kind`, `body`, `created_at`, `inherited` |
 | History event | `history` | `occurred_at`, `event_type`, `property`, `old_value`, `new_value`, `task_id`, `initiative_id`, `source` |
 | Focus | `focus` | `project_id`, `session_id`, `initiative_id`, `initiative`, `task_id`, `stack`, `plans_of_interest` |
+| Runtime info | `info` | `project_id`, `project_id_source`, `session_id`, `session_id_source`, `home`, `home_source`, `home_exists`, `taskdata`, `taskdata_source`, `taskdata_exists`, `database_path`, `database_source`, `database_exists`, `legacy_database_path`, `legacy_database_source`, `legacy_database_exists`, `runtime_format`, `runtime_format_source`, `working_directory`, `version` |
 | Session | `session list` | `session_id`, `current`, `task_id`, `initiative_id`, `plan`, `task`, `updated_at`, `age`, `status`, `handoff` |
 | Roadmap phase | `roadmap show` | `id`, `initiative_id`, `phase`, `description`, `status` |
 | Cache | `cache info` | `entries`, `location` |
