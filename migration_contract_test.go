@@ -146,6 +146,103 @@ func TestMigrationTransfersFocusAndSessionNote(t *testing.T) {
 	}
 }
 
+func TestMigrationMakesLegacySessionsVisibleInNativeList(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "pending-session")
+	source := harness.WriteFile(t, "source.json", []byte(`[
+  {
+    "uuid": "11111111-1111-4111-8111-111111111111",
+    "project": "parity",
+    "description": "Imported focus task",
+    "status": "pending"
+  }
+]`))
+	legacyDir := filepath.Join(harness.Root, "legacy")
+	if err := os.MkdirAll(legacyDir, 0o700); err != nil {
+		t.Fatalf("create legacy state directory: %v", err)
+	}
+	for _, sessionID := range []string{"pending-session", "ack-session"} {
+		if err := os.WriteFile(filepath.Join(legacyDir, "focus-"+sessionID+".json"), []byte(`{
+  "focused_plan": "parity",
+  "focused_task_uuid": "11111111-1111-4111-8111-111111111111",
+  "task_track": [],
+  "plans_of_interest": []
+}`), 0o600); err != nil {
+			t.Fatalf("write legacy focus %s: %v", sessionID, err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(legacyDir, "session-note-pending-session.md"), []byte("Resume pending task.\n"), 0o600); err != nil {
+		t.Fatalf("write pending session note: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(legacyDir, "session-note-ack-session.md"), []byte("Resume acknowledged task.\nacknowledged: 2026-10-05T00:00:00Z\n"), 0o600); err != nil {
+		t.Fatalf("write acknowledged session note: %v", err)
+	}
+
+	output, err := runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--legacy-data-dir", legacyDir, "--apply")
+	if err != nil {
+		t.Fatalf("apply session migration: %v\n%s", err, output)
+	}
+	output, err = runFlow(t, harness, "session", "list")
+	if err != nil {
+		t.Fatalf("list migrated sessions: %v\n%s", err, output)
+	}
+	if !strings.Contains(output, "pending-session") || !strings.Contains(output, "ack-session") {
+		t.Fatalf("migrated session list = %q, want both session IDs", output)
+	}
+	if !strings.Contains(output, "parity") || !strings.Contains(output, "11111111") {
+		t.Fatalf("migrated session list = %q, want native plan and task", output)
+	}
+	if !strings.Contains(output, "pending") || !strings.Contains(output, "acknowledged") {
+		t.Fatalf("migrated session list = %q, want pending and acknowledged handoffs", output)
+	}
+
+	output, err = runFlow(t, harness, "focus")
+	if err != nil || !strings.Contains(output, "Initiative: parity") || !strings.Contains(output, "Task: 11111111") {
+		t.Fatalf("migrated session focus = %q, err %v; want native anchor", output, err)
+	}
+}
+
+func TestMigrationSessionStateIsolatedByProject(t *testing.T) {
+	first := testharness.NewHarness(t, "project-alpha", "alpha-session")
+	second := testharness.NewHarness(t, "project-beta", "beta-session")
+	source := first.WriteFile(t, "source.json", []byte(`[
+  {
+    "uuid": "11111111-1111-4111-8111-111111111111",
+    "project": "alpha-plan",
+    "description": "Alpha imported task",
+    "status": "pending"
+  }
+]`))
+	legacyDir := filepath.Join(first.Root, "legacy")
+	if err := os.MkdirAll(legacyDir, 0o700); err != nil {
+		t.Fatalf("create alpha legacy state directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(legacyDir, "focus-alpha-session.json"), []byte(`{
+  "focused_plan": "alpha-plan",
+  "focused_task_uuid": "11111111-1111-4111-8111-111111111111",
+  "task_track": [],
+  "plans_of_interest": []
+}`), 0o600); err != nil {
+		t.Fatalf("write alpha legacy focus: %v", err)
+	}
+
+	output, err := runFlow(t, first, "migrate", "taskwarrior", "--source", source, "--legacy-data-dir", legacyDir, "--apply")
+	if err != nil {
+		t.Fatalf("apply alpha session migration: %v\n%s", err, output)
+	}
+	output, err = runFlow(t, first, "session", "list")
+	if err != nil || !strings.Contains(output, "alpha-session") {
+		t.Fatalf("alpha session list = %q, err %v; want migrated session", output, err)
+	}
+
+	output, err = runFlow(t, second, "session", "list")
+	if err != nil {
+		t.Fatalf("list beta sessions: %v\n%s", err, output)
+	}
+	if strings.Contains(output, "alpha-session") || strings.Contains(output, "alpha-plan") {
+		t.Fatalf("beta session list crossed project boundary: %q", output)
+	}
+}
+
 func TestMigrationRejectsConflictingModes(t *testing.T) {
 	harness := testharness.NewHarness(t, "project-alpha", "session")
 	source := harness.WriteFile(t, "source.json", []byte("[]"))
