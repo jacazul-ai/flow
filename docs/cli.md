@@ -52,8 +52,10 @@ replacing the individual commands:
 
 `jczl-flow session dump` remains the producer of a resumable handoff,
 `jczl-flow session resume` remains the low-level reader, and `jczl-flow session ack`
-remains available for explicit acknowledgement and diagnostics. A failed
-onboard briefing does not acknowledge a pending handoff.
+remains available for explicit acknowledgement and diagnostics. Onboard is
+observational: it does not execute or start the focused task. Text and
+structured output are written before a pending handoff is acknowledged; an
+output failure returns an error and leaves the handoff pending for retry.
 
 ### Runtime info report
 
