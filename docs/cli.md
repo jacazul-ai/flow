@@ -55,6 +55,30 @@ replacing the individual commands:
 remains available for explicit acknowledgement and diagnostics. A failed
 onboard briefing does not acknowledge a pending handoff.
 
+### Session list report
+
+`jczl-flow session list` renders the current project's persisted sessions as a
+compact text table:
+
+```text
+SESSION    PLAN                TASK      AGE  STATUS  HANDOFF
+* current  session-list-table  373e0c61  0s   active  pending
+```
+
+The current session is prefixed with `*`. `PLAN` is the initiative name,
+`TASK` is the focused task's short UUID, and missing anchors are shown as `-`.
+`STATUS` is `active` below two hours, `idle` below eight hours, and `orphan`
+after eight hours. `HANDOFF` is `pending` until `session ack` records the
+acknowledgement, then becomes `acknowledged`; sessions without a note show `-`.
+The report is project-scoped and never lists sessions from another project.
+
+Structured formats preserve the existing session identity fields and add
+`plan`, `task`, and `handoff` fields:
+
+```bash
+jczl-flow session list --format json
+```
+
 ## Root help taxonomy
 
 The root help exposes canonical commands once in this fixed order:

@@ -174,7 +174,7 @@ rather than a missing field.
 | Annotation | `context`, `notes`, `onboard` | `task_id`, `task_description`, `kind`, `body`, `created_at`, `inherited` |
 | History event | `history` | `occurred_at`, `event_type`, `property`, `old_value`, `new_value`, `task_id`, `initiative_id`, `source` |
 | Focus | `focus` | `project_id`, `session_id`, `initiative_id`, `initiative`, `task_id`, `stack`, `plans_of_interest` |
-| Session | `session list` | `session_id`, `current`, `task_id`, `initiative_id`, `updated_at`, `age`, `status` |
+| Session | `session list` | `session_id`, `current`, `task_id`, `initiative_id`, `plan`, `task`, `updated_at`, `age`, `status`, `handoff` |
 | Roadmap phase | `roadmap show` | `id`, `initiative_id`, `phase`, `description`, `status` |
 | Cache | `cache info` | `entries`, `location` |
 | Briefing | `onboard` | `handoff`, `handoff_acknowledged`, `focus_initiative`, `focus_task_id`, `context`, `tasks`, `initiatives` |
