@@ -663,7 +663,7 @@ var helpEntries = []helpEntry{
 		group:     groupMigrateLegacy,
 		canonical: "migrate",
 		summary:   "Import legacy workflow state",
-		usage:     "jczl-flow migrate taskwarrior --source <export.json> [--apply]",
+		usage:     "jczl-flow migrate taskwarrior --source <export.json> [--legacy-data-dir <dir>] [--apply]",
 		role:      "Use this explicit boundary to move isolated Taskwarrior state into native flow.",
 		preconditions: []string{
 			"Provide an explicit export snapshot; dry-run is the default.",
@@ -675,7 +675,8 @@ var helpEntries = []helpEntry{
 		},
 		examples: []string{
 			"jczl-flow migrate taskwarrior --source /tmp/tasks.json",
-			"jczl-flow migrate taskwarrior --source /tmp/tasks.json --apply",
+			"jczl-flow migrate taskwarrior --source /tmp/tasks.json --legacy-data-dir /tmp/legacy-state --dry-run",
+			"jczl-flow migrate taskwarrior --source /tmp/tasks.json --legacy-data-dir /tmp/legacy-state --apply",
 		},
 		next: "Run the dry-run first and review retained-data warnings before applying.",
 	},
