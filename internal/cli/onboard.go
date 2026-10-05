@@ -55,14 +55,17 @@ func (cmd *OnboardCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	if _, err := fmt.Fprint(cmd.appOpts.Out(), output); err != nil {
+		return fmt.Errorf("write onboard briefing: %w", err)
+	}
 	if acknowledge {
 		if _, _, err := store.AcknowledgeSessionNote(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
 			return fmt.Errorf("acknowledge onboard handoff: %w", err)
 		}
-		output += "HANDOFF ACKNOWLEDGED\n"
+		if _, err := fmt.Fprint(cmd.appOpts.Out(), "HANDOFF ACKNOWLEDGED\n"); err != nil {
+			return fmt.Errorf("write onboard acknowledgement: %w", err)
+		}
 	}
-
-	fmt.Fprint(cmd.appOpts.Out(), output)
 	return nil
 }
 
@@ -87,12 +90,7 @@ func (cmd *OnboardCommand) report(store *sqlite.Store, format string, focus task
 	if err != nil {
 		return err
 	}
-	if acknowledge {
-		if _, _, err := store.AcknowledgeSessionNote(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
-			return fmt.Errorf("acknowledge onboard handoff: %w", err)
-		}
-	}
-	return writeReport(cmd.appOpts, format, report{command: "onboard", records: []record{{
+	if err := writeReport(cmd.appOpts, format, report{command: "onboard", records: []record{{
 		{"handoff", handoff},
 		{"handoff_acknowledged", acknowledge},
 		{"focus_initiative", focusedName},
@@ -100,7 +98,15 @@ func (cmd *OnboardCommand) report(store *sqlite.Store, format string, focus task
 		{"context", contextRecs},
 		{"tasks", tasks},
 		{"initiatives", initiatives},
-	}}})
+	}}}); err != nil {
+		return err
+	}
+	if acknowledge {
+		if _, _, err := store.AcknowledgeSessionNote(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
+			return fmt.Errorf("acknowledge onboard handoff: %w", err)
+		}
+	}
+	return nil
 }
 
 func onboardContextRecords(ctx context.Context, store *sqlite.Store, focus task.FocusState) ([]record, error) {
