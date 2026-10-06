@@ -34,7 +34,7 @@ func flowEnv(harness *testharness.Harness) flow.Env {
 		ProjectID:    harness.ProjectID,
 		SessionID:    harness.SessionID,
 		DatabasePath: harness.DatabasePath,
-		Home:         filepath.Join(harness.Root, ".jacazul-ai"),
+		Home:         filepath.Join(harness.Root, ".jacazul"),
 	}
 }
 

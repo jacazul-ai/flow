@@ -31,7 +31,7 @@ The canonical names are:
 | Concern | CLI parameter | Environment variable | Default |
 |---|---|---|---|
 | Project | `--project` | `JACAZUL_PROJECT` | Canonical project resolution |
-| Home | `--home` | `JACAZUL_HOME` | `$HOME/.jacazul-ai` |
+| Home | `--home` | `JACAZUL_HOME` | `$HOME/.jacazul` |
 | Session | `--session` | `JACAZUL_SESSION` | `global` |
 
 The source precedence contract is:
@@ -86,7 +86,7 @@ resolver starts from the shared root or from the linked worktree.
 The runtime home is resolved as:
 
 ```text
---home > JACAZUL_HOME > $HOME/.jacazul-ai
+--home > JACAZUL_HOME > $HOME/.jacazul
 ```
 
 Default project-scoped storage is derived below that home:
@@ -98,6 +98,11 @@ Default project-scoped storage is derived below that home:
 
 An explicit database path remains a separate override through
 `--database-path` or `JACAZUL_FLOW_DATABASE_PATH`.
+
+The previous default home, `$HOME/.jacazul-ai`, remains the read-only legacy
+source. `flow` does not move, delete, or silently fall back to that directory.
+Migration reads the legacy source explicitly and writes the native result below
+the new `$HOME/.jacazul` destination.
 
 ## Session resolution
 

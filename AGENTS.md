@@ -337,7 +337,7 @@ Use this operating model:
 - The persistent runtime sandbox root is:
 
   ```text
-  ~/.jacazul-ai/sandboxes/<project-id>/<session-id>/
+  ~/.jacazul/sandboxes/<project-id>/<session-id>/
   ```
 
 - The absolute sandbox path must be exposed in task/session context so agents

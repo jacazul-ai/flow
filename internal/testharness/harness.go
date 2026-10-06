@@ -46,14 +46,14 @@ func NewHarness(t *testing.T, projectID string, sessionID string) *Harness {
 	t.Setenv("JACAZUL_PROJECT", projectID)
 	t.Setenv("JACAZUL_FLOW_DATABASE_PATH", harness.DatabasePath)
 	t.Setenv("JACAZUL_SESSION", sessionID)
-	t.Setenv("JACAZUL_HOME", filepath.Join(root, ".jacazul-ai"))
+	t.Setenv("JACAZUL_HOME", filepath.Join(root, ".jacazul"))
 
 	harness.Environment = os.Environ()
 	for _, entry := range []string{
 		"JACAZUL_PROJECT=" + projectID,
 		"JACAZUL_FLOW_DATABASE_PATH=" + harness.DatabasePath,
 		"JACAZUL_SESSION=" + sessionID,
-		"JACAZUL_HOME=" + filepath.Join(root, ".jacazul-ai"),
+		"JACAZUL_HOME=" + filepath.Join(root, ".jacazul"),
 	} {
 		key, _, _ := strings.Cut(entry, "=")
 		harness.Environment = replaceEnvironmentValue(harness.Environment, key, entry)

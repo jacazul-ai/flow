@@ -45,6 +45,38 @@ focus, sessions, session notes, roadmap entries, and derived cache policy.
 Imported caches are discarded because they are derived and may contain stale
 or private output.
 
+### Home cutover
+
+The new default home is the migration destination:
+
+```text
+legacy source:  $HOME/.jacazul-ai
+new destination: $HOME/.jacazul
+```
+
+The legacy home is read-only migration input. The migration must not rename,
+delete, or write into `$HOME/.jacazul-ai`. Capture the selected legacy export
+and focus/session state explicitly, then apply it to a target database under
+`$HOME/.jacazul`:
+
+```bash
+LEGACY_HOME="$HOME/.jacazul-ai"
+NEW_HOME="$HOME/.jacazul"
+PROJECT_ID="<project-id>"
+
+jczl-flow \
+  --home "$NEW_HOME" \
+  --project "$PROJECT_ID" \
+  --database-path "$NEW_HOME/flow/$PROJECT_ID/flow.sqlite3" \
+  migrate taskwarrior \
+  --source /tmp/flow-migration/tasks.json \
+  --legacy-data-dir "$LEGACY_HOME/.task/$PROJECT_ID" \
+  --dry-run
+```
+
+Review the dry-run before repeating the command with `--apply`. The source
+snapshot and legacy state remain available for rollback and comparison.
+
 ## Mapping contract
 
 | Legacy value | Native value | Migration rule |

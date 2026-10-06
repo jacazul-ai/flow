@@ -196,7 +196,7 @@ derived, so an explicit `--database-path` migrates nothing.
 `flow.Run` requires a home from `--home` or its injected `Env` to derive
 default paths and fails with `ACTION:` guidance without it. `EnvFromOS`, for
 standalone executables, resolves `JACAZUL_HOME` or falls back to
-`$HOME/.jacazul-ai`.
+`$HOME/.jacazul`.
 
 ### SQL layer: sqlok (deferred)
 
