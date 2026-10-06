@@ -18,8 +18,8 @@ func TestTaskMetadataControlsReadiness(t *testing.T) {
 	if created.Priority != "M" {
 		t.Fatalf("default priority = %q, want M", created.Priority)
 	}
-	if err := store.SetTaskUrgency(ctx, created.ID, 18.5); err != nil {
-		t.Fatalf("set urgency: %v", err)
+	if err := store.SetTaskPriority(ctx, created.ID, "H"); err != nil {
+		t.Fatalf("set priority: %v", err)
 	}
 	if err := store.SetTaskWait(ctx, created.ID, "2099-01-01"); err != nil {
 		t.Fatalf("set wait: %v", err)
@@ -29,8 +29,8 @@ func TestTaskMetadataControlsReadiness(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read metadata task: %v", err)
 	}
-	if current.Priority != "H" || current.Urgency != 18.5 {
-		t.Fatalf("urgent metadata = priority %q, urgency %v; want H, 18.5", current.Priority, current.Urgency)
+	if current.Priority != "H" || current.Urgency != 0 {
+		t.Fatalf("urgent metadata = priority %q, urgency %v; want H and no stored score", current.Priority, current.Urgency)
 	}
 	if current.WaitUntil != "2099-01-01" {
 		t.Fatalf("wait until = %q, want 2099-01-01", current.WaitUntil)

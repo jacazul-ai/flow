@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/jacazul-ai/flow/internal/task"
@@ -118,37 +117,6 @@ func (s *Store) RenameInitiative(ctx context.Context, projectID string, oldName 
 		Property:     "name",
 		OldValue:     oldName,
 		NewValue:     newName,
-		OccurredAt:   now,
-	}); err != nil {
-		return err
-	}
-	return nil
-}
-
-// SetTaskUrgency marks a task urgent and assigns high priority.
-func (s *Store) SetTaskUrgency(ctx context.Context, taskID string, urgency float64) error {
-	if math.IsNaN(urgency) || math.IsInf(urgency, 0) || urgency < 0 {
-		return fmt.Errorf("invalid task urgency %v", urgency)
-	}
-	current, err := s.GetTask(ctx, taskID)
-	if err != nil {
-		return err
-	}
-	now := timestamp()
-	if _, err := s.db.ExecContext(ctx, `
-		UPDATE tasks
-		SET priority = 'H', urgency = ?, updated_at = ?
-		WHERE id = ?
-	`, urgency, now, current.ID); err != nil {
-		return fmt.Errorf("set task urgency: %w", err)
-	}
-	if err := s.AppendHistoryEvent(ctx, task.HistoryEvent{
-		TaskID:       current.ID,
-		InitiativeID: current.InitiativeID,
-		EventType:    "urgent",
-		Property:     "urgency",
-		OldValue:     fmt.Sprintf("%.1f", current.Urgency),
-		NewValue:     fmt.Sprintf("%.1f", urgency),
 		OccurredAt:   now,
 	}); err != nil {
 		return err

@@ -6,14 +6,11 @@ import (
 )
 
 const (
-	urgencyNext       = 15.0
 	urgencyDue        = 12.0
 	urgencyBlocking   = 8.0
-	urgencyScheduled  = 5.0
 	urgencyActive     = 4.0
 	urgencyAge        = 2.0
 	urgencyAnnotation = 1.0
-	urgencyTags       = 1.0
 	urgencyProject    = 1.0
 	urgencyWaiting    = -3.0
 	urgencyBlocked    = -5.0
