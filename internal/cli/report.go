@@ -404,7 +404,7 @@ func taskRecordWithTicket(current task.Task, ticket string, inherited bool) reco
 		{"status", string(current.Status)},
 		{"mode", current.Mode.String()},
 		{"priority", current.Priority},
-		{"urgency", current.Urgency},
+		{"urgency", current.UrgencyScore},
 		{"due_at", current.DueAt},
 		{"ticket", ticket},
 		{"ticket_inherited", inherited},

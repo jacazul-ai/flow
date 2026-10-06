@@ -145,24 +145,27 @@ type CreateInitiativeInput struct {
 
 // Task is the local workflow representation shared by task backends.
 type Task struct {
-	ID             string       `json:"id"`
-	Position       int64        `json:"position"`
-	InitiativeID   string       `json:"initiative_id"`
-	InitiativeName string       `json:"initiative_name"`
-	Description    string       `json:"description"`
-	Mode           TaskMode     `json:"mode,omitempty"`
-	Status         Status       `json:"status"`
-	Outcome        string       `json:"outcome,omitempty"`
-	ExternalTicket string       `json:"external_ticket,omitempty"`
-	StartedAt      string       `json:"started_at,omitempty"`
-	CompletedAt    string       `json:"completed_at,omitempty"`
-	Disposition    string       `json:"disposition,omitempty"`
-	DueAt          string       `json:"due_at,omitempty"`
-	Priority       string       `json:"priority,omitempty"`
-	Urgency        float64      `json:"urgency,omitempty"`
-	WaitUntil      string       `json:"wait_until,omitempty"`
-	Dependencies   []string     `json:"dependencies,omitempty"`
-	Annotations    []Annotation `json:"annotations,omitempty"`
+	ID              string       `json:"id"`
+	Position        int64        `json:"position"`
+	InitiativeID    string       `json:"initiative_id"`
+	InitiativeName  string       `json:"initiative_name"`
+	Description     string       `json:"description"`
+	Mode            TaskMode     `json:"mode,omitempty"`
+	Status          Status       `json:"status"`
+	Outcome         string       `json:"outcome,omitempty"`
+	ExternalTicket  string       `json:"external_ticket,omitempty"`
+	StartedAt       string       `json:"started_at,omitempty"`
+	CompletedAt     string       `json:"completed_at,omitempty"`
+	Disposition     string       `json:"disposition,omitempty"`
+	CreatedAt       string       `json:"created_at,omitempty"`
+	DueAt           string       `json:"due_at,omitempty"`
+	Priority        string       `json:"priority,omitempty"`
+	Urgency         float64      `json:"urgency,omitempty"`
+	UrgencyScore    float64      `json:"urgency_score,omitempty"`
+	WaitUntil       string       `json:"wait_until,omitempty"`
+	Dependencies    []string     `json:"dependencies,omitempty"`
+	AnnotationCount int          `json:"annotation_count,omitempty"`
+	Annotations     []Annotation `json:"annotations,omitempty"`
 
 	// ProjectID and Plan are compatibility fields for the legacy adapter.
 	ProjectID string `json:"project_id,omitempty"`

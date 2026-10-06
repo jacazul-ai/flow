@@ -156,6 +156,34 @@ func (s *Store) SetTaskUrgency(ctx context.Context, taskID string, urgency float
 	return nil
 }
 
+// SetTaskPriority changes the supported manual priority input used by the
+// derived urgency calculator.
+func (s *Store) SetTaskPriority(ctx context.Context, taskID string, priority string) error {
+	priority = strings.ToUpper(strings.TrimSpace(priority))
+	if priority != "L" && priority != "M" && priority != "H" {
+		return fmt.Errorf("invalid task priority %q", priority)
+	}
+	current, err := s.GetTask(ctx, taskID)
+	if err != nil {
+		return err
+	}
+	now := timestamp()
+	if _, err := s.db.ExecContext(ctx, `
+		UPDATE tasks SET priority = ?, updated_at = ? WHERE id = ?
+	`, priority, now, current.ID); err != nil {
+		return fmt.Errorf("set task priority: %w", err)
+	}
+	return s.AppendHistoryEvent(ctx, task.HistoryEvent{
+		TaskID:       current.ID,
+		InitiativeID: current.InitiativeID,
+		EventType:    "priority",
+		Property:     "priority",
+		OldValue:     current.Priority,
+		NewValue:     priority,
+		OccurredAt:   now,
+	})
+}
+
 // SetTaskWait postpones readiness until the supplied normalized date.
 func (s *Store) SetTaskWait(ctx context.Context, taskID string, waitUntil string) error {
 	waitUntil = strings.TrimSpace(waitUntil)

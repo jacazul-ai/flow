@@ -510,17 +510,17 @@ func appendTacticalReadout(output *strings.Builder, tasks []task.Task, table boo
 		if readout[i].Status != readout[j].Status {
 			return readout[i].Status == task.Active
 		}
-		return readout[i].Urgency > readout[j].Urgency
+		return readout[i].UrgencyScore > readout[j].UrgencyScore
 	})
 	output.WriteString("[TACTICAL READOUT]\n")
 	if table {
 		output.WriteString("| ST | UUID | MODE | PLAN | DESCRIPTION | URG |\n|---|---|---|---|---|---|\n")
 		for _, current := range readout {
-			fmt.Fprintf(output, "| %s | `%s` | %s | %s | %s | %.1f |\n", strings.ToUpper(string(current.Status)), shortID(current.ID), current.Mode.String(), current.InitiativeName, current.Description, current.Urgency)
+			fmt.Fprintf(output, "| %s | `%s` | %s | %s | %s | %.1f |\n", strings.ToUpper(string(current.Status)), shortID(current.ID), current.Mode.String(), current.InitiativeName, current.Description, current.UrgencyScore)
 		}
 	} else {
 		for _, current := range readout {
-			fmt.Fprintf(output, "- [%s] %s | %s | %s | %s | [%.1f]\n", strings.ToUpper(string(current.Status)), shortID(current.ID), current.Mode.String(), current.InitiativeName, current.Description, current.Urgency)
+			fmt.Fprintf(output, "- [%s] %s | %s | %s | %s | [%.1f]\n", strings.ToUpper(string(current.Status)), shortID(current.ID), current.Mode.String(), current.InitiativeName, current.Description, current.UrgencyScore)
 		}
 	}
 	output.WriteString("\n")

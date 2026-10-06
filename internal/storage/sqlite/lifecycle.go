@@ -27,8 +27,9 @@ func (s *Store) GetTask(ctx context.Context, taskID string) (task.Task, error) {
 	err = s.db.QueryRowContext(ctx, `
 		SELECT t.id, t.initiative_id, i.name, t.description,
 		       t.task_mode_code, t.status, t.outcome, t.external_ticket,
-		       t.started_at, t.completed_at, t.disposition, t.due_at,
-		       t.priority, t.urgency, t.wait_until, t.position
+		       t.created_at, t.started_at, t.completed_at, t.disposition, t.due_at,
+		       t.priority, t.urgency, t.wait_until, t.position,
+		       (SELECT COUNT(*) FROM annotations a WHERE a.task_id = t.id)
 		FROM tasks t
 		JOIN initiatives i ON i.id = t.initiative_id
 		WHERE t.id = ?
@@ -41,6 +42,7 @@ func (s *Store) GetTask(ctx context.Context, taskID string) (task.Task, error) {
 		&status,
 		&current.Outcome,
 		&current.ExternalTicket,
+		&current.CreatedAt,
 		&current.StartedAt,
 		&current.CompletedAt,
 		&current.Disposition,
@@ -49,6 +51,7 @@ func (s *Store) GetTask(ctx context.Context, taskID string) (task.Task, error) {
 		&current.Urgency,
 		&current.WaitUntil,
 		&current.Position,
+		&current.AnnotationCount,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return task.Task{}, fmt.Errorf("task %q not found", taskID)
@@ -100,11 +103,22 @@ func (s *Store) resolveTaskID(ctx context.Context, input string) (string, error)
 
 // ReadyTasks returns pending tasks whose dependencies are completed.
 func (s *Store) ReadyTasks(ctx context.Context, projectID string, initiativeName string) ([]task.Task, error) {
-	tasks, err := s.ListTasks(ctx, projectID, initiativeName)
+	tasks, err := s.ListTasks(ctx, projectID, "")
 	if err != nil {
 		return nil, err
 	}
-	return readyTasks(tasks), nil
+	ready := readyTasks(tasks)
+	if initiativeName != "" {
+		filtered := ready[:0]
+		for _, current := range ready {
+			if current.InitiativeName == initiativeName {
+				filtered = append(filtered, current)
+			}
+		}
+		ready = filtered
+	}
+	task.SortByUrgency(ready)
+	return ready, nil
 }
 
 func readyTasks(tasks []task.Task) []task.Task {

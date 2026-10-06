@@ -155,6 +155,7 @@ func (s *Store) CreateTask(ctx context.Context, input task.CreateTaskInput) (tas
 	}
 
 	now := timestamp()
+	created.CreatedAt = now
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO tasks
 			(id, initiative_id, description, mode, status, outcome,
@@ -198,9 +199,10 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 
 	query := `
 		SELECT t.id, t.initiative_id, i.name, t.description,
-		       t.status, t.outcome, t.external_ticket,
+		       t.status, t.outcome, t.external_ticket, t.created_at,
 		       t.started_at, t.completed_at, t.disposition, t.due_at,
-		       t.priority, t.urgency, t.wait_until, t.task_mode_code, t.position
+		       t.priority, t.urgency, t.wait_until, t.task_mode_code, t.position,
+		       (SELECT COUNT(*) FROM annotations a WHERE a.task_id = t.id)
 		FROM tasks t
 		JOIN initiatives i ON i.id = t.initiative_id
 		WHERE i.project_id = ?
@@ -231,6 +233,7 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 			&status,
 			&current.Outcome,
 			&current.ExternalTicket,
+			&current.CreatedAt,
 			&current.StartedAt,
 			&current.CompletedAt,
 			&current.Disposition,
@@ -240,9 +243,11 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 			&current.WaitUntil,
 			&modeCode,
 			&current.Position,
+			&current.AnnotationCount,
 		); err != nil {
 			return nil, fmt.Errorf("scan task: %w", err)
 		}
+		current.ProjectID = projectID
 		current.Status = task.Status(status)
 		current.Mode = task.TaskMode(modeCode)
 		tasks = append(tasks, current)
@@ -260,6 +265,7 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 	for index := range tasks {
 		tasks[index].Dependencies = dependencies[tasks[index].ID]
 	}
+	task.ApplyUrgencyScores(tasks, time.Now().UTC())
 	return tasks, nil
 }
 

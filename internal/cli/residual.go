@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/jacazul-ai/flow/internal/config"
@@ -87,7 +86,7 @@ func (cmd *RenameCommand) Execute(args []string) error {
 	return nil
 }
 
-// UrgentCommand raises task priority and urgency.
+// UrgentCommand raises the supported task priority input.
 type UrgentCommand struct {
 	appOpts *config.AppOptions
 }
@@ -97,25 +96,18 @@ func (cmd *UrgentCommand) SetAppOptions(opts *config.AppOptions) {
 	cmd.appOpts = opts
 }
 
-// Execute marks a task urgent with an optional urgency value.
+// Execute marks a task high priority. Numeric urgency is derived and cannot
+// be written as a manual override.
 func (cmd *UrgentCommand) Execute(args []string) error {
-	if len(args) < 1 || len(args) > 2 {
-		return fmt.Errorf("urgent requires a task UUID and optional urgency\nACTION: Run 'jczl-flow urgent <uuid> [urgency]'.")
-	}
-	urgency := 15.0
-	if len(args) == 2 {
-		parsed, err := strconv.ParseFloat(args[1], 64)
-		if err != nil {
-			return fmt.Errorf("invalid urgency %q: %w", args[1], err)
-		}
-		urgency = parsed
+	if len(args) != 1 {
+		return fmt.Errorf("urgent requires a task UUID\nACTION: Run 'jczl-flow urgent <uuid>'. Urgency is derived from task state.")
 	}
 	store, err := openStore(cmd.appOpts)
 	if err != nil {
 		return err
 	}
 	defer store.Close()
-	if err := store.SetTaskUrgency(cmd.appOpts.Context(), args[0], urgency); err != nil {
+	if err := store.SetTaskPriority(cmd.appOpts.Context(), args[0], "H"); err != nil {
 		return err
 	}
 	current, err := store.GetTask(cmd.appOpts.Context(), args[0])
@@ -125,7 +117,7 @@ func (cmd *UrgentCommand) Execute(args []string) error {
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err
 	}
-	fmt.Fprintf(cmd.appOpts.Out(), "Task %s marked urgent (urgency: %.1f)\n", shortID(current.ID), urgency)
+	fmt.Fprintf(cmd.appOpts.Out(), "Task %s marked high priority; urgency will be derived\n", shortID(current.ID))
 	return nil
 }
 

@@ -94,14 +94,14 @@ SESSION CONTEXT:
   gamma | Active: 1 | Ready: 0 | Total: 3
 
 [TACTICAL READOUT]
-- [ACTIVE] <G1> | UNSPECIFIED | gamma | G1 | [0.0]
-- [PENDING] <A2> | UNSPECIFIED | alpha | A2 | [0.0]
-- [PENDING] <B2> | UNSPECIFIED | beta | B2 | [0.0]
-- [PENDING] <G2> | UNSPECIFIED | gamma | G2 | [0.0]
-- [PENDING] <A3> | UNSPECIFIED | alpha | A3 | [0.0]
-- [PENDING] <B3> | UNSPECIFIED | beta | B3 | [0.0]
-- [PENDING] <G3> | UNSPECIFIED | gamma | G3 | [0.0]
-- [PENDING] <A4> | UNSPECIFIED | alpha | A4 | [0.0]
+- [ACTIVE] <G1> | UNSPECIFIED | gamma | G1 | [16.9]
+- [PENDING] <A2> | UNSPECIFIED | alpha | A2 | [12.9]
+- [PENDING] <B2> | UNSPECIFIED | beta | B2 | [12.9]
+- [PENDING] <G2> | UNSPECIFIED | gamma | G2 | [7.9]
+- [PENDING] <A3> | UNSPECIFIED | alpha | A3 | [7.9]
+- [PENDING] <B3> | UNSPECIFIED | beta | B3 | [-0.1]
+- [PENDING] <G3> | UNSPECIFIED | gamma | G3 | [-0.1]
+- [PENDING] <A4> | UNSPECIFIED | alpha | A4 | [-0.1]
 
 `,
 		},
