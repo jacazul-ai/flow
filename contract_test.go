@@ -126,6 +126,26 @@ func TestUrgencyInheritsHighestDownstreamScore(t *testing.T) {
 	}
 }
 
+func TestOverdueIndependentTaskBeatsUnmarkedLongChain(t *testing.T) {
+	harness := testharness.NewHarness(t, "project", "session")
+	if output, err := runFlow(t, harness, "plan", "chain", "Root", "Step 2", "Step 3", "Step 4"); err != nil {
+		t.Fatalf("create chain: %v\n%s", err, output)
+	}
+	if output, err := runFlow(t, harness, "plan", "independent", "Overdue|tag|2020-01-01"); err != nil {
+		t.Fatalf("create overdue task: %v\n%s", err, output)
+	}
+
+	output, err := runFlow(t, harness, "next")
+	if err != nil {
+		t.Fatalf("next: %v\n%s", err, output)
+	}
+	overdueIndex := strings.Index(output, "Overdue")
+	rootIndex := strings.Index(output, "Root")
+	if overdueIndex < 0 || rootIndex < 0 || overdueIndex > rootIndex {
+		t.Fatalf("next = %q, want overdue task before long chain root", output)
+	}
+}
+
 func TestUrgentUsesPriorityInsteadOfWritingDerivedUrgency(t *testing.T) {
 	harness := testharness.NewHarness(t, "project", "session")
 	planOutput, err := runFlow(t, harness, "plan", "parity", "Plain")
