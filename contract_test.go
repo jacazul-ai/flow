@@ -3,6 +3,7 @@ package flow_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -75,6 +76,91 @@ func TestPlanCreationReturnsShortUUID(t *testing.T) {
 	}
 	if !regexp.MustCompile(`Created task [0-9a-f]{8}`).MatchString(output) {
 		t.Fatalf("plan output = %q, want short UUID", output)
+	}
+}
+
+func TestNextRanksReadyTasksByDerivedUrgency(t *testing.T) {
+	harness := testharness.NewHarness(t, "project", "session")
+	if output, err := runFlow(t, harness, "plan", "parity", "Plain"); err != nil {
+		t.Fatalf("create plain task: %v\n%s", err, output)
+	}
+	if output, err := runFlow(t, harness, "plan", "parity", "Due|tag|yesterday"); err != nil {
+		t.Fatalf("create due task: %v\n%s", err, output)
+	}
+
+	output, err := runFlow(t, harness, "next", "parity")
+	if err != nil {
+		t.Fatalf("next: %v\n%s", err, output)
+	}
+	dueIndex := strings.Index(output, "Due")
+	plainIndex := strings.Index(output, "Plain")
+	if dueIndex < 0 || plainIndex < 0 || dueIndex > plainIndex {
+		t.Fatalf("next = %q, want due task before plain task", output)
+	}
+}
+
+func TestUrgencyInheritsHighestDownstreamScore(t *testing.T) {
+	harness := testharness.NewHarness(t, "project", "session")
+	planOutput, err := runFlow(t, harness, "plan", "chain", "Root", "Downstream|tag|yesterday")
+	if err != nil {
+		t.Fatalf("create chain: %v\n%s", err, planOutput)
+	}
+
+	output, err := runFlow(t, harness, "next", "chain", "--format", "json")
+	if err != nil {
+		t.Fatalf("next chain: %v\n%s", err, output)
+	}
+	var report struct {
+		Records []struct {
+			Urgency float64 `json:"urgency"`
+		} `json:"records"`
+	}
+	if err := json.Unmarshal([]byte(output), &report); err != nil {
+		t.Fatalf("decode next report: %v\n%s", err, output)
+	}
+	if len(report.Records) != 1 {
+		t.Fatalf("next chain records = %d, want one ready root", len(report.Records))
+	}
+	if report.Records[0].Urgency <= 12.0 {
+		t.Fatalf("root urgency = %.1f, want inherited downstream urgency", report.Records[0].Urgency)
+	}
+}
+
+func TestUrgentUsesPriorityInsteadOfWritingDerivedUrgency(t *testing.T) {
+	harness := testharness.NewHarness(t, "project", "session")
+	planOutput, err := runFlow(t, harness, "plan", "parity", "Plain")
+	if err != nil {
+		t.Fatalf("create task: %v\n%s", err, planOutput)
+	}
+	match := regexp.MustCompile(`Created task ([0-9a-f]{8})`).FindStringSubmatch(planOutput)
+	if len(match) != 2 {
+		t.Fatalf("plan output = %q, want task UUID", planOutput)
+	}
+	if output, err := runFlow(t, harness, "urgent", match[1]); err != nil {
+		t.Fatalf("urgent: %v\n%s", err, output)
+	}
+
+	output, err := runFlow(t, harness, "next", "parity", "--format", "json")
+	if err != nil {
+		t.Fatalf("next urgent: %v\n%s", err, output)
+	}
+	var report struct {
+		Records []struct {
+			Priority string  `json:"priority"`
+			Urgency  float64 `json:"urgency"`
+		} `json:"records"`
+	}
+	if err := json.Unmarshal([]byte(output), &report); err != nil {
+		t.Fatalf("decode urgent report: %v\n%s", err, output)
+	}
+	if len(report.Records) != 1 {
+		t.Fatalf("urgent records = %d, want one task", len(report.Records))
+	}
+	if report.Records[0].Priority != "H" {
+		t.Fatalf("urgent priority = %q, want H", report.Records[0].Priority)
+	}
+	if report.Records[0].Urgency >= 10.0 {
+		t.Fatalf("urgent urgency = %.1f, want derived score instead of raw 15", report.Records[0].Urgency)
 	}
 }
 
