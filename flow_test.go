@@ -153,8 +153,8 @@ func TestEnvFromOSUsesCanonicalDefaults(t *testing.T) {
 	if env.ProjectID != "parent_project" {
 		t.Fatalf("project ID = %q, want %q", env.ProjectID, "parent_project")
 	}
-	if env.Home != filepath.Join(home, ".jacazul-ai") {
-		t.Fatalf("home = %q, want %q", env.Home, filepath.Join(home, ".jacazul-ai"))
+	if env.Home != filepath.Join(home, ".jacazul") {
+		t.Fatalf("home = %q, want %q", env.Home, filepath.Join(home, ".jacazul"))
 	}
 	if env.SessionID != "" {
 		t.Fatalf("session ID = %q, want empty for global scope", env.SessionID)
