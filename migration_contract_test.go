@@ -1,6 +1,7 @@
 package flow_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,6 +75,42 @@ func TestMigrationApplyIsRepeatableAndPreservesNativeState(t *testing.T) {
 	output, err = runFlow(t, harness, "notes", "11111111-1111-4111-8111-111111111111")
 	if err != nil || !strings.Contains(output, "DECISION: Keep UUID") {
 		t.Fatalf("imported notes = %q, err %v; want one decision", output, err)
+	}
+}
+
+func TestMigrationKeepsObservedUrgencyOutOfSelection(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	source := harness.WriteFile(t, "source.json", []byte(`[
+  {
+    "uuid": "11111111-1111-4111-8111-111111111111",
+    "project": "parity",
+    "description": "Imported task",
+    "status": "pending",
+    "priority": "M",
+    "urgency": 99.0
+  }
+]`))
+
+	if output, err := runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--apply"); err != nil {
+		t.Fatalf("apply migration: %v\n%s", err, output)
+	}
+	output, err := runFlow(t, harness, "next", "parity", "--format", "json")
+	if err != nil {
+		t.Fatalf("read migrated urgency: %v\n%s", err, output)
+	}
+	var report struct {
+		Records []struct {
+			Urgency float64 `json:"urgency"`
+		} `json:"records"`
+	}
+	if err := json.Unmarshal([]byte(output), &report); err != nil {
+		t.Fatalf("decode migrated urgency: %v\n%s", err, output)
+	}
+	if len(report.Records) != 1 {
+		t.Fatalf("migrated records = %d, want one task", len(report.Records))
+	}
+	if report.Records[0].Urgency >= 10 || report.Records[0].Urgency == 99 {
+		t.Fatalf("migrated urgency = %.1f, want derived score", report.Records[0].Urgency)
 	}
 }
 

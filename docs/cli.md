@@ -135,7 +135,7 @@ The root help exposes canonical commands once in this fixed order:
 ### Change and reprioritize work
 
 - `amend`: update task description or ticket metadata;
-- `urgent`: raise priority and urgency;
+- `urgent`: raise priority; urgency is derived from task state;
 - `block`: add a dependency;
 - `unblock`: remove a dependency;
 - `wait`: postpone readiness until a date.
