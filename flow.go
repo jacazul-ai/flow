@@ -63,7 +63,7 @@ func EnvFromOS() Env {
 	if home == "" {
 		homeSource = "default"
 		if userHome, err := os.UserHomeDir(); err == nil {
-			home = filepath.Join(userHome, ".jacazul-ai")
+			home = filepath.Join(userHome, ".jacazul")
 		}
 	}
 
