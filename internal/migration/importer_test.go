@@ -77,6 +77,31 @@ func TestBuildBundleMapsLegacyWorkflowState(t *testing.T) {
 	}
 }
 
+func TestBuildBundlePreservesOverLimitLegacyTitleInMetadata(t *testing.T) {
+	full := strings.Repeat("x", 121)
+	bundle, warnings, err := migration.BuildBundle("project-alpha", []migration.LegacyTask{{
+		UUID:        firstUUID,
+		Project:     "parity",
+		Description: "[EXECUTE] " + full,
+		Status:      "pending",
+	}})
+	if err != nil {
+		t.Fatalf("build long-title bundle: %v", err)
+	}
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "full text preserved") {
+		t.Fatalf("warnings = %v, want preservation warning", warnings)
+	}
+	if got, want := bundle.Tasks[0].Description, strings.Repeat("x", 50)+" FIXME: <truncated:50>"; got != want {
+		t.Fatalf("migrated title = %q, want %q", got, want)
+	}
+	if got := bundle.Tasks[0].Metadata.Description; got != full {
+		t.Fatalf("migrated description = %q, want complete source", got)
+	}
+	if len(bundle.Tasks[0].Metadata.Fixmes) != 1 || bundle.Tasks[0].Metadata.Fixmes[0] != "FIXME: <truncated:50>" {
+		t.Fatalf("migrated fixmes = %#v, want truncation marker", bundle.Tasks[0].Metadata.Fixmes)
+	}
+}
+
 func TestDryRunDoesNotRequireOrMutateAStore(t *testing.T) {
 	bundle, _, err := migration.BuildBundle("project-alpha", []migration.LegacyTask{{
 		UUID:        firstUUID,

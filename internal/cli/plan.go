@@ -31,6 +31,9 @@ func (cmd *PlanCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
+	if task.TitleNeedsWarning(args[0]) {
+		fmt.Fprintf(cmd.appOpts.Out(), "WARNING: initiative title exceeds %d characters\n", task.TitleWarningLength)
+	}
 	initiative, err := store.GetOrCreateInitiative(cmd.appOpts.Context(), task.CreateInitiativeInput{
 		ProjectID: cmd.appOpts.ProjectID,
 		Name:      args[0],
@@ -44,6 +47,9 @@ func (cmd *PlanCommand) Execute(args []string) error {
 		description, mode, dueAt, err := parseTaskSpec(rawDescription)
 		if err != nil {
 			return err
+		}
+		if task.TitleNeedsWarning(description) {
+			fmt.Fprintf(cmd.appOpts.Out(), "WARNING: task title exceeds %d characters\n", task.TitleWarningLength)
 		}
 		var dependencies []string
 		if previous != "" {

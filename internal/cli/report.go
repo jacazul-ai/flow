@@ -396,11 +396,16 @@ func taskRecord(ctx context.Context, store *sqlite.Store, current task.Task) (re
 }
 
 func taskRecordWithTicket(current task.Task, ticket string, inherited bool) record {
+	description := current.Metadata.Description
+	if description == "" {
+		description = current.Description
+	}
 	return record{
 		{"id", current.ID},
 		{"short_id", shortID(current.ID)},
 		{"initiative", current.InitiativeName},
-		{"description", current.Description},
+		{"title", current.Description},
+		{"description", description},
 		{"status", string(current.Status)},
 		{"mode", current.Mode.String()},
 		{"priority", current.Priority},
@@ -409,6 +414,10 @@ func taskRecordWithTicket(current task.Task, ticket string, inherited bool) reco
 		{"ticket", ticket},
 		{"ticket_inherited", inherited},
 		{"dependencies", nonNilStrings(current.Dependencies)},
+		{"expected_result", current.Metadata.ExpectedResult},
+		{"acceptance_criteria", nonNilStrings(current.Metadata.AcceptanceCriteria)},
+		{"references", current.Metadata.References},
+		{"fixmes", nonNilStrings(current.Metadata.Fixmes)},
 	}
 }
 
@@ -437,11 +446,24 @@ func taskRecordsWithResolver(resolver *ticketResolver, tasks []task.Task) ([]rec
 }
 
 func initiativeRecord(summary task.InitiativeSummary) record {
+	metadata := summary.Initiative.Metadata
 	return record{
 		{"id", summary.Initiative.ID},
 		{"name", summary.Initiative.Name},
 		{"status", string(summary.Initiative.Status)},
 		{"ticket", summary.Initiative.ExternalTicket},
+		{"description", metadata.Description},
+		{"goal", metadata.Goal},
+		{"scope", nonNilStrings(metadata.Scope)},
+		{"acceptance_criteria", nonNilStrings(metadata.AcceptanceCriteria)},
+		{"out_of_scope", nonNilStrings(metadata.OutOfScope)},
+		{"risks", nonNilStrings(metadata.Risks)},
+		{"contract_approvals", metadata.ContractApprovals},
+		{"external_tickets", metadata.ExternalTickets},
+		{"rejected_paths", metadata.RejectedPaths},
+		{"relations", metadata.Relations},
+		{"references", metadata.References},
+		{"fixmes", nonNilStrings(metadata.Fixmes)},
 		{"pending", summary.Pending},
 		{"active", summary.Active},
 		{"completed", summary.Completed},

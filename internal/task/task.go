@@ -3,6 +3,7 @@ package task
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 )
 
 // Status describes the current state of a workflow task.
@@ -117,6 +118,29 @@ func NormalizeAnnotationKind(kind string) (string, bool) {
 	return canonical, ok
 }
 
+const (
+	// TitleWarningLength is the persisted title length at which flow emits a warning.
+	TitleWarningLength = 79
+	// TitleMaxLength is the maximum persisted title length for native writes.
+	TitleMaxLength = 120
+)
+
+// ValidateTitle validates a required bounded initiative or task title.
+func ValidateTitle(title string) error {
+	if strings.TrimSpace(title) == "" {
+		return fmt.Errorf("title is required")
+	}
+	if utf8.RuneCountInString(title) > TitleMaxLength {
+		return fmt.Errorf("title exceeds %d characters\nACTION: Move additional context into description", TitleMaxLength)
+	}
+	return nil
+}
+
+// TitleNeedsWarning reports whether a title is valid but long enough to warn.
+func TitleNeedsWarning(title string) bool {
+	return utf8.RuneCountInString(title) > TitleWarningLength && utf8.RuneCountInString(title) <= TitleMaxLength
+}
+
 // InitiativeStatus describes the lifecycle of an initiative.
 type InitiativeStatus string
 
@@ -127,6 +151,66 @@ const (
 	InitiativeArchived  InitiativeStatus = "archived"
 )
 
+// MetadataReference is a structured URI or glossary reference attached to
+// an initiative or task.
+type MetadataReference struct {
+	Title       string `json:"title"`
+	Description string `json:"description,omitempty"`
+	Type        string `json:"type,omitempty"`
+	URI         string `json:"uri,omitempty"`
+	Position    int    `json:"position,omitempty"`
+}
+
+// ContractApproval records one append-only approval of an initiative contract.
+type ContractApproval struct {
+	Version    string `json:"version"`
+	Digest     string `json:"digest"`
+	ApprovedAt string `json:"approved_at,omitempty"`
+	Actor      string `json:"actor,omitempty"`
+}
+
+// ExternalTicket is a structured external tracker reference.
+type ExternalTicket struct {
+	Provider   string `json:"provider"`
+	Repository string `json:"repository,omitempty"`
+	ID         string `json:"id"`
+	URL        string `json:"url,omitempty"`
+	Role       string `json:"role,omitempty"`
+}
+
+// InitiativeRelation links an initiative to another workflow initiative.
+type InitiativeRelation struct {
+	Type         string `json:"type"`
+	InitiativeID string `json:"initiative_id,omitempty"`
+	Reference    string `json:"reference,omitempty"`
+}
+
+// InitiativeMetadata contains durable initiative contract information.
+type InitiativeMetadata struct {
+	Description        string               `json:"description,omitempty"`
+	Goal               string               `json:"goal,omitempty"`
+	Scope              []string             `json:"scope,omitempty"`
+	AcceptanceCriteria []string             `json:"acceptance_criteria,omitempty"`
+	OutOfScope         []string             `json:"out_of_scope,omitempty"`
+	Risks              []string             `json:"risks,omitempty"`
+	ContractApprovals  []ContractApproval   `json:"contract_approvals,omitempty"`
+	ExternalTickets    []ExternalTicket     `json:"external_tickets,omitempty"`
+	RejectedPaths      []MetadataReference  `json:"rejected_paths,omitempty"`
+	Relations          []InitiativeRelation `json:"relations,omitempty"`
+	References         []MetadataReference  `json:"references,omitempty"`
+	Fixmes             []string             `json:"fixmes,omitempty"`
+}
+
+// TaskMetadata contains durable task contract information separate from its
+// execution lifecycle and annotations.
+type TaskMetadata struct {
+	Description        string              `json:"description,omitempty"`
+	ExpectedResult     string              `json:"expected_result,omitempty"`
+	AcceptanceCriteria []string            `json:"acceptance_criteria,omitempty"`
+	References         []MetadataReference `json:"references,omitempty"`
+	Fixmes             []string            `json:"fixmes,omitempty"`
+}
+
 // Initiative is a first-class workflow aggregate for a project.
 type Initiative struct {
 	ID             string
@@ -134,6 +218,7 @@ type Initiative struct {
 	Name           string
 	Status         InitiativeStatus
 	ExternalTicket string
+	Metadata       InitiativeMetadata `json:"metadata,omitempty"`
 }
 
 // CreateInitiativeInput contains the fields required to create or find an initiative.
@@ -141,6 +226,7 @@ type CreateInitiativeInput struct {
 	ProjectID      string
 	Name           string
 	ExternalTicket string
+	Metadata       InitiativeMetadata
 }
 
 // Task is the local workflow representation shared by task backends.
@@ -166,6 +252,7 @@ type Task struct {
 	Dependencies    []string     `json:"dependencies,omitempty"`
 	AnnotationCount int          `json:"annotation_count,omitempty"`
 	Annotations     []Annotation `json:"annotations,omitempty"`
+	Metadata        TaskMetadata `json:"metadata,omitempty"`
 
 	// ProjectID and Plan are compatibility fields for the legacy adapter.
 	ProjectID string `json:"project_id,omitempty"`
@@ -237,6 +324,7 @@ type CreateTaskInput struct {
 	Urgency      float64
 	WaitUntil    string
 	Dependencies []string
+	Metadata     TaskMetadata
 
 	// ProjectID and Plan are compatibility fields for the legacy adapter.
 	ProjectID string

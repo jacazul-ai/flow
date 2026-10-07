@@ -36,8 +36,9 @@ func (s *Store) FindInitiativeByID(ctx context.Context, projectID string, initia
 	}
 	var initiative task.Initiative
 	var status string
+	var metadataJSON string
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, project_id, name, status, external_ticket
+		SELECT id, project_id, name, status, external_ticket, metadata_json
 		FROM initiatives
 		WHERE project_id = ? AND id = ?
 	`, projectID, initiativeID).Scan(
@@ -46,6 +47,7 @@ func (s *Store) FindInitiativeByID(ctx context.Context, projectID string, initia
 		&initiative.Name,
 		&status,
 		&initiative.ExternalTicket,
+		&metadataJSON,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return task.Initiative{}, fmt.Errorf("initiative %q not found", initiativeID)
@@ -54,6 +56,10 @@ func (s *Store) FindInitiativeByID(ctx context.Context, projectID string, initia
 		return task.Initiative{}, fmt.Errorf("find initiative by ID: %w", err)
 	}
 	initiative.Status = task.InitiativeStatus(status)
+	initiative.Metadata, err = decodeInitiativeMetadata(metadataJSON)
+	if err != nil {
+		return task.Initiative{}, fmt.Errorf("decode initiative metadata: %w", err)
+	}
 	return initiative, nil
 }
 

@@ -9,6 +9,52 @@ import (
 	"github.com/jacazul-ai/flow/internal/task"
 )
 
+func TestInitiativeAndTaskMetadataRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	store := openStore(t, t.TempDir()+"/flow.sqlite3")
+	initiative, err := store.GetOrCreateInitiative(ctx, task.CreateInitiativeInput{
+		ProjectID: "project-alpha",
+		Name:      "metadata",
+		Metadata: task.InitiativeMetadata{
+			Description:        "Contract description",
+			Goal:               "Ship the contract",
+			Scope:              []string{"native store"},
+			AcceptanceCriteria: []string{"isolated reports"},
+			OutOfScope:         []string{"server sync"},
+			Risks:              []string{"legacy drift"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("create metadata initiative: %v", err)
+	}
+	created, err := store.CreateTask(ctx, task.CreateTaskInput{
+		InitiativeID: initiative.ID,
+		Description:  "Implement metadata",
+		Metadata: task.TaskMetadata{
+			Description:        "Detailed implementation context",
+			ExpectedResult:     "Reports expose metadata",
+			AcceptanceCriteria: []string{"JSON round trip"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("create metadata task: %v", err)
+	}
+	loaded, err := store.GetTask(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("read metadata task: %v", err)
+	}
+	if loaded.Metadata.ExpectedResult != "Reports expose metadata" || loaded.Metadata.Description == "" {
+		t.Fatalf("task metadata = %#v, want persisted metadata", loaded.Metadata)
+	}
+	summaries, err := store.ListInitiatives(ctx, "project-alpha", true, true)
+	if err != nil {
+		t.Fatalf("list metadata initiatives: %v", err)
+	}
+	if len(summaries) != 1 || summaries[0].Initiative.Metadata.Goal != "Ship the contract" {
+		t.Fatalf("initiative metadata = %#v, want persisted goal", summaries)
+	}
+}
+
 func TestTaskMetadataControlsReadiness(t *testing.T) {
 	ctx := context.Background()
 	store := openStore(t, t.TempDir()+"/flow.sqlite3")

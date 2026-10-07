@@ -24,11 +24,13 @@ func (s *Store) GetTask(ctx context.Context, taskID string) (task.Task, error) {
 	var current task.Task
 	var status string
 	var modeCode int64
+	var metadataJSON string
 	err = s.db.QueryRowContext(ctx, `
 		SELECT t.id, t.initiative_id, i.name, t.description,
 		       t.task_mode_code, t.status, t.outcome, t.external_ticket,
 		       t.created_at, t.started_at, t.completed_at, t.disposition, t.due_at,
 		       t.priority, t.urgency, t.wait_until, t.position,
+		       t.metadata_json,
 		       (SELECT COUNT(*) FROM annotations a WHERE a.task_id = t.id)
 		FROM tasks t
 		JOIN initiatives i ON i.id = t.initiative_id
@@ -51,6 +53,7 @@ func (s *Store) GetTask(ctx context.Context, taskID string) (task.Task, error) {
 		&current.Urgency,
 		&current.WaitUntil,
 		&current.Position,
+		&metadataJSON,
 		&current.AnnotationCount,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -61,6 +64,10 @@ func (s *Store) GetTask(ctx context.Context, taskID string) (task.Task, error) {
 	}
 	current.Mode = task.TaskMode(modeCode)
 	current.Status = task.Status(status)
+	current.Metadata, err = decodeTaskMetadata(metadataJSON)
+	if err != nil {
+		return task.Task{}, fmt.Errorf("decode task metadata: %w", err)
+	}
 	current.Dependencies, err = s.dependencies(ctx, current.ID)
 	if err != nil {
 		return task.Task{}, err

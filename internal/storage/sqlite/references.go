@@ -17,7 +17,7 @@ func (s *Store) FindInitiativeReference(ctx context.Context, projectID string, r
 	reference = strings.TrimSpace(reference)
 
 	exactRows, err := s.db.QueryContext(ctx, `
-		SELECT id, project_id, name, status, external_ticket
+		SELECT id, project_id, name, status, external_ticket, metadata_json
 		FROM initiatives
 		WHERE project_id = ? AND (id = ? OR name = ?)
 		ORDER BY id
@@ -40,7 +40,7 @@ func (s *Store) FindInitiativeReference(ctx context.Context, projectID string, r
 	}
 
 	allRows, err := s.db.QueryContext(ctx, `
-		SELECT id, project_id, name, status, external_ticket
+		SELECT id, project_id, name, status, external_ticket, metadata_json
 		FROM initiatives
 		WHERE project_id = ?
 		ORDER BY id
@@ -76,16 +76,23 @@ func scanInitiatives(rows *sql.Rows) ([]task.Initiative, error) {
 	for rows.Next() {
 		var initiative task.Initiative
 		var status string
+		var metadataJSON string
 		if err := rows.Scan(
 			&initiative.ID,
 			&initiative.ProjectID,
 			&initiative.Name,
 			&status,
 			&initiative.ExternalTicket,
+			&metadataJSON,
 		); err != nil {
 			return nil, fmt.Errorf("scan initiative reference: %w", err)
 		}
 		initiative.Status = task.InitiativeStatus(status)
+		metadata, err := decodeInitiativeMetadata(metadataJSON)
+		if err != nil {
+			return nil, fmt.Errorf("decode initiative metadata: %w", err)
+		}
+		initiative.Metadata = metadata
 		initiatives = append(initiatives, initiative)
 	}
 	if err := rows.Err(); err != nil {

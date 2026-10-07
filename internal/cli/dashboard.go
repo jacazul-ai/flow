@@ -312,6 +312,9 @@ func renderPlanList(projectID string, summaries []task.InitiativeSummary, all bo
 			summary.Completed,
 			summary.Blocked,
 		)
+		if summary.Initiative.Metadata.Goal != "" {
+			fmt.Fprintf(&output, "  Goal: %s\n", summary.Initiative.Metadata.Goal)
+		}
 	}
 	if shown == 0 {
 		output.WriteString("No initiatives found.\n")
@@ -434,6 +437,9 @@ func renderInitiatives(projectID string, summaries []task.InitiativeSummary) str
 			summary.Completed,
 			summary.Blocked,
 		)
+		if summary.Initiative.Metadata.Goal != "" {
+			fmt.Fprintf(&output, "  Goal: %s\n", summary.Initiative.Metadata.Goal)
+		}
 	}
 	return output.String()
 }

@@ -81,14 +81,19 @@ func (s *Store) GetOrCreateInitiative(ctx context.Context, input task.CreateInit
 		Name:           input.Name,
 		Status:         task.InitiativeActive,
 		ExternalTicket: input.ExternalTicket,
+		Metadata:       input.Metadata,
+	}
+	metadataJSON, err := encodeInitiativeMetadata(created.Metadata)
+	if err != nil {
+		return task.Initiative{}, fmt.Errorf("encode initiative metadata: %w", err)
 	}
 	now := timestamp()
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO initiatives
-			(id, project_id, name, status, external_ticket, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+			(id, project_id, name, status, external_ticket, metadata_json, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`, created.ID, created.ProjectID, created.Name, created.Status,
-		created.ExternalTicket, now, now)
+		created.ExternalTicket, metadataJSON, now, now)
 	if err != nil {
 		return task.Initiative{}, fmt.Errorf("create initiative: %w", err)
 	}
@@ -138,6 +143,11 @@ func (s *Store) CreateTask(ctx context.Context, input task.CreateTaskInput) (tas
 		WaitUntil:    input.WaitUntil,
 		Status:       task.Pending,
 		Dependencies: append([]string(nil), input.Dependencies...),
+		Metadata:     input.Metadata,
+	}
+	metadataJSON, err := encodeTaskMetadata(created.Metadata)
+	if err != nil {
+		return task.Task{}, fmt.Errorf("encode task metadata: %w", err)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -160,11 +170,11 @@ func (s *Store) CreateTask(ctx context.Context, input task.CreateTaskInput) (tas
 		INSERT INTO tasks
 			(id, initiative_id, description, mode, status, outcome,
 			 external_ticket, priority, urgency, wait_until, due_at,
-			 task_mode_code, position, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, '', '', ?, ?, ?, ?, ?, ?, ?, ?)
+			 task_mode_code, position, metadata_json, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, '', '', ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, created.ID, created.InitiativeID, created.Description, legacyModeName(created.Mode),
 		created.Status, created.Priority, created.Urgency, created.WaitUntil,
-		created.DueAt, created.Mode, created.Position, now, now); err != nil {
+		created.DueAt, created.Mode, created.Position, metadataJSON, now, now); err != nil {
 		return task.Task{}, fmt.Errorf("create task: %w", err)
 	}
 	for _, dependencyID := range created.Dependencies {
@@ -202,6 +212,7 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 		       t.status, t.outcome, t.external_ticket, t.created_at,
 		       t.started_at, t.completed_at, t.disposition, t.due_at,
 		       t.priority, t.urgency, t.wait_until, t.task_mode_code, t.position,
+		       t.metadata_json,
 		       (SELECT COUNT(*) FROM annotations a WHERE a.task_id = t.id)
 		FROM tasks t
 		JOIN initiatives i ON i.id = t.initiative_id
@@ -225,6 +236,7 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 		var current task.Task
 		var status string
 		var modeCode int64
+		var metadataJSON string
 		if err := rows.Scan(
 			&current.ID,
 			&current.InitiativeID,
@@ -243,6 +255,7 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 			&current.WaitUntil,
 			&modeCode,
 			&current.Position,
+			&metadataJSON,
 			&current.AnnotationCount,
 		); err != nil {
 			return nil, fmt.Errorf("scan task: %w", err)
@@ -250,6 +263,10 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 		current.ProjectID = projectID
 		current.Status = task.Status(status)
 		current.Mode = task.TaskMode(modeCode)
+		current.Metadata, err = decodeTaskMetadata(metadataJSON)
+		if err != nil {
+			return nil, fmt.Errorf("decode task metadata: %w", err)
+		}
 		tasks = append(tasks, current)
 	}
 	if err := rows.Err(); err != nil {
@@ -363,7 +380,7 @@ func checkSchemaVersion(ctx context.Context, provider *goose.Provider) error {
 
 func findInitiativeQuery() string {
 	return `
-		SELECT id, project_id, name, status, external_ticket
+		SELECT id, project_id, name, status, external_ticket, metadata_json
 		FROM initiatives
 		WHERE project_id = ? AND name = ?
 	`
@@ -372,14 +389,20 @@ func findInitiativeQuery() string {
 func (s *Store) findInitiative(ctx context.Context, projectID string, name string) (task.Initiative, error) {
 	var initiative task.Initiative
 	var status string
+	var metadataJSON string
 	err := s.db.QueryRowContext(ctx, findInitiativeQuery(), projectID, name).Scan(
 		&initiative.ID,
 		&initiative.ProjectID,
 		&initiative.Name,
 		&status,
 		&initiative.ExternalTicket,
+		&metadataJSON,
 	)
+	if err != nil {
+		return initiative, err
+	}
 	initiative.Status = task.InitiativeStatus(status)
+	initiative.Metadata, err = decodeInitiativeMetadata(metadataJSON)
 	return initiative, err
 }
 
@@ -444,8 +467,8 @@ func validateInitiative(input task.CreateInitiativeInput) error {
 	if input.ProjectID == "" {
 		return errors.New("project ID is required")
 	}
-	if input.Name == "" {
-		return errors.New("initiative name is required")
+	if err := task.ValidateTitle(input.Name); err != nil {
+		return fmt.Errorf("initiative %q: %w", input.Name, err)
 	}
 	return nil
 }
@@ -454,8 +477,8 @@ func validateTask(input task.CreateTaskInput) error {
 	if input.InitiativeID == "" {
 		return errors.New("initiative ID is required")
 	}
-	if input.Description == "" {
-		return errors.New("task description is required")
+	if err := task.ValidateTitle(input.Description); err != nil {
+		return fmt.Errorf("task: %w", err)
 	}
 	return nil
 }

@@ -54,6 +54,10 @@ func (s *Store) ApplyImport(ctx context.Context, bundle task.ImportBundle) (task
 	}
 
 	for _, imported := range bundle.Tasks {
+		metadataJSON, err := encodeTaskMetadata(imported.Metadata)
+		if err != nil {
+			return task.ImportResult{}, fmt.Errorf("encode imported task %s metadata: %w", imported.ID, err)
+		}
 		exists, err := taskExists(ctx, tx, imported.ID, bundle.ProjectID)
 		if err != nil {
 			return task.ImportResult{}, err
@@ -62,13 +66,13 @@ func (s *Store) ApplyImport(ctx context.Context, bundle task.ImportBundle) (task
 			INSERT INTO tasks
 				(id, initiative_id, description, mode, status, outcome,
 				 external_ticket, started_at, completed_at, disposition, due_at,
-				 priority, urgency, wait_until, task_mode_code, position, created_at, updated_at)
+				 priority, urgency, wait_until, task_mode_code, position, metadata_json, created_at, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
 				COALESCE(
 					(SELECT position FROM tasks WHERE id = ?),
 					(SELECT COALESCE(MAX(position), 0) + 1 FROM tasks WHERE initiative_id = ?)
 				),
-				?, ?)
+				?, ?, ?)
 			ON CONFLICT (id) DO UPDATE SET
 				initiative_id = excluded.initiative_id,
 				description = excluded.description,
@@ -84,13 +88,14 @@ func (s *Store) ApplyImport(ctx context.Context, bundle task.ImportBundle) (task
 				urgency = excluded.urgency,
 				wait_until = excluded.wait_until,
 				task_mode_code = excluded.task_mode_code,
+				metadata_json = excluded.metadata_json,
 				updated_at = excluded.updated_at
 		`, imported.ID, imported.InitiativeID, imported.Description,
 			legacyModeName(imported.Mode), imported.Status, imported.Outcome,
 			imported.ExternalTicket, imported.StartedAt, imported.CompletedAt,
 			imported.Disposition, imported.DueAt, imported.Priority, imported.Urgency,
 			imported.WaitUntil, imported.Mode, imported.ID, imported.InitiativeID,
-			imported.CreatedAt, imported.UpdatedAt); err != nil {
+			metadataJSON, imported.CreatedAt, imported.UpdatedAt); err != nil {
 			return task.ImportResult{}, fmt.Errorf("import task %s: %w", imported.ID, err)
 		}
 		if !exists {

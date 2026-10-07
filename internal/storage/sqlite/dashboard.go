@@ -34,7 +34,7 @@ func (s *Store) listInitiatives(ctx context.Context, projectID string, includeBa
 		return nil, errors.New("project ID is required")
 	}
 	query := `
-		SELECT id, project_id, name, status, external_ticket
+		SELECT id, project_id, name, status, external_ticket, metadata_json
 		FROM initiatives
 		WHERE project_id = ?
 	`
@@ -59,16 +59,22 @@ func (s *Store) listInitiatives(ctx context.Context, projectID string, includeBa
 	for rows.Next() {
 		var initiative task.Initiative
 		var status string
+		var metadataJSON string
 		if err := rows.Scan(
 			&initiative.ID,
 			&initiative.ProjectID,
 			&initiative.Name,
 			&status,
 			&initiative.ExternalTicket,
+			&metadataJSON,
 		); err != nil {
 			return nil, fmt.Errorf("scan initiative: %w", err)
 		}
 		initiative.Status = task.InitiativeStatus(status)
+		initiative.Metadata, err = decodeInitiativeMetadata(metadataJSON)
+		if err != nil {
+			return nil, fmt.Errorf("decode initiative metadata: %w", err)
+		}
 		initiatives = append(initiatives, initiative)
 	}
 	if err := rows.Err(); err != nil {

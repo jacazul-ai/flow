@@ -17,15 +17,21 @@ func (s *Store) UpdateTaskMetadata(ctx context.Context, taskID string, update ta
 		return task.Task{}, err
 	}
 
-	sets := make([]string, 0, 2)
-	args := make([]any, 0, 4)
+	sets := make([]string, 0, 3)
+	args := make([]any, 0, 5)
 	if update.Description != nil {
 		description := strings.TrimSpace(*update.Description)
-		if description == "" {
-			return task.Task{}, errors.New("task description cannot be empty")
+		if err := task.ValidateTitle(description); err != nil {
+			return task.Task{}, fmt.Errorf("task description: %w", err)
 		}
-		sets = append(sets, "description = ?")
-		args = append(args, description)
+		current.Metadata.Description = ""
+		current.Metadata.Fixmes = nil
+		metadataJSON, err := encodeTaskMetadata(current.Metadata)
+		if err != nil {
+			return task.Task{}, fmt.Errorf("encode task metadata: %w", err)
+		}
+		sets = append(sets, "description = ?", "metadata_json = ?")
+		args = append(args, description, metadataJSON)
 	}
 	if update.ExternalTicket != nil {
 		sets = append(sets, "external_ticket = ?")
@@ -77,6 +83,38 @@ func (s *Store) UpdateTaskMetadata(ctx context.Context, taskID string, update ta
 		return task.Task{}, fmt.Errorf("commit amended metadata: %w", err)
 	}
 	return s.GetTask(ctx, current.ID)
+}
+
+// SetInitiativeGoal persists the first-class goal text for one initiative.
+func (s *Store) SetInitiativeGoal(ctx context.Context, projectID string, reference string, goal string) error {
+	goal = strings.TrimSpace(goal)
+	if goal == "" {
+		return errors.New("initiative goal cannot be empty")
+	}
+	initiative, err := s.FindInitiativeReference(ctx, projectID, reference)
+	if err != nil {
+		return err
+	}
+	oldGoal := initiative.Metadata.Goal
+	initiative.Metadata.Goal = goal
+	metadataJSON, err := encodeInitiativeMetadata(initiative.Metadata)
+	if err != nil {
+		return fmt.Errorf("encode initiative metadata: %w", err)
+	}
+	now := timestamp()
+	if _, err := s.db.ExecContext(ctx, `
+		UPDATE initiatives SET metadata_json = ?, updated_at = ? WHERE id = ?
+	`, metadataJSON, now, initiative.ID); err != nil {
+		return fmt.Errorf("set initiative goal: %w", err)
+	}
+	return s.AppendHistoryEvent(ctx, task.HistoryEvent{
+		InitiativeID: initiative.ID,
+		EventType:    "update",
+		Property:     "goal",
+		OldValue:     oldGoal,
+		NewValue:     goal,
+		OccurredAt:   now,
+	})
 }
 
 // RenameInitiative changes an initiative name within one project.

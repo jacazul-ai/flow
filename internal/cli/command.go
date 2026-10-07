@@ -145,6 +145,24 @@ var helpEntries = []helpEntry{
 		next: "Run 'jczl-flow status <initiative>' to inspect pending work, then execute the first ready task.",
 	},
 	{
+		name:      "goal",
+		group:     groupStartAndOrganize,
+		canonical: "goal",
+		summary:   "Set an initiative goal",
+		usage:     "jczl-flow goal <initiative> <message...>",
+		role:      "Use this to persist the initiative's first-class goal without turning it into a task or annotation.",
+		preconditions: []string{
+			"The initiative reference must resolve in the selected project.",
+			"Provide a non-empty goal message.",
+		},
+		effects: []string{
+			"Persists the goal in initiative metadata and renders it in structured and dashboard reports.",
+			"Clears affected dashboard and plans caches.",
+		},
+		examples: []string{"jczl-flow goal parity 'Ship deterministic workflow parity'"},
+		next:     "Run 'jczl-flow plans --format json --force' to inspect the persisted goal.",
+	},
+	{
 		name:      "organize",
 		group:     groupStartAndOrganize,
 		canonical: "organize",

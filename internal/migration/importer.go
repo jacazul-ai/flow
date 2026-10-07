@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jacazul-ai/flow/internal/storage/sqlite"
 	"github.com/jacazul-ai/flow/internal/task"
@@ -117,7 +118,7 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 			updatedAt = createdAt
 		}
 
-		description, mode, modeWarning := migrateDescription(current.Description)
+		description, mode, modeWarning, metadataDescription := migrateDescription(current.Description)
 		if modeWarning != "" {
 			warnings = append(warnings, fmt.Sprintf("task %s: %s", current.UUID, modeWarning))
 		}
@@ -216,10 +217,15 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 			warnings = append(warnings, fmt.Sprintf("task %s: source tags require a native retention decision", current.UUID))
 		}
 
+		metadata := task.TaskMetadata{Description: metadataDescription}
+		if metadataDescription != "" {
+			metadata.Fixmes = []string{"FIXME: <truncated:50>"}
+		}
 		importedTasks = append(importedTasks, task.ImportedTask{
 			ID:             current.UUID,
 			InitiativeID:   initiativeIDs[initiativeName],
 			Description:    description,
+			Metadata:       metadata,
 			Mode:           mode,
 			Status:         status,
 			Outcome:        outcome,
@@ -361,16 +367,24 @@ func (i *Importer) Apply(ctx context.Context, bundle task.ImportBundle) (task.Im
 
 var modePrefix = regexp.MustCompile(`^\[([A-Z-]+)\]\s*(.*)$`)
 
-func migrateDescription(description string) (string, task.TaskMode, string) {
-	matches := modePrefix.FindStringSubmatch(strings.TrimSpace(description))
-	if len(matches) == 0 {
-		return strings.TrimSpace(description), task.ModeUnspecified, ""
+func migrateDescription(description string) (string, task.TaskMode, string, string) {
+	cleaned := strings.TrimSpace(description)
+	mode := task.ModeUnspecified
+	matches := modePrefix.FindStringSubmatch(cleaned)
+	if len(matches) != 0 {
+		parsed, err := task.ParseTaskMode(matches[1])
+		if err != nil || parsed == task.ModeUnspecified {
+			return cleaned, task.ModeUnspecified, fmt.Sprintf("unknown mode prefix [%s] retained in description", matches[1]), ""
+		}
+		mode = parsed
+		cleaned = strings.TrimSpace(matches[2])
 	}
-	mode, err := task.ParseTaskMode(matches[1])
-	if err != nil || mode == task.ModeUnspecified {
-		return strings.TrimSpace(description), task.ModeUnspecified, fmt.Sprintf("unknown mode prefix [%s] retained in description", matches[1])
+	if utf8.RuneCountInString(cleaned) <= task.TitleMaxLength {
+		return cleaned, mode, "", ""
 	}
-	return strings.TrimSpace(matches[2]), mode, ""
+	prefix := []rune(cleaned)[:50]
+	title := string(prefix) + " FIXME: <truncated:50>"
+	return title, mode, fmt.Sprintf("title exceeded %d characters; full text preserved in description", task.TitleMaxLength), cleaned
 }
 
 func migrateAnnotation(description string) (string, string, string) {

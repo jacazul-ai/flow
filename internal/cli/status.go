@@ -261,6 +261,9 @@ func appendFocusedContext(
 			}
 			fmt.Fprintf(output, "🐊 ALERT: %s ticket detected (%s)\n", kind, ticket)
 		}
+		for _, fixme := range focused.Metadata.Fixmes {
+			fmt.Fprintf(output, "%s\n", fixme)
+		}
 		direct, err := store.ListAnnotations(ctx, focused.ID)
 		if err != nil {
 			return err

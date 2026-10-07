@@ -67,6 +67,76 @@ func TestPlanStateIsIsolatedByProject(t *testing.T) {
 	}
 }
 
+func TestInitiativeGoalPersistsAndRenders(t *testing.T) {
+	harness := testharness.NewHarness(t, "project", "session")
+	if output, err := runFlow(t, harness, "plan", "parity", "Task"); err != nil {
+		t.Fatalf("create initiative: %v\n%s", err, output)
+	}
+	goal := "Ship deterministic workflow parity"
+	if output, err := runFlow(t, harness, "goal", "parity", goal); err != nil {
+		t.Fatalf("set initiative goal: %v\n%s", err, output)
+	}
+
+	output, err := runFlow(t, harness, "plans", "--format", "json", "--force")
+	if err != nil {
+		t.Fatalf("read initiative goal: %v\n%s", err, output)
+	}
+	var report struct {
+		Records []struct {
+			Name string `json:"name"`
+			Goal string `json:"goal"`
+		} `json:"records"`
+	}
+	if err := json.Unmarshal([]byte(output), &report); err != nil {
+		t.Fatalf("decode plans: %v\n%s", err, output)
+	}
+	if len(report.Records) != 1 || report.Records[0].Name != "parity" || report.Records[0].Goal != goal {
+		t.Fatalf("initiative records = %#v, want goal %q", report.Records, goal)
+	}
+	output, err = runFlow(t, harness, "ponder", "--force")
+	if err != nil || !strings.Contains(output, goal) {
+		t.Fatalf("ponder = %q, err %v; want initiative goal", output, err)
+	}
+}
+
+func TestInitiativeGoalsStayProjectIsolated(t *testing.T) {
+	first := testharness.NewHarness(t, "project-alpha", "session")
+	second := testharness.NewHarness(t, "project-beta", "session")
+	for _, harness := range []*testharness.Harness{first, second} {
+		if output, err := runFlow(t, harness, "plan", "parity", "Task"); err != nil {
+			t.Fatalf("create initiative: %v\n%s", err, output)
+		}
+	}
+	if output, err := runFlow(t, first, "goal", "parity", "Alpha-only goal"); err != nil {
+		t.Fatalf("set alpha goal: %v\n%s", err, output)
+	}
+	output, err := runFlow(t, second, "plans", "--format", "json", "--force")
+	if err != nil {
+		t.Fatalf("read beta plans: %v\n%s", err, output)
+	}
+	if strings.Contains(output, "Alpha-only goal") {
+		t.Fatalf("beta observed alpha initiative goal: %q", output)
+	}
+}
+
+func TestInitiativeAndTaskTitleLimits(t *testing.T) {
+	harness := testharness.NewHarness(t, "project", "session")
+	tooLong := strings.Repeat("x", 121)
+	output, err := runFlow(t, harness, "plan", "too-long", tooLong)
+	if err == nil || !strings.Contains(output, "ACTION:") {
+		t.Fatalf("over-limit title output = %q, err %v; want actionable rejection", output, err)
+	}
+
+	warningTitle := strings.Repeat("w", 80)
+	output, err = runFlow(t, harness, "plan", "warning", warningTitle)
+	if err != nil {
+		t.Fatalf("warning title rejected: %v\n%s", err, output)
+	}
+	if !strings.Contains(strings.ToLower(output), "warning") {
+		t.Fatalf("warning title output = %q, want warning", output)
+	}
+}
+
 func TestPlanCreationReturnsShortUUID(t *testing.T) {
 	harness := testharness.NewHarness(t, "project", "session")
 

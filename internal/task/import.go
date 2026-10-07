@@ -28,6 +28,7 @@ type ImportedTask struct {
 	ID             string
 	InitiativeID   string
 	Description    string
+	Metadata       TaskMetadata
 	Mode           TaskMode
 	Status         Status
 	Outcome        string
