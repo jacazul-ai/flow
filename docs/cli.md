@@ -97,6 +97,27 @@ Structured formats preserve the existing session identity fields and add
 jczl-flow session list --format json
 ```
 
+## Initiative and task metadata
+
+Initiatives keep contract metadata separate from task lifecycle and annotations.
+Set the first-class goal with:
+
+```bash
+jczl-flow goal parity "Ship deterministic workflow parity"
+```
+
+`plans`, `ponder`, and structured reports render the goal and the persisted
+metadata collections. Native initiative and task titles are required and may
+contain at most 120 Unicode characters. Titles longer than 79 characters are
+accepted with a warning; titles over 120 characters fail with an `ACTION:`
+prompt telling the operator to move context into the open description.
+
+Legacy migration extracts a leading `[MODE]` before validation. A migrated title
+longer than 120 characters keeps its complete cleaned source in metadata,
+uses the first 50 characters plus `FIXME: <truncated:50>` as its title, and
+emits a retention warning. Native create and amend operations never truncate a
+title silently.
+
 ## Root help taxonomy
 
 The root help exposes canonical commands once in this fixed order:

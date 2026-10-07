@@ -155,7 +155,7 @@ cache lives in `cache_entries`, scoped by project and session.
 
 Schema evolution uses Pressly Goose as an embedded library, not as a CLI
 subprocess. `Store` applies pending migrations when it opens a database. The
-provider has ten ordered migration steps:
+provider has eleven ordered migration steps:
 
 1. initial schema;
 2. task lifecycle columns (a Go migration, so it can add missing columns to
@@ -167,7 +167,8 @@ provider has ten ordered migration steps:
 7. task metadata;
 8. focus plan interests;
 9. workflow history;
-10. task order.
+10. task order;
+11. initiative and task metadata.
 
 The provider uses its own version table and keeps the application silent by
 default.
