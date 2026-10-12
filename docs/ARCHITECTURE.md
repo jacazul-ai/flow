@@ -26,7 +26,7 @@ github.com/jacazul-ai/flow          (this repository)
 ├── cmd/jczl-silo/                  development tool: generates silos
 └── internal/...                    implementation packages
 
-github.com/jacazul-ai/jacazul-ai-cli
+github.com/jacazul-ai/launcher
 └── jacazul flow ...                imports package flow and calls flow.Run
 ```
 
@@ -91,7 +91,7 @@ Rules:
 ## Runtime Layers
 
 ```text
-cmd/jczl-flow/main.go   or   jacazul-ai-cli
+cmd/jczl-flow/main.go   or   jacazul/launcher
             ↓
         flow.Run(ctx, args, Env, Streams)
             ↓

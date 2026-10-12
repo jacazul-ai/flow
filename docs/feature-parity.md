@@ -3,7 +3,7 @@
 ## Purpose
 
 This document defines the feature-parity target for the current port from the
-Python/shell `tw-flow` implementation in `jacazul-ai-cli` to Go.
+Python/shell `tw-flow` implementation in `jacazul/launcher` to Go.
 
 Parity means preserving observable workflow contracts, safety behavior, state
 transitions, isolation boundaries, and actionable errors. It does not mean
@@ -12,7 +12,7 @@ copying the Python structure or its internal implementation.
 Reference tests:
 
 ```text
-~/source/jacazul-ai/jacazul-ai-cli/master/tests
+~/source/jacazul-ai/launcher/master/tests
 ```
 
 The local source of truth is a native SQLite database with one physical file

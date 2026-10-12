@@ -32,7 +32,7 @@ focused task → complete → arbitrary pending task
 
 ### Legacy reference path
 
-`jacazul-ai-cli/master/jacazul/taskwarrior/core.py` contains
+`~/source/jacazul-ai/launcher/master/jacazul/taskwarrior/core.py` contains
 `FocusManager.advance`:
 
 - line 402: `advance` loads the focus stack and restricts entries to the same
@@ -124,7 +124,7 @@ different initiative cannot become the new focus.
 Reference coverage exists in:
 
 ```text
-jacazul-ai-cli/master/tests/test_execute_loop_control.py
+~/source/jacazul-ai/launcher/master/tests/test_execute_loop_control.py
 ```
 
 That coverage currently proves same-plan filtering, but its second test names

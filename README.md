@@ -2,7 +2,7 @@
 
 `flow` is the Jacazul workflow engine.
 
-This project is the Go-native migration of the current `tw-flow` workflow tooling used by [jacazul-ai-cli](https://github.com/jacazul-ai/jacazul-ai-cli).
+This project is the Go-native migration of the current `tw-flow` workflow tooling used by [jacazul/launcher](https://github.com/jacazul-ai/launcher).
 
 The goal is not to wrap Taskwarrior forever. The goal is to move the useful workflow semantics into a Go implementation that can serve Jacazul agents with a sharper, more portable, and more controllable flow engine.
 
@@ -18,7 +18,7 @@ The engine answers to four names, one per layer:
 | `jacazul flow` | what an operator types |
 
 `jacazul flow` is the user-facing form. The engine is imported into
-`jacazul-ai-cli` as a Go library and compiled into the single `jacazul` binary,
+`jacazul/launcher` as a Go library and compiled into the single `jacazul` binary,
 so engine updates ship with `jacazul` itself rather than as a separate
 component. `jczl-flow` builds the same engine as its own executable for tests,
 development, and anyone who wants the engine without the rest of Jacazul.
@@ -49,7 +49,7 @@ The RASTRO acronyms survive as livestream lore, not as product names:
 
 ## Why this exists
 
-Today, `jacazul-ai-cli` relies on shell-based Taskwarrior helpers such as:
+Today, `jacazul/launcher` relies on shell-based Taskwarrior helpers such as:
 
 - `taskp`
 - `tw-flow`
@@ -67,7 +67,7 @@ Those tools work, but they are split across shell scripts, Taskwarrior behavior,
 The first migration target is the Taskwarrior workflow skill currently living in:
 
 ```text
-jacazul-ai-cli/tw-flow-to-go/skills/taskwarrior-expert
+~/source/jacazul-ai/launcher/master/skills/taskwarrior-expert
 ```
 
 The migration scope includes:
@@ -120,9 +120,9 @@ The local engine should also be designed so it can connect to a centralized serv
 
 The primary consumer will be:
 
-<https://github.com/jacazul-ai/jacazul-ai-cli>
+<https://github.com/jacazul-ai/launcher>
 
-`jacazul-ai-cli` is expected to use `flow` as the underlying flow/task engine for agent workflow state, project context, and session navigation.
+`jacazul/launcher` is expected to use `flow` as the underlying flow/task engine for agent workflow state, project context, and session navigation.
 
 ## CLI design direction
 
@@ -252,7 +252,7 @@ Future server-backed orchestration may include:
 - sharing focused session state between agents
 - coordinating task ownership and workflow transitions
 - storing long-lived context outside a single machine
-- exposing APIs for `jacazul-ai-cli` and other Jacazul tools
+- exposing APIs for `jacazul/launcher` and other Jacazul tools
 
 The local CLI should therefore keep clean boundaries between command routing, workflow logic, persistence, and context transport.
 
@@ -321,7 +321,7 @@ contract tests.
 The current phase is feature parity with `tw-flow`. Work is focused on:
 
 - porting the remaining reference behavior and its contract tests
-- plugging `flow.Run` into `jacazul-ai-cli`
+- plugging `flow.Run` into `jacazul/launcher`
 - preparing the Taskwarrior cutover
 
 Server coordination and live sync are designed but deliberately not

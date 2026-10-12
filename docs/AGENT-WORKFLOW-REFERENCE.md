@@ -13,10 +13,10 @@ transitions, and actionable errors remain compatible.
 
 ## Reference Repository
 
-The behavioral reference is the `jacazul-ai-cli` repository:
+The behavioral reference is the `jacazul/launcher` repository:
 
 ```text
-~/source/jacazul-ai/jacazul-ai-cli/master/
+~/source/jacazul-ai/launcher/master/
 ```
 
 Use the reference checkout in an isolated test environment. Never use the

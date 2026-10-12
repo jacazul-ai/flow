@@ -129,7 +129,7 @@ The copied TaskChampion database established the following source boundary:
 
 These tables are a forensic source format, not a flow runtime dependency.
 The migration boundary should be a read-only, schema-gated exporter owned by
-`jacazul-ai-cli` or its migration adapter:
+`jacazul/launcher` or its migration adapter:
 
 ```text
 taskchampion.sqlite3

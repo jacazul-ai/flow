@@ -130,5 +130,5 @@ new `flow` CLI or standalone resolver:
 | `--project-id` | `--project` | Rejected by the new CLI |
 | `--session-id` | `--session` | Rejected by the new CLI |
 
-Any compatibility translation belongs in `jacazul-ai-cli/upstream`, not in
+Any compatibility translation belongs in `jacazul/launcher`, not in
 this new engine.

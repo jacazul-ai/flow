@@ -3,9 +3,9 @@
 ## Purpose
 
 This document defines the first local migration from the legacy
-Taskwarrior-backed `jacazul-ai-cli` workflow to native flow. The migration
+Taskwarrior-backed `jacazul/launcher` workflow to native flow. The migration
 moves workflow state into the project-scoped flow SQLite database while
-keeping `jacazul-ai-cli` available as the behavioral oracle and temporary
+keeping `jacazul/launcher` available as the behavioral oracle and temporary
 compatibility client.
 
 The migration is not a runtime dependency of flow. Normal flow commands
@@ -199,7 +199,7 @@ The cutover sequence is:
 3. create a native backup/checkpoint;
 4. apply into an isolated target and run state verification;
 5. run differential behavior scenarios;
-6. switch `jacazul-ai-cli` to the native flow client path;
+6. switch `jacazul/launcher` to the native flow client path;
 7. keep the legacy path read-only and available for rollback;
 8. monitor native errors and retain the source snapshot until acceptance;
 9. remove legacy runtime writes only after an explicit rollback window.

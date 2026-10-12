@@ -66,7 +66,7 @@ An unknown value fails the command with exit status 1, empty stdout, and an
 flag or from the injected default.
 
 A launcher-owned configuration file is likewise not parsed here. Bootstrap and
-configuration resolution belong to `jacazul-ai-cli` under the Explicit
+configuration resolution belong to `jacazul/launcher` under the Explicit
 Non-Goals in `AGENTS.md`; the launcher resolves the file and injects the
 result.
 
@@ -79,7 +79,7 @@ into the workflow core.
 > The launcher decides which format. The engine implements formats.
 
 Per-model, and later per-harness-and-model, selection tables grow in
-`jacazul-ai-cli`. The engine gains only another valid value in `flow.Env`, so
+`jacazul/launcher`. The engine gains only another valid value in `flow.Env`, so
 that growth costs nothing here.
 
 **Open question:** a per-project default format is arguably workflow state
