@@ -94,16 +94,18 @@ snapshot and legacy state remain available for rollback and comparison.
 | `priority`, `urgency` | task priority and urgency metadata | Preserve values; default only when the source field is absent. Do not recalculate historical urgency during import. |
 | `due` | `tasks.due_at` | Normalize supported Taskwarrior date forms to the native date representation and report invalid values. |
 | annotations | `annotations` | Preserve body and source timestamp. Map recognized semantic prefixes to canonical kinds; preserve unknown kinds in a lossless migration representation and report them. |
+| stored Taskwarrior `tags` | `task_tags` | Preserve arbitrary stored one-word tags as a duplicate-free relational set. Do not import Taskwarrior virtual tags because they are derived predicates. A legacy `DISCARDED` marker is consumed into `tasks.disposition = discarded` rather than stored as a native tag. |
 | `focus.json` | the global native session | Preserve focused initiative, focused task, task stack, and plans of interest after UUID resolution. A blocked imported anchor may be preserved as navigation history but must remain non-executable. |
 | `focus-<SESSION_ID>.json` | a native session keyed by `project_id` and `session_id` | Import each independent focus file into its matching native session without crossing project boundaries. |
 | session handoff note | `session_notes` | Preserve content, session identity, timestamps, and acknowledged state. |
 | roadmap task metadata | `roadmap_entries` | Import recognized roadmap phases as ledger entries; do not turn roadmap records into operational task dependencies. |
 | output cache files | nothing | Never import caches. The first native report must be fresh and session-scoped. |
 
-Tags and other Taskwarrior fields not represented by the current native model
-must be included in the dry-run report as retained-data gaps. The importer may
-not silently drop them. Adding a native field or a lossless extension is a
-design decision for the implementation slice that owns that mapping.
+Taskwarrior virtual tags are derived filters, not stored source data. The native
+flow may map a virtual predicate to an equivalent derived state such as
+`BLOCKED`, `READY`, or `ACTIVE`, but must not persist it in `task_tags`.
+Unsupported Taskwarrior fields outside this mapping must be included in the
+dry-run report as retained-data gaps; the importer may not silently drop them.
 
 ## Import modes
 

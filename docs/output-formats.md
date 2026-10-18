@@ -169,7 +169,7 @@ rather than a missing field.
 
 | Record | Used by | Fields |
 |---|---|---|
-| Task | `status`, `next`, `active`, `blocked`, `overdue`, `tree`, `onboard` | `id`, `short_id`, `initiative`, `description`, `status`, `mode`, `priority`, `urgency`, `due_at`, `ticket`, `ticket_inherited`, `dependencies`; `tree` adds `marker` (`READY`, `BLOCKED`, `ACTIVE`, `DONE`) |
+| Task | `status`, `next`, `active`, `blocked`, `overdue`, `tree`, `onboard` | `id`, `short_id`, `initiative`, `title`, `description`, `status`, `disposition`, `mode`, `priority`, `urgency`, `due_at`, `ticket`, `ticket_inherited`, `tags`, `dependencies`; `tree` adds `marker` (`READY`, `BLOCKED`, `ACTIVE`, `DONE`) |
 | Initiative | `plans`, `ponder`, `onboard` | `id`, `name`, `status`, `ticket`, `pending`, `active`, `completed`, `blocked` |
 | Annotation | `context`, `notes`, `onboard` | `task_id`, `task_description`, `kind`, `body`, `created_at`, `inherited` |
 | History event | `history` | `occurred_at`, `event_type`, `property`, `old_value`, `new_value`, `task_id`, `initiative_id`, `source` |

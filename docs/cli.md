@@ -129,6 +129,29 @@ uses the first 50 characters plus `FIXME: <truncated:50>` as its title, and
 emits a retention warning. Native create and amend operations never truncate a
 title silently.
 
+### Task tags
+
+Task tags follow Taskwarrior's stored-tag model. A task may have any number of
+one-word stored tags; tags are preserved in native storage, shown in text and
+structured task reports, and can be filtered with `+tag` and `-tag` predicates:
+
+```bash
+jczl-flow status +research -legacy
+jczl-flow next parity +urgent
+jczl-flow amend 57c3fc80 +urgent -legacy
+```
+
+In filters, `+tag` requires a tag and `-tag` excludes it. In `amend`, `+tag`
+adds a tag and `-tag` removes one. Multiple predicates combine with `AND`.
+The native store keeps tags in a relational `task_tags` table, so repeated
+imports and repeated additions do not create duplicates.
+
+Taskwarrior virtual tags such as `BLOCKED`, `READY`, `ACTIVE`, and `TAGGED` are
+not stored tags and are never persisted as rows. When a virtual predicate has a
+native equivalent, flow evaluates it from workflow state instead. The legacy
+`DISCARDED` marker is a migration compatibility signal for the native
+`disposition=discarded` state, not a native task tag.
+
 ## Root help taxonomy
 
 The root help exposes canonical commands once in this fixed order:

@@ -17,8 +17,8 @@ MODE|title|tag|due
 - The title is concise and action-oriented: ideally within {{ title_ideal }}
   characters, never more than {{ title_max }}. Move extra context out of the
   title instead of truncating it.
-- The tag field is accepted for legacy compatibility but not stored: do not
-  rely on tags.
+- The plan-spec tag field is accepted for legacy compatibility but is not the
+  same as a stored Taskwarrior task tag; use `amend +tag` to manage stored tags.
 - The due field accepts `{{ due_layout }}`{% for keyword in due_keywords %}, `{{ keyword|safe }}`{% endfor %}.
 
 Keep urgency cool: no due date unless the operator asks or it is logically
@@ -28,6 +28,15 @@ immediate focus or a blocker, never while planning.
 ```bash
 jacazul flow plan parity 'DESIGN|Define schema' 'EXECUTE|Implement store||tomorrow'
 ```
+
+## Stored tags
+
+Taskwarrior stored tags are one-word labels. A task may have any number of
+stored tags, which flow preserves, displays, and filters with `+tag` and `-tag`.
+Use `amend <uuid> +tag -tag` to add and remove stored tags. Taskwarrior
+virtual tags such as `BLOCKED`, `READY`, `ACTIVE`, and `TAGGED` are derived
+predicates and are not persisted as stored tags. The legacy `DISCARDED` marker
+maps to native `disposition=discarded` instead of becoming a native tag.
 
 ## Modes
 

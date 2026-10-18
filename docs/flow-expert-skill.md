@@ -144,7 +144,7 @@ boundary required by skill and hatch` task:
 
 | Legacy guidance | Native state | Direction |
 |---|---|---|
-| Plan spec tags such as `+research` | `parseTaskSpec` accepts the tag field and discards it | The skill states that tags are ignored; a parity task decides whether `plan` rejects them or tags become modeled |
+| Plan spec tags such as `+research` | `parseTaskSpec` accepts the tag field and does not create stored task tags | The plan-spec tag field remains legacy-only; Taskwarrior stored tags are managed by migration and `amend +tag` |
 | Modes `[PLAN]` and `[PR-REVIEW]` | Not in the native mode catalog; an unknown prefix stays in the description | Compatibility decision required: map `PLAN` to `DESIGN`, and add or map `PR-REVIEW` |
 | `_archive` sub-projects | Native `backlog` and `activate` | Covered in `initiatives.md` |
 | Priority H, M, L | `urgent` raises priority | Covered in `tasks.md` under the cool-down rule |
