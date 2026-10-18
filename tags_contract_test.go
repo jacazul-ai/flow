@@ -61,6 +61,10 @@ func TestMigrationPreservesDisplaysFiltersAndUpdatesStoredTags(t *testing.T) {
 	if !strings.Contains(output, taskID) || strings.Contains(output, "22222222-2222-4222-8222-222222222222") {
 		t.Fatalf("tag filter output = %q, want only the moloide task", output)
 	}
+	output, err = runFlow(t, harness, "status", "parity", "+moloide", "--force")
+	if err != nil || !strings.Contains(output, "+moloide") || !strings.Contains(output, "Tagged task") {
+		t.Fatalf("text tag display = %q, err %v", output, err)
+	}
 
 	if output, err := runFlow(t, harness, "amend", taskID, "+urgent", "-research"); err != nil {
 		t.Fatalf("amend tags: %v\n%s", err, output)

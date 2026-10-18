@@ -103,6 +103,13 @@ func (s *Store) ApplyImport(ctx context.Context, bundle task.ImportBundle) (task
 		} else {
 			result.Updated++
 		}
+		if err := validateStoredTags(imported.Tags); err != nil {
+			return task.ImportResult{}, fmt.Errorf("validate tags for task %s: %w", imported.ID, err)
+		}
+		if err := replaceTaskTags(ctx, tx, imported.ID, imported.Tags); err != nil {
+			return task.ImportResult{}, err
+		}
+		result.Tags += len(task.NormalizeTags(imported.Tags))
 		if _, err := tx.ExecContext(ctx, `DELETE FROM task_dependencies WHERE task_id = ?`, imported.ID); err != nil {
 			return task.ImportResult{}, fmt.Errorf("replace task dependencies %s: %w", imported.ID, err)
 		}

@@ -12,6 +12,7 @@ import (
 // ActiveCommand lists tasks currently being executed.
 type ActiveCommand struct {
 	ReportFormat
+	TagArguments
 	appOpts *config.AppOptions
 }
 
@@ -22,7 +23,7 @@ func (cmd *ActiveCommand) SetAppOptions(opts *config.AppOptions) {
 
 // Execute renders active tasks for the current project or initiative.
 func (cmd *ActiveCommand) Execute(args []string) error {
-	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, "ACTIVE TASKS", "No active tasks.", func(current task.Task, _ map[string]task.Status) bool {
+	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, cmd.TagFilter(), "ACTIVE TASKS", "No active tasks.", func(current task.Task, _ map[string]task.Status) bool {
 		return current.Status == task.Active
 	})
 }
@@ -30,6 +31,7 @@ func (cmd *ActiveCommand) Execute(args []string) error {
 // BlockedCommand lists pending tasks with unfinished dependencies.
 type BlockedCommand struct {
 	ReportFormat
+	TagArguments
 	appOpts *config.AppOptions
 }
 
@@ -40,7 +42,7 @@ func (cmd *BlockedCommand) SetAppOptions(opts *config.AppOptions) {
 
 // Execute renders blocked tasks for the current project or initiative.
 func (cmd *BlockedCommand) Execute(args []string) error {
-	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, "BLOCKED TASKS", "No blocked tasks.", func(current task.Task, states map[string]task.Status) bool {
+	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, cmd.TagFilter(), "BLOCKED TASKS", "No blocked tasks.", func(current task.Task, states map[string]task.Status) bool {
 		return current.Status == task.Pending && !dependenciesReady(current, states)
 	})
 }
@@ -48,6 +50,7 @@ func (cmd *BlockedCommand) Execute(args []string) error {
 // OverdueCommand lists pending tasks whose due date is before today.
 type OverdueCommand struct {
 	ReportFormat
+	TagArguments
 	appOpts *config.AppOptions
 }
 
@@ -59,7 +62,7 @@ func (cmd *OverdueCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute renders overdue tasks for the current project or initiative.
 func (cmd *OverdueCommand) Execute(args []string) error {
 	today := time.Now().UTC().Format("2006-01-02")
-	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, "OVERDUE TASKS", "No overdue tasks.", func(current task.Task, _ map[string]task.Status) bool {
+	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, cmd.TagFilter(), "OVERDUE TASKS", "No overdue tasks.", func(current task.Task, _ map[string]task.Status) bool {
 		return current.Status == task.Pending && current.DueAt != "" && current.DueAt < today
 	})
 }
@@ -68,6 +71,7 @@ func listTaskView(
 	opts *config.AppOptions,
 	reportFormat ReportFormat,
 	args []string,
+	tagFilter task.TagFilter,
 	header string,
 	emptyMessage string,
 	include func(task.Task, map[string]task.Status) bool,
@@ -94,10 +98,11 @@ func listTaskView(
 	if err != nil {
 		return err
 	}
-	tasks := tasksForInitiative(allTasks, initiativeName)
+	initiativeTasks := tasksForInitiative(allTasks, initiativeName)
+	tasks := filterTasksByTags(initiativeTasks, tagFilter)
 	resolver := newTicketResolver(allTasks)
-	states := make(map[string]task.Status, len(tasks))
-	for _, current := range tasks {
+	states := make(map[string]task.Status, len(initiativeTasks))
+	for _, current := range initiativeTasks {
 		states[current.ID] = current.Status
 	}
 

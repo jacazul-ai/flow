@@ -428,7 +428,7 @@ func TestPonderTableOutputMatchesReferenceColumns(t *testing.T) {
 	if err != nil {
 		t.Fatalf("render table dashboard: %v\n%s", err, output)
 	}
-	if !strings.Contains(output, "| ST | UUID | MODE | PLAN | DESCRIPTION | URG |") {
+	if !strings.Contains(output, "| ST | UUID | MODE | PLAN | TAGS | DESCRIPTION | URG |") {
 		t.Fatalf("table dashboard = %q, want reference columns", output)
 	}
 }

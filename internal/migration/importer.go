@@ -122,6 +122,7 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 		if modeWarning != "" {
 			warnings = append(warnings, fmt.Sprintf("task %s: %s", current.UUID, modeWarning))
 		}
+		tags, hasDiscardedTag := migrateTags(current.Tags)
 		dueAt, err := normalizeDate(current.Due)
 		if err != nil {
 			return task.ImportBundle{}, warnings, fmt.Errorf("task %s due: %w", current.UUID, err)
@@ -151,7 +152,7 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 			warnings = append(warnings, fmt.Sprintf("task %s: unknown status %q mapped to pending", current.UUID, current.Status))
 		}
 		disposition := ""
-		if discarded || containsTag(current.Tags, "DISCARDED") || strings.EqualFold(current.Status, "deleted") {
+		if discarded || hasDiscardedTag || strings.EqualFold(current.Status, "deleted") {
 			status = task.Completed
 			disposition = "discarded"
 		}
@@ -213,10 +214,6 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 				SessionID:     strings.TrimSpace(sourceEvent.SessionID),
 			})
 		}
-		if current.Tags != nil && len(current.Tags) > 0 {
-			warnings = append(warnings, fmt.Sprintf("task %s: source tags require a native retention decision", current.UUID))
-		}
-
 		metadata := task.TaskMetadata{Description: metadataDescription}
 		if metadataDescription != "" {
 			metadata.Fixmes = []string{"FIXME: <truncated:50>"}
@@ -233,6 +230,7 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 			StartedAt:      startedAt,
 			CompletedAt:    completedAt,
 			Disposition:    disposition,
+			Tags:           tags,
 			DueAt:          dueAt,
 			Priority:       priority,
 			Urgency:        current.Urgency,
@@ -347,10 +345,15 @@ func (i *Importer) DryRun(ctx context.Context, bundle task.ImportBundle) (task.I
 	if err := ctx.Err(); err != nil {
 		return task.ImportResult{}, err
 	}
+	tagCount := 0
+	for _, imported := range bundle.Tasks {
+		tagCount += len(imported.Tags)
+	}
 	return task.ImportResult{
 		Created:      len(bundle.Tasks),
 		Dependencies: len(bundle.Dependencies),
 		Annotations:  len(bundle.Annotations),
+		Tags:         tagCount,
 	}, nil
 }
 
@@ -527,13 +530,21 @@ func normalizeDate(value string) (string, error) {
 	}
 }
 
-func containsTag(tags []string, wanted string) bool {
-	for _, tag := range tags {
-		if strings.EqualFold(strings.TrimSpace(tag), wanted) {
-			return true
+func migrateTags(source []string) ([]string, bool) {
+	stored := make([]string, 0, len(source))
+	hasDiscarded := false
+	for _, raw := range source {
+		tag := strings.TrimSpace(raw)
+		if tag == "" {
+			continue
 		}
+		if strings.EqualFold(tag, "DISCARDED") {
+			hasDiscarded = true
+			continue
+		}
+		stored = append(stored, tag)
 	}
-	return false
+	return task.NormalizeTags(stored), hasDiscarded
 }
 
 func migrationTimestamp() string {

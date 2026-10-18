@@ -14,6 +14,7 @@ import (
 // StatusCommand displays project task state.
 type StatusCommand struct {
 	ReportFormat
+	TagArguments
 	PendingOnly bool `long:"pending" description:"Show pending tasks only"`
 	Force       bool `long:"force" description:"Bypass the status cache"`
 	appOpts     *config.AppOptions
@@ -44,10 +45,12 @@ func (cmd *StatusCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
+	tagFilter := cmd.TagFilter()
 	cacheKey := "status"
 	if initiativeName != "" {
 		cacheKey += "_" + initiativeName
 	}
+	cacheKey += tagFilterCacheSuffix(tagFilter)
 	if format != formatText {
 		return cmd.report(store, format, initiativeName, cacheKey)
 	}
@@ -72,7 +75,7 @@ func (cmd *StatusCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	tasks := tasksForInitiative(allTasks, initiativeName)
+	tasks := filterTasksByTags(tasksForInitiative(allTasks, initiativeName), tagFilter)
 	focus, err := store.LoadFocus(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
@@ -119,7 +122,7 @@ func (cmd *StatusCommand) report(store *sqlite.Store, format string, initiativeN
 	if err != nil {
 		return err
 	}
-	tasks := tasksForInitiative(allTasks, initiativeName)
+	tasks := filterTasksByTags(tasksForInitiative(allTasks, initiativeName), cmd.TagFilter())
 	resolver := newTicketResolver(allTasks)
 	records, err := taskRecordsWithResolver(resolver, statusTasks(tasks, cmd.PendingOnly))
 	if err != nil {
@@ -230,6 +233,9 @@ func formatStatusTask(resolver *ticketResolver, current task.Task) (string, erro
 	line := fmt.Sprintf("- [%s]", shortID(current.ID))
 	if ticket != "" {
 		line += " [" + ticket + "]"
+	}
+	if tags := formatTaskTags(current.Tags); tags != "" {
+		line += " " + tags
 	}
 	return fmt.Sprintf("%s %s\n", line, current.Description), nil
 }

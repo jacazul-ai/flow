@@ -9,6 +9,7 @@ import (
 // NextCommand lists the next ready tasks for a project or initiative.
 type NextCommand struct {
 	ReportFormat
+	TagArguments
 	appOpts *config.AppOptions
 }
 
@@ -40,6 +41,7 @@ func (cmd *NextCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	ready = filterTasksByTags(ready, cmd.TagFilter())
 	if format != formatText {
 		records, err := taskRecords(cmd.appOpts.Context(), store, ready)
 		if err != nil {
@@ -52,7 +54,11 @@ func (cmd *NextCommand) Execute(args []string) error {
 		return nil
 	}
 	for _, current := range ready {
-		fmt.Fprintf(cmd.appOpts.Out(), "%s %s\n", shortID(current.ID), current.Description)
+		tags := formatTaskTags(current.Tags)
+		if tags != "" {
+			tags += " "
+		}
+		fmt.Fprintf(cmd.appOpts.Out(), "%s %s%s\n", shortID(current.ID), tags, current.Description)
 	}
 	return nil
 }

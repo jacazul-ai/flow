@@ -13,6 +13,7 @@ import (
 // OnboardCommand renders one deterministic agent context briefing.
 type OnboardCommand struct {
 	ReportFormat
+	TagArguments
 	appOpts *config.AppOptions
 }
 
@@ -48,10 +49,10 @@ func (cmd *OnboardCommand) Execute(args []string) error {
 	}
 
 	if format != formatText {
-		return cmd.report(store, format, focus, note, found)
+		return cmd.report(store, format, focus, note, found, cmd.TagFilter())
 	}
 
-	output, acknowledge, err := renderOnboard(ctx, store, cmd.appOpts, focus, note, found)
+	output, acknowledge, err := renderOnboard(ctx, store, cmd.appOpts, focus, note, found, cmd.TagFilter())
 	if err != nil {
 		return err
 	}
@@ -71,7 +72,7 @@ func (cmd *OnboardCommand) Execute(args []string) error {
 
 // report renders the onboard briefing as one record. A pending handoff is
 // carried in full and acknowledged exactly as the text briefing does.
-func (cmd *OnboardCommand) report(store *sqlite.Store, format string, focus task.FocusState, note task.SessionNote, noteFound bool) error {
+func (cmd *OnboardCommand) report(store *sqlite.Store, format string, focus task.FocusState, note task.SessionNote, noteFound bool, tagFilter task.TagFilter) error {
 	ctx := cmd.appOpts.Context()
 	acknowledge := noteFound && note.AcknowledgedAt == ""
 	handoff := ""
@@ -86,7 +87,7 @@ func (cmd *OnboardCommand) report(store *sqlite.Store, format string, focus task
 	if err != nil {
 		return err
 	}
-	tasks, initiatives, err := onboardWorkRecords(ctx, store, cmd.appOpts, focus, focusedName)
+	tasks, initiatives, err := onboardWorkRecords(ctx, store, cmd.appOpts, focus, focusedName, tagFilter)
 	if err != nil {
 		return err
 	}
@@ -130,13 +131,13 @@ func onboardContextRecords(ctx context.Context, store *sqlite.Store, focus task.
 
 // onboardWorkRecords mirrors the text briefing: the focused initiative's
 // status when there is a focus, the ponder initiatives otherwise.
-func onboardWorkRecords(ctx context.Context, store *sqlite.Store, opts *config.AppOptions, focus task.FocusState, focusedName string) ([]record, []record, error) {
+func onboardWorkRecords(ctx context.Context, store *sqlite.Store, opts *config.AppOptions, focus task.FocusState, focusedName string, tagFilter task.TagFilter) ([]record, []record, error) {
 	if focusedName != "" || focus.FocusedTaskID != "" {
 		tasks, err := store.ListTasks(ctx, opts.ProjectID, focusedName)
 		if err != nil {
 			return nil, nil, err
 		}
-		records, err := taskRecords(ctx, store, statusTasks(tasks, false))
+		records, err := taskRecords(ctx, store, statusTasks(filterTasksByTags(tasks, tagFilter), false))
 		return records, []record{}, err
 	}
 	summaries, err := store.ListInitiatives(ctx, opts.ProjectID, false, true)
@@ -154,6 +155,7 @@ func renderOnboard(
 	focus task.FocusState,
 	note task.SessionNote,
 	noteFound bool,
+	tagFilter task.TagFilter,
 ) (string, bool, error) {
 	var output strings.Builder
 	output.WriteString("🚀 ONBOARD BRIEFING\n\n")
@@ -179,7 +181,7 @@ func renderOnboard(
 		if err != nil {
 			return "", false, err
 		}
-		tasks := tasksForInitiative(allTasks, focusedName)
+		tasks := filterTasksByTags(tasksForInitiative(allTasks, focusedName), tagFilter)
 		status, err := renderStatus(ctx, store, tasks, allTasks, focusedName, focus.FocusedTaskID, false)
 		if err != nil {
 			return "", false, err

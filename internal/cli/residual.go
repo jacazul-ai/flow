@@ -10,6 +10,7 @@ import (
 
 // AmendCommand updates task description and ticket metadata.
 type AmendCommand struct {
+	TagArguments
 	appOpts *config.AppOptions
 }
 
@@ -20,8 +21,11 @@ func (cmd *AmendCommand) SetAppOptions(opts *config.AppOptions) {
 
 // Execute applies description= and ticket= updates to one task.
 func (cmd *AmendCommand) Execute(args []string) error {
-	if len(args) < 2 {
-		return fmt.Errorf("amend requires a task UUID and metadata\nACTION: Use description=\"...\" or ticket=\"...\".")
+	if len(args) < 1 {
+		return fmt.Errorf("amend requires a task UUID and metadata\nACTION: Use description=\"...\", ticket=\"...\", +tag or -tag.")
+	}
+	if err := validateTagMutation(cmd.TagArguments); err != nil {
+		return err
 	}
 	update := task.TaskMetadataUpdate{}
 	for _, raw := range args[1:] {
@@ -36,8 +40,8 @@ func (cmd *AmendCommand) Execute(args []string) error {
 			update.ExternalTicket = &value
 		}
 	}
-	if update.Description == nil && update.ExternalTicket == nil {
-		return fmt.Errorf("no valid fields to amend\nACTION: Use description=\"...\" or ticket=\"...\".")
+	if update.Description == nil && update.ExternalTicket == nil && !cmd.hasTagMutation() {
+		return fmt.Errorf("no valid fields to amend\nACTION: Use description=\"...\", ticket=\"...\", +tag or -tag.")
 	}
 
 	store, err := openStore(cmd.appOpts)
@@ -45,9 +49,23 @@ func (cmd *AmendCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	current, err := store.UpdateTaskMetadata(cmd.appOpts.Context(), args[0], update)
-	if err != nil {
-		return err
+	var current task.Task
+	if update.Description != nil || update.ExternalTicket != nil {
+		current, err = store.UpdateTaskMetadata(cmd.appOpts.Context(), args[0], update)
+		if err != nil {
+			return err
+		}
+	} else {
+		current, err = store.GetTask(cmd.appOpts.Context(), args[0])
+		if err != nil {
+			return err
+		}
+	}
+	if cmd.hasTagMutation() {
+		current, err = store.UpdateTaskTags(cmd.appOpts.Context(), current.ID, cmd.WithTags, cmd.WithoutTags)
+		if err != nil {
+			return err
+		}
 	}
 	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
 		return err

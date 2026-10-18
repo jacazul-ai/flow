@@ -36,6 +36,7 @@ type ImportedTask struct {
 	StartedAt      string
 	CompletedAt    string
 	Disposition    string
+	Tags           []string
 	DueAt          string
 	Priority       string
 	Urgency        float64
@@ -98,5 +99,6 @@ type ImportResult struct {
 	Unchanged    int
 	Dependencies int
 	Annotations  int
+	Tags         int
 	History      int
 }

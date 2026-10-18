@@ -145,7 +145,9 @@ func Run(ctx context.Context, args []string, env Env, streams Streams) int {
 		return 1
 	}
 
-	_, err := parser.ParseArgs(cli.NormalizeFocusAlias(args))
+	args = cli.NormalizeFocusAlias(args)
+	args = cli.NormalizeTagPredicates(args)
+	_, err := parser.ParseArgs(args)
 	if err == nil {
 		return 0
 	}

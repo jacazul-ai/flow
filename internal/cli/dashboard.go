@@ -115,6 +115,7 @@ func (cmd *ActivateCommand) Execute(args []string) error {
 // TreeCommand renders dependency markers for an initiative.
 type TreeCommand struct {
 	ReportFormat
+	TagArguments
 	appOpts *config.AppOptions
 }
 
@@ -141,12 +142,13 @@ func (cmd *TreeCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	tasks, err := store.ListTasks(cmd.appOpts.Context(), cmd.appOpts.ProjectID, initiative)
+	allTasks, err := store.ListTasks(cmd.appOpts.Context(), cmd.appOpts.ProjectID, initiative)
 	if err != nil {
 		return err
 	}
-	states := make(map[string]task.Status, len(tasks))
-	for _, current := range tasks {
+	tasks := filterTasksByTags(allTasks, cmd.TagFilter())
+	states := make(map[string]task.Status, len(allTasks))
+	for _, current := range allTasks {
 		states[current.ID] = current.Status
 	}
 	if format != formatText {
@@ -157,7 +159,11 @@ func (cmd *TreeCommand) Execute(args []string) error {
 		return nil
 	}
 	for _, current := range tasks {
-		fmt.Fprintf(cmd.appOpts.Out(), "[%s] %s %s\n", treeMarker(current, states), shortID(current.ID), current.Description)
+		tags := formatTaskTags(current.Tags)
+		if tags != "" {
+			tags += " "
+		}
+		fmt.Fprintf(cmd.appOpts.Out(), "[%s] %s %s%s\n", treeMarker(current, states), shortID(current.ID), tags, current.Description)
 	}
 	return nil
 }
@@ -520,13 +526,13 @@ func appendTacticalReadout(output *strings.Builder, tasks []task.Task, table boo
 	})
 	output.WriteString("[TACTICAL READOUT]\n")
 	if table {
-		output.WriteString("| ST | UUID | MODE | PLAN | DESCRIPTION | URG |\n|---|---|---|---|---|---|\n")
+		output.WriteString("| ST | UUID | MODE | PLAN | TAGS | DESCRIPTION | URG |\n|---|---|---|---|---|---|---|\n")
 		for _, current := range readout {
-			fmt.Fprintf(output, "| %s | `%s` | %s | %s | %s | %.1f |\n", strings.ToUpper(string(current.Status)), shortID(current.ID), current.Mode.String(), current.InitiativeName, current.Description, current.UrgencyScore)
+			fmt.Fprintf(output, "| %s | `%s` | %s | %s | %s | %s | %.1f |\n", strings.ToUpper(string(current.Status)), shortID(current.ID), current.Mode.String(), current.InitiativeName, formatTaskTags(current.Tags), current.Description, current.UrgencyScore)
 		}
 	} else {
 		for _, current := range readout {
-			fmt.Fprintf(output, "- [%s] %s | %s | %s | %s | [%.1f]\n", strings.ToUpper(string(current.Status)), shortID(current.ID), current.Mode.String(), current.InitiativeName, current.Description, current.UrgencyScore)
+			fmt.Fprintf(output, "- [%s] %s | %s | %s | %s | %s | [%.1f]\n", strings.ToUpper(string(current.Status)), shortID(current.ID), current.Mode.String(), current.InitiativeName, formatTaskTags(current.Tags), current.Description, current.UrgencyScore)
 		}
 	}
 	output.WriteString("\n")

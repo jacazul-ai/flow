@@ -123,6 +123,9 @@ func (s *Store) CreateTask(ctx context.Context, input task.CreateTaskInput) (tas
 	if !input.Mode.Valid() {
 		return task.Task{}, fmt.Errorf("invalid task mode %d", input.Mode)
 	}
+	if err := validateStoredTags(input.Tags); err != nil {
+		return task.Task{}, err
+	}
 
 	priority := strings.ToUpper(strings.TrimSpace(input.Priority))
 	if priority == "" {
@@ -143,6 +146,7 @@ func (s *Store) CreateTask(ctx context.Context, input task.CreateTaskInput) (tas
 		WaitUntil:    input.WaitUntil,
 		Status:       task.Pending,
 		Dependencies: append([]string(nil), input.Dependencies...),
+		Tags:         task.NormalizeTags(input.Tags),
 		Metadata:     input.Metadata,
 	}
 	metadataJSON, err := encodeTaskMetadata(created.Metadata)
@@ -176,6 +180,9 @@ func (s *Store) CreateTask(ctx context.Context, input task.CreateTaskInput) (tas
 		created.Status, created.Priority, created.Urgency, created.WaitUntil,
 		created.DueAt, created.Mode, created.Position, metadataJSON, now, now); err != nil {
 		return task.Task{}, fmt.Errorf("create task: %w", err)
+	}
+	if err := replaceTaskTags(ctx, tx, created.ID, created.Tags); err != nil {
+		return task.Task{}, err
 	}
 	for _, dependencyID := range created.Dependencies {
 		if _, err := tx.ExecContext(ctx, `
@@ -279,8 +286,17 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 	if err != nil {
 		return nil, err
 	}
+	taskIDs := make([]string, 0, len(tasks))
+	for _, current := range tasks {
+		taskIDs = append(taskIDs, current.ID)
+	}
+	tags, err := listTaskTags(ctx, s.db, taskIDs)
+	if err != nil {
+		return nil, err
+	}
 	for index := range tasks {
 		tasks[index].Dependencies = dependencies[tasks[index].ID]
+		tasks[index].Tags = tags[tasks[index].ID]
 	}
 	task.ApplyUrgencyScores(tasks, time.Now().UTC())
 	return tasks, nil

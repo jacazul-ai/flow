@@ -72,6 +72,11 @@ func (s *Store) GetTask(ctx context.Context, taskID string) (task.Task, error) {
 	if err != nil {
 		return task.Task{}, err
 	}
+	tags, err := listTaskTags(ctx, s.db, []string{current.ID})
+	if err != nil {
+		return task.Task{}, err
+	}
+	current.Tags = tags[current.ID]
 	return current, nil
 }
 

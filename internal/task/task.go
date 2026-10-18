@@ -267,6 +267,50 @@ type CreateInitiativeInput struct {
 	Metadata       InitiativeMetadata
 }
 
+// TagFilter selects tasks by stored tag presence.
+type TagFilter struct {
+	Include []string
+	Exclude []string
+}
+
+// NormalizeTags returns a stable, duplicate-free tag set.
+func NormalizeTags(tags []string) []string {
+	seen := make(map[string]struct{}, len(tags))
+	normalized := make([]string, 0, len(tags))
+	for _, raw := range tags {
+		tag := strings.TrimSpace(raw)
+		if tag == "" {
+			continue
+		}
+		if _, exists := seen[tag]; exists {
+			continue
+		}
+		seen[tag] = struct{}{}
+		normalized = append(normalized, tag)
+	}
+	sort.Strings(normalized)
+	return normalized
+}
+
+// Matches reports whether a task tag set satisfies the filter.
+func (filter TagFilter) Matches(tags []string) bool {
+	present := make(map[string]struct{}, len(tags))
+	for _, tag := range tags {
+		present[tag] = struct{}{}
+	}
+	for _, tag := range filter.Include {
+		if _, exists := present[tag]; !exists {
+			return false
+		}
+	}
+	for _, tag := range filter.Exclude {
+		if _, exists := present[tag]; exists {
+			return false
+		}
+	}
+	return true
+}
+
 // Task is the local workflow representation shared by task backends.
 type Task struct {
 	ID              string       `json:"id"`
@@ -281,6 +325,7 @@ type Task struct {
 	StartedAt       string       `json:"started_at,omitempty"`
 	CompletedAt     string       `json:"completed_at,omitempty"`
 	Disposition     string       `json:"disposition,omitempty"`
+	Tags            []string     `json:"tags,omitempty"`
 	CreatedAt       string       `json:"created_at,omitempty"`
 	DueAt           string       `json:"due_at,omitempty"`
 	Priority        string       `json:"priority,omitempty"`
@@ -362,6 +407,7 @@ type CreateTaskInput struct {
 	Urgency      float64
 	WaitUntil    string
 	Dependencies []string
+	Tags         []string
 	Metadata     TaskMetadata
 
 	// ProjectID and Plan are compatibility fields for the legacy adapter.
