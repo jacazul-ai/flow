@@ -11,6 +11,19 @@ import (
 
 var ErrVersionRequired = errors.New("version required")
 
+// Canonical runtime inputs read by standalone callers and documented for
+// launchers. The flags with the same meaning are declared on AppOptions.
+const (
+	EnvProject = "JACAZUL_PROJECT"
+	EnvHome    = "JACAZUL_HOME"
+	EnvSession = "JACAZUL_SESSION"
+
+	// DefaultHomeDir is the runtime home directory below the user's home.
+	DefaultHomeDir = ".jacazul"
+	// DefaultScope is the project and session used when none is resolved.
+	DefaultScope = "global"
+)
+
 // Database locations derived under the runtime home. The legacy pair belongs
 // to the releases that shipped before the engine was renamed to flow.
 const (
@@ -111,7 +124,7 @@ func Resolve(opts *AppOptions) error {
 	} else {
 		opts.ProjectID = opts.Runtime.ProjectID
 		if opts.ProjectID == "" {
-			opts.ProjectID = "global"
+			opts.ProjectID = DefaultScope
 			opts.Runtime.ProjectSource = "default"
 		} else if opts.Runtime.ProjectSource == "" {
 			opts.Runtime.ProjectSource = "runtime"
@@ -122,7 +135,7 @@ func Resolve(opts *AppOptions) error {
 	} else {
 		opts.SessionID = opts.Runtime.SessionID
 		if opts.SessionID == "" {
-			opts.SessionID = "global"
+			opts.SessionID = DefaultScope
 			opts.Runtime.SessionSource = "default"
 		} else if opts.Runtime.SessionSource == "" {
 			opts.Runtime.SessionSource = "runtime"

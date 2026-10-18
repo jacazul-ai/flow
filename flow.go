@@ -58,23 +58,23 @@ type Streams struct {
 // EnvFromOS builds Env from the process environment for standalone
 // executables. Embedding callers build Env from their own resolved context.
 func EnvFromOS() Env {
-	home := os.Getenv("JACAZUL_HOME")
+	home := os.Getenv(config.EnvHome)
 	homeSource := "environment"
 	if home == "" {
 		homeSource = "default"
 		if userHome, err := os.UserHomeDir(); err == nil {
-			home = filepath.Join(userHome, ".jacazul")
+			home = filepath.Join(userHome, config.DefaultHomeDir)
 		}
 	}
 
-	project := os.Getenv("JACAZUL_PROJECT")
+	project := os.Getenv(config.EnvProject)
 	projectSource := "environment"
 	if project == "" {
 		projectSource = "default"
 		project = config.ResolveProjectID("")
 	}
 
-	session := os.Getenv("JACAZUL_SESSION")
+	session := os.Getenv(config.EnvSession)
 	sessionSource := "environment"
 	if session == "" {
 		sessionSource = "default"

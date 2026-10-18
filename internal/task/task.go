@@ -2,6 +2,7 @@ package task
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"unicode/utf8"
 )
@@ -58,6 +59,15 @@ func (mode TaskMode) Valid() bool {
 	return ok
 }
 
+// TaskModes returns the specified task modes in stable code order.
+func TaskModes() []TaskMode {
+	modes := make([]TaskMode, 0, len(taskModeNames)-1)
+	for mode := ModeUnspecified + 1; mode.Valid(); mode++ {
+		modes = append(modes, mode)
+	}
+	return modes
+}
+
 // ParseTaskMode converts a catalog name to its stable task mode code.
 func ParseTaskMode(value string) (TaskMode, error) {
 	value = strings.ToUpper(strings.TrimSpace(value))
@@ -110,6 +120,34 @@ var annotationKinds = map[string]string{
 	"note":       "NOTE",
 	"n":          "NOTE",
 	"link":       "LINK",
+}
+
+// AnnotationKind is one canonical annotation kind and the note aliases that
+// normalize to it.
+type AnnotationKind struct {
+	Kind    string
+	Aliases []string
+}
+
+// AnnotationKinds returns the annotation catalog sorted by kind, with each
+// kind's aliases sorted from longest to shortest.
+func AnnotationKinds() []AnnotationKind {
+	aliases := make(map[string][]string)
+	for alias, kind := range annotationKinds {
+		aliases[kind] = append(aliases[kind], alias)
+	}
+	kinds := make([]AnnotationKind, 0, len(aliases))
+	for kind, names := range aliases {
+		sort.Slice(names, func(i, j int) bool {
+			if len(names[i]) != len(names[j]) {
+				return len(names[i]) > len(names[j])
+			}
+			return names[i] < names[j]
+		})
+		kinds = append(kinds, AnnotationKind{Kind: kind, Aliases: names})
+	}
+	sort.Slice(kinds, func(i, j int) bool { return kinds[i].Kind < kinds[j].Kind })
+	return kinds
 }
 
 // NormalizeAnnotationKind converts a semantic note alias to its canonical kind.

@@ -113,23 +113,34 @@ func isInteractionMode(value string) bool {
 	return err == nil && mode != task.ModeUnspecified
 }
 
+// dueDateLayout is the absolute due date form accepted in task specs.
+const dueDateLayout = "2006-01-02"
+
+// dueDateKeywords are the relative due dates accepted in task specs, as day
+// offsets from today in UTC.
+var dueDateKeywords = []struct {
+	name string
+	days int
+}{
+	{"yesterday", -1},
+	{"today", 0},
+	{"tomorrow", 1},
+}
+
 func normalizeDueDate(value string) (string, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return "", nil
 	}
 	today := time.Now().UTC().Truncate(24 * time.Hour)
-	switch strings.ToLower(value) {
-	case "yesterday":
-		return today.AddDate(0, 0, -1).Format("2006-01-02"), nil
-	case "today":
-		return today.Format("2006-01-02"), nil
-	case "tomorrow":
-		return today.AddDate(0, 0, 1).Format("2006-01-02"), nil
+	for _, keyword := range dueDateKeywords {
+		if strings.EqualFold(value, keyword.name) {
+			return today.AddDate(0, 0, keyword.days).Format(dueDateLayout), nil
+		}
 	}
-	parsed, err := time.Parse("2006-01-02", value)
+	parsed, err := time.Parse(dueDateLayout, value)
 	if err != nil {
 		return "", fmt.Errorf("invalid due date %q; use YYYY-MM-DD, today, or tomorrow", value)
 	}
-	return parsed.Format("2006-01-02"), nil
+	return parsed.Format(dueDateLayout), nil
 }
