@@ -81,6 +81,42 @@ func TestMigrationPreservesDisplaysFiltersAndUpdatesStoredTags(t *testing.T) {
 	}
 }
 
+func TestTagFiltersUseDistinctCacheKeysAndRejectConflictingAmendments(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	source := harness.WriteFile(t, "source.json", []byte(`[
+  {
+    "uuid": "44444444-4444-4444-8444-444444444444",
+    "project": "parity",
+    "description": "Research task",
+    "status": "pending",
+    "tags": ["research"]
+  },
+  {
+    "uuid": "55555555-5555-4555-8555-555555555555",
+    "project": "parity",
+    "description": "Legacy task",
+    "status": "pending",
+    "tags": ["legacy"]
+  }
+]`))
+	if output, err := runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--apply"); err != nil {
+		t.Fatalf("apply tag filter fixture: %v\n%s", err, output)
+	}
+
+	output, err := runFlow(t, harness, "status", "+research")
+	if err != nil || !strings.Contains(output, "Research task") || strings.Contains(output, "Legacy task") {
+		t.Fatalf("research filter = %q, err %v", output, err)
+	}
+	output, err = runFlow(t, harness, "status", "+legacy")
+	if err != nil || !strings.Contains(output, "Legacy task") || strings.Contains(output, "Research task") {
+		t.Fatalf("legacy filter = %q, err %v", output, err)
+	}
+
+	if output, err := runFlow(t, harness, "amend", "44444444", "+research", "-research"); err == nil || !strings.Contains(output, "cannot be added and removed") {
+		t.Fatalf("conflicting tag amendment = %q, err %v; want actionable rejection", output, err)
+	}
+}
+
 func TestMigrationConsumesLegacyDiscardedTagIntoDisposition(t *testing.T) {
 	harness := testharness.NewHarness(t, "project-alpha", "session")
 	source := harness.WriteFile(t, "source.json", []byte(`[
