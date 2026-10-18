@@ -1,0 +1,81 @@
+# Tasks
+
+Owner of: task specs, modes, readiness, and the task lifecycle.
+
+A task belongs to one initiative and keeps a full UUID as its identity. Short
+UUIDs are presentation references and must be unambiguous.
+
+## Spec
+
+`plan` takes one spec per task:
+
+```text
+MODE|title|tag|due
+```
+
+- `MODE` is optional and sets what the agent may do (below).
+- The title is concise and action-oriented: ideally within {{ title_ideal }}
+  characters, never more than {{ title_max }}. Move extra context out of the
+  title instead of truncating it.
+- The tag field is accepted for legacy compatibility but not stored: do not
+  rely on tags.
+- The due field accepts `{{ due_layout }}`{% for keyword in due_keywords %}, `{{ keyword|safe }}`{% endfor %}.
+
+Keep urgency cool: no due date unless the operator asks or it is logically
+mandatory, default priority, and raise priority with `urgent` only for the
+immediate focus or a blocker, never while planning.
+
+```bash
+jacazul flow plan parity 'DESIGN|Define schema' 'EXECUTE|Implement store||tomorrow'
+```
+
+## Modes
+
+| Mode | The agent |
+|---|---|
+{% for mode in modes %}| `{{ mode.Name|safe }}` | {{ mode.Guidance|safe }} |
+{% endfor %}
+Without a mode, do not assume `EXECUTE`: infer from the request and ask
+before direct edits.
+
+## Readiness
+
+A pending task is not necessarily ready: an unfinished dependency or a wait
+date blocks it, and `execute` refuses blocked work. Dependencies express
+order; do not hide ordering in prose.
+
+- `next` lists the ready tasks of an initiative.
+- `block` adds a dependency and `unblock` removes it.
+- `wait` postpones a task until a date.
+
+## Lifecycle
+
+1. `execute` starts a ready task.
+2. Work, recording context as it happens ([context](context.md)).
+3. Validate against the acceptance criteria and the project's gates.
+4. `outcome` records the result; `done` refuses a task without one.
+5. Ask the operator, then `done`. It lists the tasks that became ready.
+6. Re-anchor to a ready task of the same initiative ([focus](focus.md)).
+
+```bash
+jacazul flow plan parity 'DESIGN|Define schema' 'EXECUTE|Implement store'
+jacazul flow next parity
+jacazul flow execute <first-uuid>
+jacazul flow outcome <first-uuid> 'Schema defined and covered by contract tests'
+jacazul flow done <first-uuid>
+jacazul flow execute <second-uuid>
+```
+
+- `reopen` returns a completed task to pending; `discard` drops a task and
+  records why. Never close, discard, or mutate completed work silently.
+- `amend` corrects a task's description or ticket.
+- `commit` drafts a conventional commit message from the focus; it never
+  stages or commits files.
+
+## Commands
+
+| Command | Purpose |
+|---|---|
+{% for command in topics.tasks.Commands %}| `{{ command.Name|safe }}` | {{ command.Summary|safe }}{% if command.Aliases %} (alias: {{ command.Aliases|join:", "|safe }}){% endif %} |
+{% endfor %}
+Run `jacazul flow help <command>` for the syntax of each one.

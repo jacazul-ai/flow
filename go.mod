@@ -3,6 +3,7 @@ module github.com/jacazul-ai/flow
 go 1.25.0
 
 require (
+	github.com/flosch/pongo2/v6 v6.1.0
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/pressly/goose/v3 v3.26.0
 	modernc.org/sqlite v1.54.0

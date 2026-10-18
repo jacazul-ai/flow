@@ -139,6 +139,7 @@ Examples of the intended shape:
 ```text
 jczl-flow help
 jczl-flow help <command>
+jczl-flow skill
 jczl-flow plan <name> ...
 jczl-flow focus task <uuid>
 jczl-flow status
@@ -156,6 +157,9 @@ jczl-flow help plan
 
 Help explains the workflow role, prerequisites, dependency effects, state
 transitions, output, actionable errors, examples, and the next valid command.
+`jczl-flow skill` renders the canonical `flow-expert` agent skill from the same
+command metadata and workflow catalogs, with the `jacazul flow` invocation form
+used by launcher consumers; `--out <dir>` writes its full reference tree.
 Errors follow the `Error as Prompt` contract and include an `ACTION:` whenever
 the agent needs to recover.
 

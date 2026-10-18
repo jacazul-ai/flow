@@ -51,6 +51,7 @@ func (cmd *HelpCommand) Execute(args []string) error {
 type helpEntry struct {
 	name          string
 	group         string
+	topic         string
 	canonical     string
 	hidden        bool
 	summary       string
@@ -73,10 +74,22 @@ const (
 	groupMigrateLegacy      = "migrate legacy state"
 )
 
+// Skill topics name the flow-expert reference that explains a command.
+const (
+	topicInitiatives = "initiatives"
+	topicTasks       = "tasks"
+	topicFocus       = "focus"
+	topicSessions    = "sessions"
+	topicContext     = "context"
+	topicReports     = "reports"
+	topicRuntime     = "runtime"
+)
+
 var helpEntries = []helpEntry{
 	{
 		name:      "help",
 		group:     groupExamineState,
+		topic:     topicRuntime,
 		canonical: "help",
 		summary:   "Show the agent workflow briefing",
 		usage:     "jczl-flow help [command]",
@@ -88,8 +101,26 @@ var helpEntries = []helpEntry{
 		next:     "Run 'jczl-flow status' to inspect the current project state.",
 	},
 	{
+		name:      "skill",
+		group:     groupExamineState,
+		topic:     topicRuntime,
+		canonical: "skill",
+		summary:   "Render the canonical flow-expert agent skill",
+		usage:     "jczl-flow skill [--out <dir>]",
+		role:      "Use this to generate the native workflow skill a launcher installs for its agents.",
+		effects: []string{
+			"Renders the skill from the command registry, the task and annotation catalogs, and the runtime names.",
+			"Without --out, prints the SKILL.md hub; with --out, writes the hub and its references below the directory.",
+			"--out replaces generated files, removes reference files the skill no longer produces, and leaves other files alone.",
+			"Does not open workflow storage or change project, task, focus, session, or cache state.",
+		},
+		examples: []string{"jczl-flow skill", "jczl-flow skill --out ./skills/flow-expert"},
+		next:     "Install the written directory as the flow-expert skill; agents use 'jczl-flow help <command>' for live syntax.",
+	},
+	{
 		name:      "info",
 		group:     groupExamineState,
+		topic:     topicRuntime,
 		canonical: "info",
 		summary:   "Show resolved runtime defaults",
 		usage:     "jczl-flow info [--format text|json|jsonl|xml]",
@@ -110,6 +141,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "onboard",
 		group:     groupExamineState,
+		topic:     topicSessions,
 		canonical: "onboard",
 		summary:   "Render a one-shot agent context briefing",
 		usage:     "jczl-flow onboard",
@@ -125,6 +157,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "plan",
 		group:     groupStartAndOrganize,
+		topic:     topicInitiatives,
 		canonical: "plan",
 		summary:   "Create an initiative and chained tasks",
 		usage:     "jczl-flow plan <initiative> <task> [<task>...]",
@@ -147,6 +180,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "goal",
 		group:     groupStartAndOrganize,
+		topic:     topicInitiatives,
 		canonical: "goal",
 		summary:   "Set an initiative goal",
 		usage:     "jczl-flow goal <initiative> <message...>",
@@ -165,6 +199,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "organize",
 		group:     groupStartAndOrganize,
+		topic:     topicInitiatives,
 		canonical: "organize",
 		summary:   "Reorder pending tasks within one initiative",
 		usage:     "jczl-flow organize <order|first|after|block> <initiative> ...",
@@ -189,6 +224,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "status",
 		group:     groupExamineState,
+		topic:     topicReports,
 		canonical: "status",
 		summary:   "Show pending tasks for the current project",
 		usage:     "jczl-flow status [initiative]",
@@ -207,6 +243,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "history",
 		group:     groupExamineState,
+		topic:     topicReports,
 		canonical: "history",
 		summary:   "Show task or initiative history",
 		usage:     "jczl-flow history task <uuid> | initiative|ini|plan <reference>",
@@ -218,6 +255,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "active",
 		group:     groupExamineState,
+		topic:     topicReports,
 		canonical: "active",
 		summary:   "List active tasks",
 		usage:     "jczl-flow active [initiative]",
@@ -229,6 +267,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "blocked",
 		group:     groupExamineState,
+		topic:     topicReports,
 		canonical: "blocked",
 		summary:   "List blocked tasks",
 		usage:     "jczl-flow blocked [initiative]",
@@ -240,6 +279,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "overdue",
 		group:     groupExamineState,
+		topic:     topicReports,
 		canonical: "overdue",
 		summary:   "List overdue tasks",
 		usage:     "jczl-flow overdue [initiative]",
@@ -251,6 +291,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "execute",
 		group:     groupWorkCurrentTask,
+		topic:     topicTasks,
 		canonical: "execute",
 		summary:   "Start a ready task",
 		usage:     "jczl-flow execute <task-uuid>",
@@ -269,6 +310,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "outcome",
 		group:     groupWorkCurrentTask,
+		topic:     topicTasks,
 		canonical: "outcome",
 		summary:   "Record the result required for completion",
 		usage:     "jczl-flow outcome <task-uuid> <message...>",
@@ -283,6 +325,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "note",
 		group:     groupPreserveContext,
+		topic:     topicContext,
 		canonical: "note",
 		summary:   "Add or delete structured task context",
 		usage:     "jczl-flow note <task-uuid> <type> <message...>",
@@ -304,6 +347,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "notes",
 		group:     groupPreserveContext,
+		topic:     topicContext,
 		canonical: "notes",
 		summary:   "List task annotations",
 		usage:     "jczl-flow notes <task-uuid>",
@@ -315,6 +359,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "context",
 		group:     groupPreserveContext,
+		topic:     topicContext,
 		canonical: "context",
 		summary:   "Show direct and inherited task context",
 		usage:     "jczl-flow context <task-uuid>",
@@ -329,6 +374,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "ticket",
 		group:     groupPreserveContext,
+		topic:     topicContext,
 		canonical: "ticket",
 		summary:   "Link a task to an external ticket",
 		usage:     "jczl-flow ticket <task-uuid> <ticket>",
@@ -347,6 +393,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "handoff",
 		group:     groupWorkCurrentTask,
+		topic:     topicSessions,
 		canonical: "handoff",
 		summary:   "Start a task with handoff context",
 		usage:     "jczl-flow handoff <task-uuid> <message...>",
@@ -365,6 +412,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "done",
 		group:     groupWorkCurrentTask,
+		topic:     topicTasks,
 		canonical: "done",
 		summary:   "Complete a task and expose ready work",
 		usage:     "jczl-flow done <task-uuid>",
@@ -383,6 +431,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "reopen",
 		group:     groupWorkCurrentTask,
+		topic:     topicTasks,
 		canonical: "reopen",
 		summary:   "Return a completed task to pending",
 		usage:     "jczl-flow reopen <task-uuid>",
@@ -397,6 +446,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "discard",
 		group:     groupWorkCurrentTask,
+		topic:     topicTasks,
 		canonical: "discard",
 		summary:   "Discard a task with an audit outcome",
 		usage:     "jczl-flow discard <task-uuid>",
@@ -411,6 +461,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "focus",
 		group:     groupWorkCurrentTask,
+		topic:     topicFocus,
 		canonical: "focus",
 		summary:   "Switch the project and session focus",
 		usage:     "jczl-flow focus [<initiative>|show|plan|ini|task|pop|clear|back|ind|interest] [value]",
@@ -435,6 +486,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "session",
 		group:     groupPreserveContext,
+		topic:     topicSessions,
 		canonical: "session",
 		summary:   "Manage native project sessions",
 		usage:     "jczl-flow session <list|show|resume|ack|dump|purge>",
@@ -459,6 +511,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "ponder",
 		group:     groupExamineState,
+		topic:     topicReports,
 		canonical: "ponder",
 		summary:   "Render the project initiative dashboard",
 		usage:     "jczl-flow ponder [--all] [--with-backlog] [--force]",
@@ -473,6 +526,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "plans",
 		group:     groupExamineState,
+		topic:     topicInitiatives,
 		canonical: "plans",
 		summary:   "List initiative summaries",
 		usage:     "jczl-flow plans [--all|--closed] [--with-backlog]",
@@ -484,6 +538,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "backlog",
 		group:     groupStartAndOrganize,
+		topic:     topicInitiatives,
 		canonical: "backlog",
 		summary:   "Hide an initiative from default dashboards",
 		usage:     "jczl-flow backlog <initiative>",
@@ -495,6 +550,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "activate",
 		group:     groupStartAndOrganize,
+		topic:     topicInitiatives,
 		canonical: "activate",
 		summary:   "Restore a backlog initiative",
 		usage:     "jczl-flow activate <initiative>",
@@ -506,6 +562,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "tree",
 		group:     groupExamineState,
+		topic:     topicReports,
 		canonical: "tree",
 		summary:   "Show task dependency markers",
 		usage:     "jczl-flow tree [initiative]",
@@ -517,6 +574,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "commit",
 		group:     groupPrepareIntegrate,
+		topic:     topicTasks,
 		canonical: "commit",
 		summary:   "Draft a conventional commit from focus",
 		usage:     "jczl-flow commit [--fix]",
@@ -535,6 +593,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "roadmap",
 		group:     groupStartAndOrganize,
+		topic:     topicInitiatives,
 		canonical: "roadmap",
 		summary:   "Manage the project roadmap ledger",
 		usage:     "jczl-flow roadmap <show|init|add|ship>",
@@ -607,6 +666,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "next",
 		group:     groupExamineState,
+		topic:     topicTasks,
 		canonical: "next",
 		summary:   "List ready tasks",
 		usage:     "jczl-flow next [initiative]",
@@ -621,6 +681,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "amend",
 		group:     groupChangeReprioritize,
+		topic:     topicTasks,
 		canonical: "amend",
 		summary:   "Update task metadata",
 		usage:     "jczl-flow amend <task-uuid> [description=\"...\"] [ticket=\"...\"]",
@@ -632,6 +693,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "rename",
 		group:     groupStartAndOrganize,
+		topic:     topicInitiatives,
 		canonical: "rename",
 		summary:   "Rename an initiative",
 		usage:     "jczl-flow rename <old-name> <new-name>",
@@ -643,6 +705,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "urgent",
 		group:     groupChangeReprioritize,
+		topic:     topicTasks,
 		canonical: "urgent",
 		summary:   "Raise task urgency",
 		usage:     "jczl-flow urgent <task-uuid>",
@@ -654,6 +717,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "block",
 		group:     groupChangeReprioritize,
+		topic:     topicTasks,
 		canonical: "block",
 		summary:   "Add a task dependency",
 		usage:     "jczl-flow block <task-uuid> <dependency-uuid>",
@@ -665,6 +729,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "unblock",
 		group:     groupChangeReprioritize,
+		topic:     topicTasks,
 		canonical: "unblock",
 		summary:   "Remove a task dependency",
 		usage:     "jczl-flow unblock <task-uuid> <dependency-uuid>",
@@ -676,6 +741,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "wait",
 		group:     groupChangeReprioritize,
+		topic:     topicTasks,
 		canonical: "wait",
 		summary:   "Postpone task readiness",
 		usage:     "jczl-flow wait <task-uuid> <YYYY-MM-DD|today|tomorrow>",
@@ -699,6 +765,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "migrate",
 		group:     groupMigrateLegacy,
+		topic:     topicRuntime,
 		canonical: "migrate",
 		summary:   "Import legacy workflow state",
 		usage:     "jczl-flow migrate taskwarrior --source <export.json> [--legacy-data-dir <dir>] [--apply]",
@@ -721,6 +788,7 @@ var helpEntries = []helpEntry{
 	{
 		name:      "cache",
 		group:     groupMaintainDerived,
+		topic:     topicReports,
 		canonical: "cache",
 		summary:   "Inspect or clear derived output cache",
 		usage:     "jczl-flow cache [info|clear [status|ponder]]",

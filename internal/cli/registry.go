@@ -12,6 +12,7 @@ type CommandSpec struct {
 	Summary        string
 	Description    string
 	Category       string
+	Topic          string
 	Common         bool
 	Hidden         bool
 	ArgsUsage      string
@@ -43,6 +44,7 @@ var commandAliases = map[string][]string{
 
 var commandFactories = map[string]func() flags.Commander{
 	"help":     func() flags.Commander { return NewHelpCommand() },
+	"skill":    func() flags.Commander { return &SkillCommand{} },
 	"info":     func() flags.Commander { return &InfoCommand{} },
 	"onboard":  func() flags.Commander { return &OnboardCommand{} },
 	"plan":     func() flags.Commander { return &PlanCommand{} },
@@ -93,6 +95,7 @@ func NewCommandRegistry() *CommandRegistry {
 			Summary:        entry.summary,
 			Description:    entry.role,
 			Category:       entry.group,
+			Topic:          entry.topic,
 			Common:         !entry.hidden,
 			Hidden:         entry.hidden,
 			ArgsUsage:      entry.usage,

@@ -37,6 +37,17 @@ precedence, project/worktree resolution, launcher-owned sessions, and the
 legacy-name migration table. The persisted configuration layer is explicitly
 deferred to [flow-config-layer / GitHub #18](https://github.com/jacazul-ai/flow/issues/18).
 
+## Canonical embedded skill
+
+`jczl-flow skill` prints the `SKILL.md` hub of the canonical `flow-expert`
+agent skill; `jczl-flow skill --out <dir>` writes the hub and its references
+below `<dir>`. The skill is generated from the command registry, the task and
+annotation catalogs, and the runtime names, and every example it contains is
+executed by the test suite. Rendered text uses `jacazul flow ...` for launcher
+consumers, while `jczl-flow ...` remains the standalone form. The command
+never opens workflow storage. Layout, sources, guarantees, and known gaps are
+recorded in [flow-expert-skill.md](flow-expert-skill.md).
+
 ## Deterministic agent onboarding
 
 `jczl-flow onboard` is the one-shot bootstrap briefing for an agent. It composes
@@ -134,6 +145,7 @@ The root help exposes canonical commands once in this fixed order:
 ### Examine workflow state
 
 - `help`: show the agent workflow briefing;
+- `skill`: render the canonical flow-expert agent skill;
 - `status`: inspect project task state;
 - `info`: inspect resolved runtime defaults without opening storage;
 - `ponder`: render the project dashboard;
