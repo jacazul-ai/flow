@@ -622,6 +622,43 @@ func TestHandoffExecutesAndAnnotates(t *testing.T) {
 	}
 }
 
+func TestSessionDumpHistoryIsAppendOnlyAndAcknowledged(t *testing.T) {
+	harness := testharness.NewHarness(t, "project", "history-session")
+	output, err := runFlow(t, harness, "plan", "session-history", "Preserve dump history")
+	if err != nil {
+		t.Fatalf("create session history plan: %v\n%s", err, output)
+	}
+	match := regexp.MustCompile(`Created task ([0-9a-f]{8})`).FindStringSubmatch(output)
+	if len(match) != 2 {
+		t.Fatalf("session history plan output = %q, want task UUID", output)
+	}
+	if output, err := runFlow(t, harness, "focus", "task", match[1]); err != nil {
+		t.Fatalf("focus session history task: %v\n%s", err, output)
+	}
+	if output, err := runFlow(t, harness, "session", "dump"); err != nil {
+		t.Fatalf("first session dump: %v\n%s", err, output)
+	}
+	if output, err := runFlow(t, harness, "session", "dump"); err == nil || !strings.Contains(output, "acknowledge") {
+		t.Fatalf("pending second dump = %q, err %v; want acknowledgement guard", output, err)
+	}
+	if output, err := runFlow(t, harness, "session", "resume"); err != nil || !strings.Contains(output, "SESSION HANDOFF") {
+		t.Fatalf("resume first dump = %q, err %v", output, err)
+	}
+	if output, err := runFlow(t, harness, "session", "ack"); err != nil {
+		t.Fatalf("ack first dump: %v\n%s", err, output)
+	}
+	if output, err := runFlow(t, harness, "session", "dump"); err != nil {
+		t.Fatalf("second session dump after ack: %v\n%s", err, output)
+	}
+	output, err = runFlow(t, harness, "session", "dumps")
+	if err != nil {
+		t.Fatalf("list session dumps: %v\n%s", err, output)
+	}
+	if strings.Count(output, "session-history") < 2 || !strings.Contains(output, "acknowledged") || !strings.Contains(output, "pending") {
+		t.Fatalf("session dumps = %q; want two ordered statuses and focus", output)
+	}
+}
+
 func TestSessionListRendersTableAndHandoffState(t *testing.T) {
 	harness := testharness.NewHarness(t, "project", "current")
 
