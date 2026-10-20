@@ -1,6 +1,7 @@
 package flow_test
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -287,6 +288,94 @@ func TestMigrationRejectsConflictingModes(t *testing.T) {
 	output, err := runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--apply", "--dry-run")
 	if err == nil || !strings.Contains(output, "cannot be combined") || !strings.Contains(output, "ACTION:") {
 		t.Fatalf("conflicting migration flags = %q, err %v; want actionable error", output, err)
+	}
+}
+
+func TestMigrationBucketApplyIsIdempotent(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	source := harness.WriteFile(t, "source.json", []byte(`[
+  {
+    "uuid": "66666666-6666-4666-8666-666666666666",
+    "project": "foo:_archive",
+    "description": "Archived task",
+    "status": "pending"
+  },
+  {
+    "uuid": "77777777-7777-4777-8777-777777777777",
+    "project": "foo:_trash",
+    "description": "Trash task",
+    "status": "pending"
+  }
+]`))
+
+	for range 2 {
+		if output, err := runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--apply"); err != nil {
+			t.Fatalf("apply bucket migration: %v\n%s", err, output)
+		}
+	}
+	output, err := runFlow(t, harness, "status", "foo", "--format", "json", "--force")
+	if err != nil {
+		t.Fatalf("read repeated bucket migration: %v\n%s", err, output)
+	}
+	var report struct {
+		Records []struct {
+			ID string `json:"id"`
+		} `json:"records"`
+	}
+	if err := json.Unmarshal([]byte(output), &report); err != nil {
+		t.Fatalf("decode repeated bucket report: %v\n%s", err, output)
+	}
+	if len(report.Records) != 2 {
+		t.Fatalf("repeated bucket records = %d, want 2\n%s", len(report.Records), output)
+	}
+}
+
+func TestMigrationWarningsDoNotFailTheRun(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	source := harness.WriteFile(t, "source.json", []byte(`[
+  {
+    "uuid": "88888888-8888-4888-8888-888888888888",
+    "project": "foo",
+    "description": "Unknown status task",
+    "status": "legacy-status"
+  }
+]`))
+
+	code, stdout, stderr := run(t, context.Background(), flowEnv(harness), "migrate", "taskwarrior", "--source", source)
+	if code != 0 {
+		t.Fatalf("warning-only migration exit = %d, stdout=%q, stderr=%q; want 0", code, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "WARNING:") || stderr != "" {
+		t.Fatalf("warning-only migration output = stdout %q, stderr %q; want warning on stdout", stdout, stderr)
+	}
+}
+
+func TestMigrationRecordErrorsContinueAndReturnFailure(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	source := harness.WriteFile(t, "source.json", []byte(`[
+  {
+    "uuid": "99999999-9999-4999-8999-999999999999",
+    "project": "foo",
+    "description": "Valid task",
+    "status": "pending"
+  },
+  {
+    "uuid": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "project": "foo",
+    "description": "Invalid date task",
+    "status": "pending",
+    "due": "not-a-date"
+  }
+]`))
+
+	code, stdout, stderr := run(t, context.Background(), flowEnv(harness), "migrate", "taskwarrior", "--source", source, "--apply")
+	combined := stdout + stderr
+	if code != 1 || !strings.Contains(combined, "ERROR") {
+		t.Fatalf("record-error migration = code %d, stdout=%q, stderr=%q; want exit 1 and ERROR", code, stdout, stderr)
+	}
+	output, err := runFlow(t, harness, "status", "foo", "--force")
+	if err != nil || !strings.Contains(output, "Valid task") || !strings.Contains(output, "Invalid date task") {
+		t.Fatalf("record-error migration state = %q, err %v; want both tasks preserved", output, err)
 	}
 }
 

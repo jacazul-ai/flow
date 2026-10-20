@@ -203,12 +203,12 @@ func TestApplyIsIdempotentAndPreservesDependenciesAndAnnotations(t *testing.T) {
 	}
 }
 
-func TestBuildBundleRejectsUnresolvedDependency(t *testing.T) {
+func TestBuildBundleReportsUnresolvedDependency(t *testing.T) {
 	depends, err := json.Marshal([]string{"999"})
 	if err != nil {
 		t.Fatalf("encode dependency fixture: %v", err)
 	}
-	_, _, err = migration.BuildBundle("project-alpha", []migration.LegacyTask{{
+	bundle, warnings, err := migration.BuildBundle("project-alpha", []migration.LegacyTask{{
 		ID:          1,
 		UUID:        firstUUID,
 		Project:     "parity",
@@ -216,7 +216,13 @@ func TestBuildBundleRejectsUnresolvedDependency(t *testing.T) {
 		Status:      "pending",
 		Depends:     depends,
 	}})
-	if err == nil || !strings.Contains(err.Error(), "unresolved") {
-		t.Fatalf("unresolved dependency error = %v, want actionable failure", err)
+	if err != nil {
+		t.Fatalf("unresolved dependency build error = %v, want record-level issue", err)
+	}
+	if len(bundle.Tasks) != 1 || len(bundle.Dependencies) != 0 {
+		t.Fatalf("unresolved dependency bundle = %#v, want task without edge", bundle)
+	}
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "ERROR:") || !strings.Contains(warnings[0], "unresolved") {
+		t.Fatalf("unresolved dependency warnings = %v, want ERROR with unresolved guidance", warnings)
 	}
 }
