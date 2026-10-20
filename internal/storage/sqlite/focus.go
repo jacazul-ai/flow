@@ -126,6 +126,9 @@ func (s *Store) SaveFocus(ctx context.Context, state task.FocusState) error {
 	if state.ProjectID == "" || state.SessionID == "" {
 		return errors.New("project ID and session ID are required")
 	}
+	if err := s.ensureSessionActive(ctx, state.ProjectID, state.SessionID); err != nil {
+		return err
+	}
 	stackJSON, err := json.Marshal(state.TaskStack)
 	if err != nil {
 		return fmt.Errorf("encode focus stack: %w", err)
@@ -153,14 +156,28 @@ func (s *Store) SaveFocus(ctx context.Context, state task.FocusState) error {
 	return nil
 }
 
-// ListSessions returns persisted sessions for one project.
+// ListSessions returns active persisted sessions for one project.
 func (s *Store) ListSessions(ctx context.Context, projectID string) ([]task.SessionInfo, error) {
+	return s.listSessions(ctx, projectID, false)
+}
+
+// ListAllSessions returns active and logically purged sessions for one project.
+func (s *Store) ListAllSessions(ctx context.Context, projectID string) ([]task.SessionInfo, error) {
+	return s.listSessions(ctx, projectID, true)
+}
+
+func (s *Store) listSessions(ctx context.Context, projectID string, includePurged bool) ([]task.SessionInfo, error) {
 	if projectID == "" {
 		return nil, errors.New("project ID is required")
 	}
-	rows, err := s.db.QueryContext(ctx, `
+	purgedFilter := " AND s.state != 'purged'"
+	if includePurged {
+		purgedFilter = ""
+	}
+	rows, err := s.db.QueryContext(ctx, fmt.Sprintf(`
 		SELECT s.project_id, s.session_id, s.focused_initiative_id,
 		       COALESCE(i.name, ''), s.focused_task_id, s.updated_at,
+		       s.state, s.purged_at,
 		       CASE
 		           WHEN EXISTS (
 		               SELECT 1 FROM session_dumps d
@@ -185,9 +202,9 @@ func (s *Store) ListSessions(ctx context.Context, projectID string) ([]task.Sess
 		LEFT JOIN session_notes n
 		       ON n.project_id = s.project_id
 		      AND n.session_id = s.session_id
-		WHERE s.project_id = ?
+		WHERE s.project_id = ?%s
 		ORDER BY s.updated_at DESC, s.session_id
-	`, projectID)
+	`, purgedFilter), projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list sessions: %w", err)
 	}
@@ -203,6 +220,8 @@ func (s *Store) ListSessions(ctx context.Context, projectID string) ([]task.Sess
 			&current.InitiativeName,
 			&current.FocusedTaskID,
 			&current.UpdatedAt,
+			&current.State,
+			&current.PurgedAt,
 			&current.Handoff,
 		); err != nil {
 			return nil, fmt.Errorf("scan session: %w", err)

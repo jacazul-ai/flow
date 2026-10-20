@@ -3,6 +3,7 @@ package flow_test
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -720,6 +721,111 @@ func TestSessionDumpHasFixedSectionsAndFinalizesAgentContent(t *testing.T) {
 		strings.Index(output, "## References") > strings.Index(output, "## Actions") ||
 		strings.Index(output, "## Actions") > strings.Index(output, "## Notes") {
 		t.Fatalf("resumed sections dump = %q, want fixed section order", output)
+	}
+}
+
+func TestSessionDumpsListsCurrentSessionAndAllHistory(t *testing.T) {
+	harness := testharness.NewHarness(t, "project", "current-session")
+	other := *harness
+	other.SessionID = "old-session"
+
+	for _, session := range []*testharness.Harness{harness, &other} {
+		output, err := runFlow(t, session, "plan", session.SessionID+"-plan", session.SessionID+" task")
+		if err != nil {
+			t.Fatalf("create %s plan: %v\n%s", session.SessionID, err, output)
+		}
+		match := regexp.MustCompile(`Created task ([0-9a-f]{8})`).FindStringSubmatch(output)
+		if len(match) != 2 {
+			t.Fatalf("%s plan output = %q, want task UUID", session.SessionID, output)
+		}
+		if output, err := runFlow(t, session, "focus", "task", match[1]); err != nil {
+			t.Fatalf("focus %s task: %v\n%s", session.SessionID, err, output)
+		}
+		createFinalizedSessionDump(t, session)
+		if output, err := runFlow(t, session, "session", "ack"); err != nil {
+			t.Fatalf("ack %s dump: %v\n%s", session.SessionID, err, output)
+		}
+	}
+
+	output, err := runFlow(t, harness, "session", "dumps")
+	if err != nil {
+		t.Fatalf("list current session dumps: %v\n%s", err, output)
+	}
+	if !strings.Contains(output, "current-session-plan") || strings.Contains(output, "old-session-plan") || strings.Contains(output, "old-session") {
+		t.Fatalf("current session dumps = %q; want current session only", output)
+	}
+	output, err = runFlow(t, harness, "session", "dumps", "--all")
+	if err != nil {
+		t.Fatalf("list all session dumps: %v\n%s", err, output)
+	}
+	for _, expected := range []string{"current-session", "old-session", "acknowledged", "current-session-plan", "old-session-plan"} {
+		if !strings.Contains(output, expected) {
+			t.Fatalf("all session dumps = %q, want %q", output, expected)
+		}
+	}
+}
+
+func TestSessionPurgePreservesHistoryUntilHardConfirmed(t *testing.T) {
+	harness := testharness.NewHarness(t, "project", "current-session")
+	other := *harness
+	other.SessionID = "old-session"
+	output, err := runFlow(t, &other, "plan", "old-plan", "Old task")
+	if err != nil {
+		t.Fatalf("create old plan: %v\n%s", err, output)
+	}
+	match := regexp.MustCompile(`Created task ([0-9a-f]{8})`).FindStringSubmatch(output)
+	if len(match) != 2 {
+		t.Fatalf("old plan output = %q, want task UUID", output)
+	}
+	if output, err := runFlow(t, &other, "focus", "task", match[1]); err != nil {
+		t.Fatalf("focus old task: %v\n%s", err, output)
+	}
+	createFinalizedSessionDump(t, &other)
+	if output, err := runFlow(t, &other, "session", "ack"); err != nil {
+		t.Fatalf("ack old dump: %v\n%s", err, output)
+	}
+
+	db, err := sql.Open("sqlite", harness.DatabasePath)
+	if err != nil {
+		t.Fatalf("open purge database: %v", err)
+	}
+	if _, err := db.Exec("UPDATE sessions SET updated_at = ? WHERE project_id = ? AND session_id = ?", "2020-01-01T00:00:00Z", harness.ProjectID, other.SessionID); err != nil {
+		db.Close()
+		t.Fatalf("age old session: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close purge database: %v", err)
+	}
+
+	output, err = runFlow(t, harness, "session", "purge")
+	if err != nil || !strings.Contains(output, "Marked 1 orphan session(s) purged") {
+		t.Fatalf("logical purge = %q, err %v; want logical state change", output, err)
+	}
+	output, err = runFlow(t, harness, "session", "list")
+	if err != nil {
+		t.Fatalf("list after logical purge: %v\n%s", err, output)
+	}
+	if strings.Contains(output, "old-session") {
+		t.Fatalf("session list after logical purge = %q; purged session leaked", output)
+	}
+	output, err = runFlow(t, harness, "session", "dumps", "--all")
+	if err != nil || !strings.Contains(output, "old-session") {
+		t.Fatalf("history after logical purge = %q, err %v; want preserved dump", output, err)
+	}
+	output, err = runFlow(t, harness, "session", "purge", "--hard")
+	if err != nil || !strings.Contains(output, "Dry run") {
+		t.Fatalf("hard purge dry run = %q, err %v; want confirmation gate", output, err)
+	}
+	output, err = runFlow(t, harness, "session", "purge", "--hard", "--confirm")
+	if err != nil || !strings.Contains(output, "Hard-purged 1 session(s)") {
+		t.Fatalf("hard purge = %q, err %v; want deletion", output, err)
+	}
+	output, err = runFlow(t, harness, "session", "dumps", "--all")
+	if err != nil {
+		t.Fatalf("history after hard purge: %v\n%s", err, output)
+	}
+	if strings.Contains(output, "old-session") {
+		t.Fatalf("history after hard purge = %q; deleted session remained", output)
 	}
 }
 

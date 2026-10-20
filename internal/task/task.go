@@ -409,6 +409,8 @@ type SessionInfo struct {
 	InitiativeName string
 	FocusedTaskID  string
 	UpdatedAt      string
+	State          string
+	PurgedAt       string
 	Handoff        string
 }
 

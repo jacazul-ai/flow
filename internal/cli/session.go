@@ -159,6 +159,9 @@ func (cmd *SessionResumeCommand) Execute(args []string) error {
 		fmt.Fprintf(cmd.appOpts.Out(), "Session dump already acknowledged: session %s. Context will not be replayed.\n", cmd.appOpts.SessionID)
 		return nil
 	}
+	if found && latest.Status == task.SessionDumpDraft {
+		return fmt.Errorf("session dump %s is still a draft\nACTION: Finalize it with session finalize before resuming.", shortSessionDumpID(latest.ID))
+	}
 	note, found, err := store.GetSessionNote(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil || !found {
 		return err
@@ -198,6 +201,13 @@ func (cmd *SessionAckCommand) Execute(args []string) error {
 		fmt.Fprintln(cmd.appOpts.Out(), "Session dump acknowledged. Context loaded.")
 		return nil
 	}
+	latest, found, err := store.GetLatestSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	if err != nil {
+		return err
+	}
+	if found && latest.Status == task.SessionDumpDraft {
+		return fmt.Errorf("session dump %s is still a draft\nACTION: Finalize it with session finalize before acknowledging.", shortSessionDumpID(latest.ID))
+	}
 	note, found, err := store.GetSessionNote(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
@@ -227,7 +237,7 @@ func (cmd *SessionDumpCommand) SetAppOptions(opts *config.AppOptions) {
 	cmd.appOpts = opts
 }
 
-// Execute persists the current focus as a session handoff note.
+// Execute persists the current focus as a session handoff draft.
 func (cmd *SessionDumpCommand) Execute(args []string) error {
 	if len(args) != 0 {
 		return fmt.Errorf("session dump accepts no arguments")
@@ -332,7 +342,12 @@ func (cmd *SessionDumpsCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	dumps, err := store.ListSessionDumps(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	var dumps []task.SessionDump
+	if cmd.All {
+		dumps, err = store.ListAllSessionDumps(cmd.appOpts.Context(), cmd.appOpts.ProjectID)
+	} else {
+		dumps, err = store.ListSessionDumps(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	}
 	if err != nil {
 		return err
 	}
@@ -341,14 +356,19 @@ func (cmd *SessionDumpsCommand) Execute(args []string) error {
 		return nil
 	}
 	for _, dump := range dumps {
+		if cmd.All {
+			fmt.Fprintf(cmd.appOpts.Out(), "%s %s %s %s %s\n", dump.CreatedAt, dump.SessionID, displaySessionDumpStatus(dump.Status), shortSessionDumpID(dump.ID), dump.FocusSummary)
+			continue
+		}
 		fmt.Fprintf(cmd.appOpts.Out(), "%s %s %s %s\n", dump.CreatedAt, displaySessionDumpStatus(dump.Status), shortSessionDumpID(dump.ID), dump.FocusSummary)
 	}
 	return nil
 }
 
-// SessionPurgeCommand removes old non-current sessions after confirmation.
+// SessionPurgeCommand marks orphan sessions or hard-deletes purged history.
 type SessionPurgeCommand struct {
-	Confirm bool `long:"confirm" description:"Delete orphan sessions"`
+	Hard    bool `long:"hard" description:"Physically delete logically purged sessions"`
+	Confirm bool `long:"confirm" description:"Confirm the selected purge operation"`
 	appOpts *config.AppOptions
 }
 
@@ -357,7 +377,7 @@ func (cmd *SessionPurgeCommand) SetAppOptions(opts *config.AppOptions) {
 	cmd.appOpts = opts
 }
 
-// Execute lists orphan sessions or deletes them with --confirm.
+// Execute applies logical purge by default and reserves physical deletion for --hard --confirm.
 func (cmd *SessionPurgeCommand) Execute(args []string) error {
 	if len(args) != 0 {
 		return fmt.Errorf("session purge accepts no arguments")
@@ -368,39 +388,65 @@ func (cmd *SessionPurgeCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
-	sessions, err := store.ListSessions(cmd.appOpts.Context(), cmd.appOpts.ProjectID)
+	sessions, err := store.ListAllSessions(cmd.appOpts.Context(), cmd.appOpts.ProjectID)
 	if err != nil {
 		return err
 	}
 	now := time.Now().UTC()
-	var orphans []task.SessionInfo
+	var targets []task.SessionInfo
 	for _, session := range sessions {
 		if session.SessionID == cmd.appOpts.SessionID || session.SessionID == "global" {
 			continue
 		}
-		_, status := sessionAge(session.UpdatedAt, now)
-		if status == "orphan" {
-			orphans = append(orphans, session)
+		if cmd.Hard {
+			if session.State == "purged" {
+				targets = append(targets, session)
+			}
+			continue
+		}
+		if session.State == "active" {
+			_, status := sessionAge(session.UpdatedAt, now)
+			if status == "orphan" {
+				targets = append(targets, session)
+			}
 		}
 	}
-	if len(orphans) == 0 {
-		fmt.Fprintln(cmd.appOpts.Out(), "No orphan sessions to purge.")
+	if len(targets) == 0 {
+		if cmd.Hard {
+			fmt.Fprintln(cmd.appOpts.Out(), "No logically purged orphan sessions to hard-purge.")
+		} else {
+			fmt.Fprintln(cmd.appOpts.Out(), "No orphan sessions to purge.")
+		}
 		return nil
 	}
-	fmt.Fprintf(cmd.appOpts.Out(), "Orphan sessions (%d):\n", len(orphans))
-	for _, session := range orphans {
+
+	if cmd.Hard {
+		fmt.Fprintf(cmd.appOpts.Out(), "Logically purged sessions (%d):\n", len(targets))
+	} else {
+		fmt.Fprintf(cmd.appOpts.Out(), "Orphan sessions (%d):\n", len(targets))
+	}
+	for _, session := range targets {
 		fmt.Fprintf(cmd.appOpts.Out(), "  %s\n", session.SessionID)
 	}
-	if !cmd.Confirm {
-		fmt.Fprintln(cmd.appOpts.Out(), "\nDry run. Use --confirm to delete.")
+	if cmd.Hard {
+		if !cmd.Confirm {
+			fmt.Fprintln(cmd.appOpts.Out(), "\nDry run. Use --hard --confirm to delete permanently.")
+			return nil
+		}
+		for _, session := range targets {
+			if err := store.HardDeletePurgedSession(cmd.appOpts.Context(), cmd.appOpts.ProjectID, session.SessionID, cmd.appOpts.SessionID); err != nil {
+				return err
+			}
+		}
+		fmt.Fprintf(cmd.appOpts.Out(), "Hard-purged %d session(s).\n", len(targets))
 		return nil
 	}
-	for _, session := range orphans {
-		if err := store.DeleteSession(cmd.appOpts.Context(), cmd.appOpts.ProjectID, session.SessionID); err != nil {
+	for _, session := range targets {
+		if err := store.PurgeSession(cmd.appOpts.Context(), cmd.appOpts.ProjectID, session.SessionID, cmd.appOpts.SessionID); err != nil {
 			return err
 		}
 	}
-	fmt.Fprintf(cmd.appOpts.Out(), "Purged %d orphan session(s).\n", len(orphans))
+	fmt.Fprintf(cmd.appOpts.Out(), "Marked %d orphan session(s) purged.\n", len(targets))
 	return nil
 }
 

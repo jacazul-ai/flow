@@ -89,8 +89,8 @@ func loadOnboardHandoff(ctx context.Context, store *sqlite.Store, opts *config.A
 	return note, found, false, found && note.AcknowledgedAt == "", nil
 }
 
-// report renders the onboard briefing as one record. A pending handoff is
-// carried in full and acknowledged exactly as the text briefing does.
+// report renders the onboard briefing as one record. Native handoffs are
+// delivered without acknowledgement; legacy notes keep their compatibility path.
 func (cmd *OnboardCommand) report(store *sqlite.Store, format string, focus task.FocusState, note task.SessionNote, noteFound bool, native bool, tagFilter task.TagFilter) error {
 	ctx := cmd.appOpts.Context()
 	handoff := ""

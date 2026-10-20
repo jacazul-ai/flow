@@ -21,6 +21,9 @@ func (s *Store) CreateSessionDumpDraft(ctx context.Context, projectID string, se
 	if projectID == "" || sessionID == "" {
 		return task.SessionDump{}, errors.New("project ID and session ID are required")
 	}
+	if err := s.ensureSessionActive(ctx, projectID, sessionID); err != nil {
+		return task.SessionDump{}, err
+	}
 	if strings.TrimSpace(content) == "" {
 		return task.SessionDump{}, errors.New("session dump content is required")
 	}
@@ -202,6 +205,9 @@ func isHexDumpID(value string) bool {
 
 // DeliverLatestSessionDump marks and returns the latest pending dump.
 func (s *Store) DeliverLatestSessionDump(ctx context.Context, projectID string, sessionID string) (task.SessionDump, bool, error) {
+	if err := s.ensureSessionActive(ctx, projectID, sessionID); err != nil {
+		return task.SessionDump{}, false, err
+	}
 	dump, found, err := s.GetLatestPendingSessionDump(ctx, projectID, sessionID)
 	if err != nil || !found {
 		return dump, found, err
@@ -220,6 +226,9 @@ func (s *Store) DeliverLatestSessionDump(ctx context.Context, projectID string, 
 
 // AcknowledgeLatestSessionDump marks the latest pending dump as read.
 func (s *Store) AcknowledgeLatestSessionDump(ctx context.Context, projectID string, sessionID string) (task.SessionDump, bool, error) {
+	if err := s.ensureSessionActive(ctx, projectID, sessionID); err != nil {
+		return task.SessionDump{}, false, err
+	}
 	dump, found, err := s.GetLatestPendingSessionDump(ctx, projectID, sessionID)
 	if err != nil || !found {
 		return dump, found, err
@@ -240,7 +249,7 @@ func (s *Store) AcknowledgeLatestSessionDump(ctx context.Context, projectID stri
 
 // ListSessionDumps returns dump metadata in sequence order without payloads.
 func (s *Store) ListSessionDumps(ctx context.Context, projectID string, sessionID string) ([]task.SessionDump, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	return s.listSessionDumps(ctx, `
 		SELECT id, project_id, session_id, sequence, status, created_at,
 		       delivered_at, acknowledged_at, focus_summary, content_encoding,
 		       content_size, content_sha256, updated_at
@@ -248,6 +257,22 @@ func (s *Store) ListSessionDumps(ctx context.Context, projectID string, sessionI
 		WHERE project_id = ? AND session_id = ?
 		ORDER BY sequence
 	`, projectID, sessionID)
+}
+
+// ListAllSessionDumps returns dump metadata for every project session.
+func (s *Store) ListAllSessionDumps(ctx context.Context, projectID string) ([]task.SessionDump, error) {
+	return s.listSessionDumps(ctx, `
+		SELECT id, project_id, session_id, sequence, status, created_at,
+		       delivered_at, acknowledged_at, focus_summary, content_encoding,
+		       content_size, content_sha256, updated_at
+		FROM session_dumps
+		WHERE project_id = ?
+		ORDER BY created_at, session_id, sequence
+	`, projectID)
+}
+
+func (s *Store) listSessionDumps(ctx context.Context, query string, args ...any) ([]task.SessionDump, error) {
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list session dumps: %w", err)
 	}
