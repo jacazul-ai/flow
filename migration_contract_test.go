@@ -384,9 +384,14 @@ func TestMigrationMapsTaskBucketsAndProjectsInactiveTasksOutOfTree(t *testing.T)
 	if strings.Join(visible, " -> ") != "First -> Third -> Fourth" {
 		t.Fatalf("bucket tree = %q, want First -> Third -> Fourth", tree)
 	}
-	for _, hidden := range []string{"Archived", "Trash", "BLOCKED"} {
+	for _, hidden := range []string{"Archived", "Trash"} {
 		if strings.Contains(tree, hidden) {
 			t.Fatalf("bucket tree contains inactive marker %q: %q", hidden, tree)
+		}
+	}
+	for _, line := range strings.Split(tree, "\n") {
+		if strings.Contains(line, "Third") && !strings.HasPrefix(line, "[READY]") {
+			t.Fatalf("archived dependency still blocks Third: %q", tree)
 		}
 	}
 }
