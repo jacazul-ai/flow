@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	flow "github.com/jacazul-ai/flow"
+	"github.com/jacazul-ai/flow/internal/storage/sqlite"
 	"github.com/jacazul-ai/flow/internal/testharness"
 )
 
@@ -620,6 +621,79 @@ func TestHandoffExecutesAndAnnotates(t *testing.T) {
 	}
 	if output, err := runFlow(t, harness, "tree", "handoff"); err != nil || !strings.Contains(output, "[ACTIVE] "+second) {
 		t.Fatalf("handoff tree = %q, err %v; want active target", output, err)
+	}
+}
+
+func TestSchemaUpgradeAnnouncementCoversFreshOlderAndNewerDatabases(t *testing.T) {
+	fresh := testharness.NewHarness(t, "project", "fresh-schema")
+	var freshStdout, freshStderr bytes.Buffer
+	if code := flow.Run(context.Background(), []string{"status"}, flowEnv(fresh), flow.Streams{Stdout: &freshStdout, Stderr: &freshStderr}); code != 0 {
+		t.Fatalf("fresh schema status = %d\nstdout=%s\nstderr=%s", code, freshStdout.String(), freshStderr.String())
+	}
+	if strings.Contains(freshStderr.String(), "Schema upgrade required") {
+		t.Fatalf("fresh schema announced an upgrade: %q", freshStderr.String())
+	}
+
+	older := testharness.NewHarness(t, "project", "older-schema")
+	downgradeSchemaForTest(t, older.DatabasePath)
+	var olderStdout, olderStderr bytes.Buffer
+	if code := flow.Run(context.Background(), []string{"status"}, flowEnv(older), flow.Streams{Stdout: &olderStdout, Stderr: &olderStderr}); code != 0 {
+		t.Fatalf("older schema status = %d\nstdout=%s\nstderr=%s", code, olderStdout.String(), olderStderr.String())
+	}
+	if !strings.Contains(olderStderr.String(), "Schema upgrade required: v14 -> v15") {
+		t.Fatalf("older schema stderr = %q, want upgrade notice", olderStderr.String())
+	}
+
+	newer := testharness.NewHarness(t, "project", "newer-schema")
+	setSchemaVersionForTest(t, newer.DatabasePath, 99)
+	var newerStdout, newerStderr bytes.Buffer
+	if code := flow.Run(context.Background(), []string{"status"}, flowEnv(newer), flow.Streams{Stdout: &newerStdout, Stderr: &newerStderr}); code == 0 || !strings.Contains(newerStderr.String(), "newer than") {
+		t.Fatalf("newer schema status = %d\nstdout=%s\nstderr=%s", code, newerStdout.String(), newerStderr.String())
+	}
+}
+
+func downgradeSchemaForTest(t *testing.T, path string) {
+	t.Helper()
+	store, err := sqlite.Open(context.Background(), path)
+	if err != nil {
+		t.Fatalf("create schema database: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("close schema database: %v", err)
+	}
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("open schema database: %v", err)
+	}
+	defer db.Close()
+	for _, statement := range []string{
+		"DROP TABLE session_dumps",
+		"ALTER TABLE sessions DROP COLUMN purged_at",
+		"ALTER TABLE sessions DROP COLUMN state",
+		"DELETE FROM goose_db_version WHERE version_id = 15",
+	} {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatalf("downgrade schema with %q: %v", statement, err)
+		}
+	}
+}
+
+func setSchemaVersionForTest(t *testing.T, path string, version int) {
+	t.Helper()
+	store, err := sqlite.Open(context.Background(), path)
+	if err != nil {
+		t.Fatalf("create schema database: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("close schema database: %v", err)
+	}
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("open schema database: %v", err)
+	}
+	defer db.Close()
+	if _, err := db.Exec("INSERT INTO goose_db_version (version_id, is_applied, tstamp) VALUES (?, 1, CURRENT_TIMESTAMP)", version); err != nil {
+		t.Fatalf("set schema version: %v", err)
 	}
 }
 

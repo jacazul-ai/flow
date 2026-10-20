@@ -20,16 +20,42 @@ import (
 
 // Store persists one project's workflow state in SQLite.
 type Store struct {
-	db *sql.DB
+	db            *sql.DB
+	migrationInfo MigrationInfo
 }
+
+// MigrationInfo describes the schema transition performed while opening a database.
+type MigrationInfo struct {
+	PreviousVersion int64
+	CurrentVersion  int64
+	UpgradeRequired bool
+}
+
+// MigrationNotice receives a pending schema upgrade before it is applied.
+type MigrationNotice func(MigrationInfo) error
 
 // Open opens or creates a database and applies the current schema.
 func Open(ctx context.Context, path string) (*Store, error) {
+	return open(ctx, path, nil)
+}
+
+// OpenWithMigrationNotice opens a database and reports required upgrades before applying them.
+func OpenWithMigrationNotice(ctx context.Context, path string, notice MigrationNotice) (*Store, error) {
+	return open(ctx, path, notice)
+}
+
+func open(ctx context.Context, path string, notice MigrationNotice) (*Store, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	if path == "" {
 		return nil, errors.New("database path is required")
+	}
+	databaseExists := false
+	if _, err := os.Stat(path); err == nil {
+		databaseExists = true
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("inspect database: %w", err)
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, fmt.Errorf("create database directory: %w", err)
@@ -46,11 +72,19 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
-	if err := store.migrate(ctx); err != nil {
+	if err := store.migrate(ctx, databaseExists, notice); err != nil {
 		db.Close()
 		return nil, err
 	}
 	return store, nil
+}
+
+// MigrationInfo returns the schema transition observed while opening the store.
+func (s *Store) MigrationInfo() MigrationInfo {
+	if s == nil {
+		return MigrationInfo{}
+	}
+	return s.migrationInfo
 }
 
 // Close releases the database connection.
@@ -360,7 +394,7 @@ func (s *Store) configure(ctx context.Context) error {
 	return nil
 }
 
-func (s *Store) migrate(ctx context.Context) error {
+func (s *Store) migrate(ctx context.Context, databaseExists bool, notice MigrationNotice) error {
 	migrationFS, err := fs.Sub(embeddedMigrations, "migrations")
 	if err != nil {
 		return fmt.Errorf("open embedded migrations: %w", err)
@@ -374,31 +408,43 @@ func (s *Store) migrate(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("create migration provider: %w", err)
 	}
-	if err := checkSchemaVersion(ctx, provider); err != nil {
+	applied, supported, err := checkSchemaVersion(ctx, provider)
+	if err != nil {
 		return err
+	}
+	info := MigrationInfo{
+		PreviousVersion: applied,
+		CurrentVersion:  supported,
+		UpgradeRequired: databaseExists && applied < supported,
+	}
+	if info.UpgradeRequired && notice != nil {
+		if err := notice(info); err != nil {
+			return fmt.Errorf("announce schema upgrade: %w", err)
+		}
 	}
 	if _, err := provider.Up(ctx); err != nil {
 		return fmt.Errorf("apply database migrations: %w", err)
 	}
+	s.migrationInfo = info
 	return nil
 }
 
 // checkSchemaVersion refuses a database a newer release already upgraded. The
 // older binary cannot know what the newer migrations mean, so migrating down
 // or writing through it would discard or corrupt the newer schema.
-func checkSchemaVersion(ctx context.Context, provider *goose.Provider) error {
+func checkSchemaVersion(ctx context.Context, provider *goose.Provider) (int64, int64, error) {
 	applied, supported, err := provider.GetVersions(ctx)
 	if err != nil {
-		return fmt.Errorf("read database schema version: %w", err)
+		return 0, 0, fmt.Errorf("read database schema version: %w", err)
 	}
-	if applied <= supported {
-		return nil
+	if applied > supported {
+		return 0, 0, fmt.Errorf(
+			"database schema version %d is newer than the %d this binary supports\n"+
+				"ACTION: Upgrade jacazul to the release that wrote this database, "+
+				"or point --database-path at a database this release understands.",
+			applied, supported)
 	}
-	return fmt.Errorf(
-		"database schema version %d is newer than the %d this binary supports\n"+
-			"ACTION: Upgrade jacazul to the release that wrote this database, "+
-			"or point --database-path at a database this release understands.",
-		applied, supported)
+	return applied, supported, nil
 }
 
 func findInitiativeQuery() string {

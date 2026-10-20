@@ -199,7 +199,10 @@ func openStore(opts *config.AppOptions) (*sqlite.Store, error) {
 		fmt.Fprintf(opts.Stdout, "Moved legacy database to %s\n", opts.DatabasePath)
 	}
 
-	store, err := sqlite.Open(opts.Context(), opts.DatabasePath)
+	store, err := sqlite.OpenWithMigrationNotice(opts.Context(), opts.DatabasePath, func(info sqlite.MigrationInfo) error {
+		_, err := fmt.Fprintf(opts.Err(), "Schema upgrade required: v%d -> v%d; applying embedded migrations.\n", info.PreviousVersion, info.CurrentVersion)
+		return err
+	})
 	if err != nil {
 		return nil, fmt.Errorf("open project database: %w", err)
 	}
