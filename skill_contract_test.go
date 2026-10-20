@@ -92,6 +92,15 @@ func TestSkillOutWritesLinkedTree(t *testing.T) {
 			t.Fatalf("sessions skill missing %q:\n%s", expected, tree["references/sessions.md"])
 		}
 	}
+	for _, expected := range []string{
+		"## Schema upgrades",
+		"embedded Goose schema",
+		"newer than the binary",
+	} {
+		if !strings.Contains(tree["references/runtime.md"], expected) {
+			t.Fatalf("runtime skill missing %q:\n%s", expected, tree["references/runtime.md"])
+		}
+	}
 
 	linked := map[string]bool{}
 	for _, match := range skillLink.FindAllStringSubmatch(tree["SKILL.md"], -1) {

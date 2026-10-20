@@ -86,6 +86,8 @@ The tests verify that:
 - every mode, annotation kind and alias, title limit, due form, and runtime
   name appears in the reference that owns it;
 - no file exposes `jczl-flow`, `TODO`, or template syntax;
+- schema upgrades are silent when unnecessary, announced before automatic
+  application when pending, and rejected when the database is newer;
 - `--out` writes a deterministic tree, drops stale references, and keeps
   unrelated files;
 - **every `bash` block runs** on a fresh isolated project through `flow.Run`.
@@ -112,11 +114,15 @@ diff.
    delivery without acknowledging it, and never starts work. Native dumps use
    fixed Focus, References, Actions, and Notes sections; explicit `session ack`
    releases the next dump.
-3. After `done`, agents re-anchor only to a ready task in the same initiative,
+3. Schema lifecycle is deterministic: commands opening SQLite check the
+   embedded Goose version, announce and apply pending upgrades for existing
+   databases, stay silent for fresh/current databases, and reject newer schemas
+   with actionable guidance.
+4. After `done`, agents re-anchor only to a ready task in the same initiative,
    or clear the focus (see [focus-advance-i-d.md](focus-advance-i-d.md)).
-4. The skill is honest about unimplemented behavior. Gaps are tracked as
+5. The skill is honest about unimplemented behavior. Gaps are tracked as
    non-rendered Pongo2 comment blocks marked `TODO(#26)`.
-5. The command stays named `skill` so it is not confused with the launcher's
+6. The command stays named `skill` so it is not confused with the launcher's
    `jacazul-hatch`.
 
 ## Known gaps

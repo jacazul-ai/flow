@@ -96,6 +96,15 @@ Sources are reported as `flag`, `environment`, `runtime`, `default`, or
 `derived`. This command does not run Taskwarrior export, migrate legacy state,
 read focus files, or create missing directories.
 
+### Schema upgrades
+
+Commands that open the native SQLite database check the embedded Goose schema
+before running. Fresh databases and databases already at the supported version
+stay silent. An existing older database reports the transition, for example
+`Schema upgrade required: v14 -> v15`, then applies the pending migrations
+automatically. A database newer than the binary is rejected with an `ACTION:`
+to upgrade the engine. There is no separate schema `migrate up` command.
+
 ### Session list report
 
 `jczl-flow session list` renders the current project's persisted sessions as a

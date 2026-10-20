@@ -23,6 +23,14 @@ opening storage.
 jacazul flow info
 ```
 
+## Schema upgrades
+
+Commands that open SQLite check the embedded Goose schema before running.
+Fresh and current databases stay silent. An existing older database announces
+its version transition and applies pending migrations automatically. A database
+newer than the binary fails with an `ACTION:` to upgrade the engine. Schema
+upgrades do not require a separate `migrate up` command.
+
 ## Commands
 
 | Command | Purpose |
