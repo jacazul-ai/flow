@@ -114,6 +114,10 @@ func (s *Store) CreateTask(ctx context.Context, input task.CreateTaskInput) (tas
 	if err := validateTask(input); err != nil {
 		return task.Task{}, err
 	}
+	bucket, err := task.NormalizeBucket(input.Bucket)
+	if err != nil {
+		return task.Task{}, err
+	}
 	if err := s.requireInitiative(ctx, input.InitiativeID); err != nil {
 		return task.Task{}, err
 	}
@@ -138,6 +142,7 @@ func (s *Store) CreateTask(ctx context.Context, input task.CreateTaskInput) (tas
 	created := task.Task{
 		ID:           newUUID(),
 		InitiativeID: input.InitiativeID,
+		Bucket:       bucket,
 		Description:  input.Description,
 		Mode:         input.Mode,
 		DueAt:        input.DueAt,
@@ -172,12 +177,13 @@ func (s *Store) CreateTask(ctx context.Context, input task.CreateTaskInput) (tas
 	created.CreatedAt = now
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO tasks
-			(id, initiative_id, description, mode, status, outcome,
+			(id, initiative_id, bucket, description, mode, status, outcome,
 			 external_ticket, priority, urgency, wait_until, due_at,
 			 task_mode_code, position, metadata_json, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, '', '', ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, created.ID, created.InitiativeID, created.Description, legacyModeName(created.Mode),
-		created.Status, created.Priority, created.Urgency, created.WaitUntil,
+		VALUES (?, ?, ?, ?, ?, ?, '', '', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, created.ID, created.InitiativeID, created.Bucket, created.Description,
+		legacyModeName(created.Mode), created.Status, created.Priority, created.Urgency,
+		created.WaitUntil,
 		created.DueAt, created.Mode, created.Position, metadataJSON, now, now); err != nil {
 		return task.Task{}, fmt.Errorf("create task: %w", err)
 	}
@@ -215,7 +221,7 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 	}
 
 	query := `
-		SELECT t.id, t.initiative_id, i.name, t.description,
+		SELECT t.id, t.initiative_id, i.name, t.bucket, t.description,
 		       t.status, t.outcome, t.external_ticket, t.created_at,
 		       t.started_at, t.completed_at, t.disposition, t.due_at,
 		       t.priority, t.urgency, t.wait_until, t.task_mode_code, t.position,
@@ -248,6 +254,7 @@ func (s *Store) ListTasks(ctx context.Context, projectID string, initiativeName 
 			&current.ID,
 			&current.InitiativeID,
 			&current.InitiativeName,
+			&current.Bucket,
 			&current.Description,
 			&status,
 			&current.Outcome,

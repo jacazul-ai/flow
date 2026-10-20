@@ -26,7 +26,7 @@ func (s *Store) GetTask(ctx context.Context, taskID string) (task.Task, error) {
 	var modeCode int64
 	var metadataJSON string
 	err = s.db.QueryRowContext(ctx, `
-		SELECT t.id, t.initiative_id, i.name, t.description,
+		SELECT t.id, t.initiative_id, i.name, t.bucket, t.description,
 		       t.task_mode_code, t.status, t.outcome, t.external_ticket,
 		       t.created_at, t.started_at, t.completed_at, t.disposition, t.due_at,
 		       t.priority, t.urgency, t.wait_until, t.position,
@@ -39,6 +39,7 @@ func (s *Store) GetTask(ctx context.Context, taskID string) (task.Task, error) {
 		&current.ID,
 		&current.InitiativeID,
 		&current.InitiativeName,
+		&current.Bucket,
 		&current.Description,
 		&modeCode,
 		&status,
@@ -142,7 +143,7 @@ func readyTasks(tasks []task.Task) []task.Task {
 	ready := make([]task.Task, 0, len(tasks))
 	today := time.Now().UTC().Format("2006-01-02")
 	for _, current := range tasks {
-		if current.Status != task.Pending || !dependenciesCompleted(current, byID) {
+		if current.Bucket != task.BucketActive || current.Status != task.Pending || !dependenciesCompleted(current, byID) {
 			continue
 		}
 		if current.WaitUntil != "" && current.WaitUntil > today {
@@ -159,6 +160,9 @@ func (s *Store) StartTask(ctx context.Context, taskID string) error {
 	if err != nil {
 		return err
 	}
+	if current.Bucket != task.BucketActive {
+		return fmt.Errorf("task %s is in %s bucket and cannot start", current.ID[:8], current.Bucket)
+	}
 	if current.Status == task.Completed {
 		return completedTaskError(current.ID, "start")
 	}
@@ -172,6 +176,9 @@ func (s *Store) StartTask(ctx context.Context, taskID string) error {
 		dependency, err := s.GetTask(ctx, dependencyID)
 		if err != nil {
 			return err
+		}
+		if dependency.Bucket != task.BucketActive {
+			continue
 		}
 		if dependency.Status != task.Completed {
 			return fmt.Errorf(
@@ -396,7 +403,13 @@ func (s *Store) DiscardTask(ctx context.Context, taskID string) error {
 func dependenciesCompleted(current task.Task, tasks map[string]task.Task) bool {
 	for _, dependencyID := range current.Dependencies {
 		dependency, ok := tasks[dependencyID]
-		if !ok || dependency.Status != task.Completed {
+		if !ok {
+			return false
+		}
+		if dependency.Bucket != task.BucketActive {
+			continue
+		}
+		if dependency.Status != task.Completed {
 			return false
 		}
 	}

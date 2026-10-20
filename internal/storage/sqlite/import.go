@@ -54,6 +54,10 @@ func (s *Store) ApplyImport(ctx context.Context, bundle task.ImportBundle) (task
 	}
 
 	for _, imported := range bundle.Tasks {
+		bucket, err := task.NormalizeBucket(imported.Bucket)
+		if err != nil {
+			return task.ImportResult{}, fmt.Errorf("import task %s bucket: %w", imported.ID, err)
+		}
 		metadataJSON, err := encodeTaskMetadata(imported.Metadata)
 		if err != nil {
 			return task.ImportResult{}, fmt.Errorf("encode imported task %s metadata: %w", imported.ID, err)
@@ -64,10 +68,10 @@ func (s *Store) ApplyImport(ctx context.Context, bundle task.ImportBundle) (task
 		}
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO tasks
-				(id, initiative_id, description, mode, status, outcome,
+				(id, initiative_id, bucket, description, mode, status, outcome,
 				 external_ticket, started_at, completed_at, disposition, due_at,
 				 priority, urgency, wait_until, task_mode_code, position, metadata_json, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
 				COALESCE(
 					(SELECT position FROM tasks WHERE id = ?),
 					(SELECT COALESCE(MAX(position), 0) + 1 FROM tasks WHERE initiative_id = ?)
@@ -75,6 +79,7 @@ func (s *Store) ApplyImport(ctx context.Context, bundle task.ImportBundle) (task
 				?, ?, ?)
 			ON CONFLICT (id) DO UPDATE SET
 				initiative_id = excluded.initiative_id,
+				bucket = excluded.bucket,
 				description = excluded.description,
 				mode = excluded.mode,
 				status = excluded.status,
@@ -90,7 +95,7 @@ func (s *Store) ApplyImport(ctx context.Context, bundle task.ImportBundle) (task
 				task_mode_code = excluded.task_mode_code,
 				metadata_json = excluded.metadata_json,
 				updated_at = excluded.updated_at
-		`, imported.ID, imported.InitiativeID, imported.Description,
+		`, imported.ID, imported.InitiativeID, bucket, imported.Description,
 			legacyModeName(imported.Mode), imported.Status, imported.Outcome,
 			imported.ExternalTicket, imported.StartedAt, imported.CompletedAt,
 			imported.Disposition, imported.DueAt, imported.Priority, imported.Urgency,
@@ -277,6 +282,9 @@ func validateImportProject(bundle task.ImportBundle) error {
 	for _, current := range bundle.Tasks {
 		if current.ID == "" || current.InitiativeID == "" || current.Description == "" {
 			return errors.New("import task requires ID, initiative, and description")
+		}
+		if _, err := task.NormalizeBucket(current.Bucket); err != nil {
+			return fmt.Errorf("task %s: %w", current.ID, err)
 		}
 		if !current.Mode.Valid() {
 			return fmt.Errorf("task %s has invalid mode %d", current.ID, current.Mode)

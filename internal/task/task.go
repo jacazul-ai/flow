@@ -186,8 +186,37 @@ const (
 	InitiativeActive    InitiativeStatus = "active"
 	InitiativeBacklog   InitiativeStatus = "backlog"
 	InitiativeCompleted InitiativeStatus = "completed"
-	InitiativeArchived  InitiativeStatus = "archived"
 )
+
+// Bucket classifies a task without changing its lifecycle.
+type Bucket string
+
+const (
+	BucketActive  Bucket = "active"
+	BucketArchive Bucket = "archive"
+	BucketTrash   Bucket = "trash"
+)
+
+// Valid reports whether the bucket is part of the native task catalog.
+func (bucket Bucket) Valid() bool {
+	switch bucket {
+	case BucketActive, BucketArchive, BucketTrash:
+		return true
+	default:
+		return false
+	}
+}
+
+// NormalizeBucket applies the active default and validates explicit values.
+func NormalizeBucket(bucket Bucket) (Bucket, error) {
+	if bucket == "" {
+		return BucketActive, nil
+	}
+	if !bucket.Valid() {
+		return "", fmt.Errorf("invalid task bucket %q", bucket)
+	}
+	return bucket, nil
+}
 
 // MetadataReference is a structured URI or glossary reference attached to
 // an initiative or task.
@@ -316,6 +345,7 @@ type Task struct {
 	ID              string       `json:"id"`
 	Position        int64        `json:"position"`
 	InitiativeID    string       `json:"initiative_id"`
+	Bucket          Bucket       `json:"bucket"`
 	InitiativeName  string       `json:"initiative_name"`
 	Description     string       `json:"description"`
 	Mode            TaskMode     `json:"mode,omitempty"`
@@ -400,6 +430,7 @@ type FocusEntry struct {
 // CreateTaskInput contains the fields required to create a workflow task.
 type CreateTaskInput struct {
 	InitiativeID string
+	Bucket       Bucket
 	Description  string
 	Mode         TaskMode
 	DueAt        string

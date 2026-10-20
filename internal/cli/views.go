@@ -23,7 +23,7 @@ func (cmd *ActiveCommand) SetAppOptions(opts *config.AppOptions) {
 
 // Execute renders active tasks for the current project or initiative.
 func (cmd *ActiveCommand) Execute(args []string) error {
-	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, cmd.TagFilter(), "ACTIVE TASKS", "No active tasks.", func(current task.Task, _ map[string]task.Status) bool {
+	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, cmd.TagFilter(), "ACTIVE TASKS", "No active tasks.", func(current task.Task, _ map[string]task.Task) bool {
 		return current.Status == task.Active
 	})
 }
@@ -42,7 +42,7 @@ func (cmd *BlockedCommand) SetAppOptions(opts *config.AppOptions) {
 
 // Execute renders blocked tasks for the current project or initiative.
 func (cmd *BlockedCommand) Execute(args []string) error {
-	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, cmd.TagFilter(), "BLOCKED TASKS", "No blocked tasks.", func(current task.Task, states map[string]task.Status) bool {
+	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, cmd.TagFilter(), "BLOCKED TASKS", "No blocked tasks.", func(current task.Task, states map[string]task.Task) bool {
 		return current.Status == task.Pending && !dependenciesReady(current, states)
 	})
 }
@@ -62,7 +62,7 @@ func (cmd *OverdueCommand) SetAppOptions(opts *config.AppOptions) {
 // Execute renders overdue tasks for the current project or initiative.
 func (cmd *OverdueCommand) Execute(args []string) error {
 	today := time.Now().UTC().Format("2006-01-02")
-	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, cmd.TagFilter(), "OVERDUE TASKS", "No overdue tasks.", func(current task.Task, _ map[string]task.Status) bool {
+	return listTaskView(cmd.appOpts, cmd.ReportFormat, args, cmd.TagFilter(), "OVERDUE TASKS", "No overdue tasks.", func(current task.Task, _ map[string]task.Task) bool {
 		return current.Status == task.Pending && current.DueAt != "" && current.DueAt < today
 	})
 }
@@ -74,7 +74,7 @@ func listTaskView(
 	tagFilter task.TagFilter,
 	header string,
 	emptyMessage string,
-	include func(task.Task, map[string]task.Status) bool,
+	include func(task.Task, map[string]task.Task) bool,
 ) error {
 	if len(args) > 1 {
 		return fmt.Errorf("%s accepts at most one initiative name\nACTION: Run 'jczl-flow help %s'.", strings.ToLower(strings.TrimSuffix(header, " TASKS")), strings.ToLower(strings.TrimSuffix(header, " TASKS")))
@@ -101,14 +101,17 @@ func listTaskView(
 	initiativeTasks := tasksForInitiative(allTasks, initiativeName)
 	tasks := filterTasksByTags(initiativeTasks, tagFilter)
 	resolver := newTicketResolver(allTasks)
-	states := make(map[string]task.Status, len(initiativeTasks))
+	states := make(map[string]task.Task, len(initiativeTasks))
 	for _, current := range initiativeTasks {
-		states[current.ID] = current.Status
+		states[current.ID] = current
 	}
 
 	if format != formatText {
 		included := make([]task.Task, 0, len(tasks))
 		for _, current := range tasks {
+			if current.Bucket != task.BucketActive {
+				continue
+			}
 			if include(current, states) {
 				included = append(included, current)
 			}
@@ -124,7 +127,7 @@ func listTaskView(
 	var output strings.Builder
 	output.WriteString(header + ":\n")
 	for _, current := range tasks {
-		if !include(current, states) {
+		if current.Bucket != task.BucketActive || !include(current, states) {
 			continue
 		}
 		line, err := formatStatusTask(resolver, current)
@@ -138,4 +141,14 @@ func listTaskView(
 	}
 	fmt.Fprint(opts.Out(), output.String())
 	return nil
+}
+
+func activeBucketTasks(tasks []task.Task) []task.Task {
+	active := make([]task.Task, 0, len(tasks))
+	for _, current := range tasks {
+		if current.Bucket == task.BucketActive {
+			active = append(active, current)
+		}
+	}
+	return active
 }

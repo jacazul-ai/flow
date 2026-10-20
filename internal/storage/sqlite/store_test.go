@@ -185,10 +185,10 @@ func TestGooseAdoptsLegacyV1Schema(t *testing.T) {
 	).Scan(&version); err != nil {
 		t.Fatalf("read adopted Goose version: %v", err)
 	}
-	if version != 12 {
-		t.Fatalf("adopted Goose version = %d, want 12", version)
+	if version != 13 {
+		t.Fatalf("adopted Goose version = %d, want 13", version)
 	}
-	for _, column := range []string{"started_at", "completed_at", "disposition", "priority", "urgency", "wait_until", "position"} {
+	for _, column := range []string{"started_at", "completed_at", "disposition", "priority", "urgency", "wait_until", "position", "bucket"} {
 		var count int
 		if err := adopted.QueryRow(
 			"SELECT COUNT(*) FROM pragma_table_info('tasks') WHERE name = ?", column,
@@ -238,8 +238,8 @@ func TestOpenAppliesAllGooseMigrations(t *testing.T) {
 	).Scan(&version); err != nil {
 		t.Fatalf("read goose version: %v", err)
 	}
-	if version != 12 {
-		t.Fatalf("goose version = %d, want 12", version)
+	if version != 13 {
+		t.Fatalf("goose version = %d, want 13", version)
 	}
 	var sessionNotes int
 	if err := db.QueryRow(

@@ -146,10 +146,10 @@ func (cmd *TreeCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	tasks := filterTasksByTags(allTasks, cmd.TagFilter())
-	states := make(map[string]task.Status, len(allTasks))
+	tasks := activeBucketTasks(filterTasksByTags(allTasks, cmd.TagFilter()))
+	states := make(map[string]task.Task, len(allTasks))
 	for _, current := range allTasks {
-		states[current.ID] = current.Status
+		states[current.ID] = current
 	}
 	if format != formatText {
 		return reportTree(cmd.appOpts, store, format, tasks, states)
@@ -168,7 +168,7 @@ func (cmd *TreeCommand) Execute(args []string) error {
 	return nil
 }
 
-func treeMarker(current task.Task, states map[string]task.Status) string {
+func treeMarker(current task.Task, states map[string]task.Task) string {
 	switch {
 	case current.Status == task.Completed:
 		return "DONE"
@@ -180,7 +180,7 @@ func treeMarker(current task.Task, states map[string]task.Status) string {
 	return "READY"
 }
 
-func reportTree(opts *config.AppOptions, store *sqlite.Store, format string, tasks []task.Task, states map[string]task.Status) error {
+func reportTree(opts *config.AppOptions, store *sqlite.Store, format string, tasks []task.Task, states map[string]task.Task) error {
 	records := make([]record, 0, len(tasks))
 	for _, current := range tasks {
 		built, err := taskRecord(opts.Context(), store, current)
@@ -624,9 +624,16 @@ func setInitiativeState(opts *config.AppOptions, args []string, state task.Initi
 	return nil
 }
 
-func dependenciesReady(current task.Task, states map[string]task.Status) bool {
+func dependenciesReady(current task.Task, states map[string]task.Task) bool {
 	for _, dependencyID := range current.Dependencies {
-		if states[dependencyID] != task.Completed {
+		dependency, ok := states[dependencyID]
+		if !ok {
+			return false
+		}
+		if dependency.Bucket != task.BucketActive {
+			continue
+		}
+		if dependency.Status != task.Completed {
 			return false
 		}
 	}

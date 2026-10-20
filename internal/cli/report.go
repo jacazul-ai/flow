@@ -404,6 +404,7 @@ func taskRecordWithTicket(current task.Task, ticket string, inherited bool) reco
 		{"id", current.ID},
 		{"short_id", shortID(current.ID)},
 		{"initiative", current.InitiativeName},
+		{"bucket", string(current.Bucket)},
 		{"title", current.Description},
 		{"description", description},
 		{"status", string(current.Status)},

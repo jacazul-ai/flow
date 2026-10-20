@@ -27,6 +27,7 @@ type ImportedInitiative struct {
 type ImportedTask struct {
 	ID             string
 	InitiativeID   string
+	Bucket         Bucket
 	Description    string
 	Metadata       TaskMetadata
 	Mode           TaskMode

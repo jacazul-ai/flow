@@ -97,7 +97,7 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 	annotations := make([]task.ImportedAnnotation, 0)
 	historyEvents := make([]task.HistoryEvent, 0)
 	for _, current := range source {
-		initiativeName, discarded := sourceInitiative(current.Project)
+		initiativeName, bucket := sourceInitiative(current.Project)
 		if _, exists := initiativeIDs[initiativeName]; !exists {
 			initiativeIDs[initiativeName] = deterministicID(projectID, initiativeName)
 			initiativeNames = append(initiativeNames, initiativeName)
@@ -152,7 +152,7 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 			warnings = append(warnings, fmt.Sprintf("task %s: unknown status %q mapped to pending", current.UUID, current.Status))
 		}
 		disposition := ""
-		if discarded || hasDiscardedTag || strings.EqualFold(current.Status, "deleted") {
+		if hasDiscardedTag || strings.EqualFold(current.Status, "deleted") {
 			status = task.Completed
 			disposition = "discarded"
 		}
@@ -221,6 +221,7 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 		importedTasks = append(importedTasks, task.ImportedTask{
 			ID:             current.UUID,
 			InitiativeID:   initiativeIDs[initiativeName],
+			Bucket:         bucket,
 			Description:    description,
 			Metadata:       metadata,
 			Mode:           mode,
@@ -408,21 +409,29 @@ func migrateAnnotation(description string) (string, string, string) {
 	return kind, body, ""
 }
 
-func sourceInitiative(project string) (string, bool) {
+func sourceInitiative(project string) (string, task.Bucket) {
 	project = strings.TrimSpace(project)
 	if project == "" {
-		return "unscoped", false
+		return "unscoped", task.BucketActive
 	}
-	for _, suffix := range []string{":_archive", ":_trash", ":_deleted"} {
-		if strings.HasSuffix(project, suffix) {
-			name := strings.TrimSuffix(project, suffix)
+	suffixes := []struct {
+		suffix string
+		bucket task.Bucket
+	}{
+		{suffix: ":_archive", bucket: task.BucketArchive},
+		{suffix: ":_trash", bucket: task.BucketTrash},
+		{suffix: ":_deleted", bucket: task.BucketTrash},
+	}
+	for _, entry := range suffixes {
+		if strings.HasSuffix(project, entry.suffix) {
+			name := strings.TrimSuffix(project, entry.suffix)
 			if name == "" {
 				name = "unscoped"
 			}
-			return name, true
+			return name, entry.bucket
 		}
 	}
-	return project, false
+	return project, task.BucketActive
 }
 
 func deterministicID(projectID string, initiativeName string) string {
