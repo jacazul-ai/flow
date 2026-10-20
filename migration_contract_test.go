@@ -380,6 +380,85 @@ func TestMigrationRecordErrorsContinueAndReturnFailure(t *testing.T) {
 	}
 }
 
+func TestMigrationPreservesLifecycleAndBucketMapping(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	source := harness.WriteFile(t, "lifecycle-source.json", []byte(`[
+  {
+    "uuid": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "project": "foo:_archive",
+    "description": "Archived pending task",
+    "status": "pending"
+  },
+  {
+    "uuid": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    "project": "foo:_trash",
+    "description": "Trash pending task",
+    "status": "pending"
+  },
+  {
+    "uuid": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    "project": "foo",
+    "description": "Waiting task",
+    "status": "waiting",
+    "wait": "20990101"
+  },
+  {
+    "uuid": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    "project": "foo",
+    "description": "Recurring task",
+    "status": "recurring"
+  },
+  {
+    "uuid": "ffffffff-ffff-4fff-8fff-ffffffffffff",
+    "project": "foo",
+    "description": "Deleted task",
+    "status": "deleted"
+  }
+]`))
+
+	if output, err := runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--apply"); err != nil {
+		t.Fatalf("apply lifecycle migration: %v\n%s", err, output)
+	}
+	output, err := runFlow(t, harness, "status", "foo", "--format", "json", "--force")
+	if err != nil {
+		t.Fatalf("read lifecycle migration: %v\n%s", err, output)
+	}
+	var report struct {
+		Records []struct {
+			ID          string `json:"id"`
+			Bucket      string `json:"bucket"`
+			Status      string `json:"status"`
+			Disposition string `json:"disposition"`
+		} `json:"records"`
+	}
+	if err := json.Unmarshal([]byte(output), &report); err != nil {
+		t.Fatalf("decode lifecycle report: %v\n%s", err, output)
+	}
+	want := map[string]struct {
+		bucket      string
+		status      string
+		disposition string
+	}{
+		"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb": {bucket: "archive", status: "pending"},
+		"cccccccc-cccc-4ccc-8ccc-cccccccccccc": {bucket: "trash", status: "pending"},
+		"dddddddd-dddd-4ddd-8ddd-dddddddddddd": {bucket: "active", status: "pending"},
+		"eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee": {bucket: "active", status: "pending"},
+		"ffffffff-ffff-4fff-8fff-ffffffffffff": {bucket: "active", status: "completed", disposition: "discarded"},
+	}
+	if len(report.Records) != len(want) {
+		t.Fatalf("lifecycle records = %d, want %d\n%s", len(report.Records), len(want), output)
+	}
+	for _, record := range report.Records {
+		expected, ok := want[record.ID]
+		if !ok {
+			t.Fatalf("unexpected lifecycle task %s", record.ID)
+		}
+		if record.Bucket != expected.bucket || record.Status != expected.status || record.Disposition != expected.disposition {
+			t.Fatalf("lifecycle task %s = bucket %q status %q disposition %q, want %#v", record.ID, record.Bucket, record.Status, record.Disposition, expected)
+		}
+	}
+}
+
 func TestMigrationCanonicalLauncherSnapshotPreservesShape(t *testing.T) {
 	harness := testharness.NewHarness(t, "project-alpha", "session")
 	source := harness.WriteFile(t, "canonical-source.json", canonicalLauncherSnapshot(t))
