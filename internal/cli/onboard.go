@@ -43,16 +43,16 @@ func (cmd *OnboardCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	note, found, err := store.GetSessionNote(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	note, found, native, acknowledge, err := loadOnboardHandoff(ctx, store, cmd.appOpts)
 	if err != nil {
 		return err
 	}
 
 	if format != formatText {
-		return cmd.report(store, format, focus, note, found, cmd.TagFilter())
+		return cmd.report(store, format, focus, note, found, native, cmd.TagFilter())
 	}
 
-	output, acknowledge, err := renderOnboard(ctx, store, cmd.appOpts, focus, note, found, cmd.TagFilter())
+	output, err := renderOnboard(ctx, store, cmd.appOpts, focus, note, found, native, cmd.TagFilter())
 	if err != nil {
 		return err
 	}
@@ -70,13 +70,31 @@ func (cmd *OnboardCommand) Execute(args []string) error {
 	return nil
 }
 
+func loadOnboardHandoff(ctx context.Context, store *sqlite.Store, opts *config.AppOptions) (task.SessionNote, bool, bool, bool, error) {
+	dump, found, err := store.DeliverLatestSessionDump(ctx, opts.ProjectID, opts.SessionID)
+	if err != nil {
+		return task.SessionNote{}, false, false, false, err
+	}
+	if found {
+		return task.SessionNote{
+			ProjectID: opts.ProjectID,
+			SessionID: opts.SessionID,
+			Content:   string(dump.Content),
+		}, true, true, false, nil
+	}
+	note, found, err := store.GetSessionNote(ctx, opts.ProjectID, opts.SessionID)
+	if err != nil {
+		return task.SessionNote{}, false, false, false, err
+	}
+	return note, found, false, found && note.AcknowledgedAt == "", nil
+}
+
 // report renders the onboard briefing as one record. A pending handoff is
 // carried in full and acknowledged exactly as the text briefing does.
-func (cmd *OnboardCommand) report(store *sqlite.Store, format string, focus task.FocusState, note task.SessionNote, noteFound bool, tagFilter task.TagFilter) error {
+func (cmd *OnboardCommand) report(store *sqlite.Store, format string, focus task.FocusState, note task.SessionNote, noteFound bool, native bool, tagFilter task.TagFilter) error {
 	ctx := cmd.appOpts.Context()
-	acknowledge := noteFound && note.AcknowledgedAt == ""
 	handoff := ""
-	if acknowledge {
+	if noteFound && (native || note.AcknowledgedAt == "") {
 		handoff = note.Content
 	}
 	focusedName, err := onboardFocusedInitiative(ctx, store, cmd.appOpts, focus)
@@ -93,7 +111,7 @@ func (cmd *OnboardCommand) report(store *sqlite.Store, format string, focus task
 	}
 	if err := writeReport(cmd.appOpts, format, report{command: "onboard", records: []record{{
 		{"handoff", handoff},
-		{"handoff_acknowledged", acknowledge},
+		{"handoff_acknowledged", noteFound && !native && note.AcknowledgedAt != ""},
 		{"focus_initiative", focusedName},
 		{"focus_task_id", focus.FocusedTaskID},
 		{"context", contextRecs},
@@ -102,7 +120,7 @@ func (cmd *OnboardCommand) report(store *sqlite.Store, format string, focus task
 	}}}); err != nil {
 		return err
 	}
-	if acknowledge {
+	if noteFound && !native && note.AcknowledgedAt == "" {
 		if _, _, err := store.AcknowledgeSessionNote(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
 			return fmt.Errorf("acknowledge onboard handoff: %w", err)
 		}
@@ -155,13 +173,14 @@ func renderOnboard(
 	focus task.FocusState,
 	note task.SessionNote,
 	noteFound bool,
+	native bool,
 	tagFilter task.TagFilter,
-) (string, bool, error) {
+) (string, error) {
 	var output strings.Builder
 	output.WriteString("🚀 ONBOARD BRIEFING\n\n")
 
-	acknowledge := noteFound && note.AcknowledgedAt == ""
-	if acknowledge {
+	handoff := noteFound && (native || note.AcknowledgedAt == "")
+	if handoff {
 		output.WriteString("📋 SESSION HANDOFF (READ FIRST)\n\n")
 		output.WriteString(strings.TrimRight(note.Content, "\n"))
 		output.WriteString("\n\n")
@@ -169,39 +188,39 @@ func renderOnboard(
 
 	focusedName, err := onboardFocusedInitiative(ctx, store, opts, focus)
 	if err != nil {
-		return "", false, err
+		return "", err
 	}
 	appendSessionContext(&output, focus, focusedName)
 	if err := appendOnboardFocusContext(ctx, store, focus, &output); err != nil {
-		return "", false, err
+		return "", err
 	}
 
 	if focusedName != "" || focus.FocusedTaskID != "" {
 		allTasks, err := store.ListTasks(ctx, opts.ProjectID, "")
 		if err != nil {
-			return "", false, err
+			return "", err
 		}
 		tasks := filterTasksByTags(tasksForInitiative(allTasks, focusedName), tagFilter)
 		status, err := renderStatus(ctx, store, tasks, allTasks, focusedName, focus.FocusedTaskID, false)
 		if err != nil {
-			return "", false, err
+			return "", err
 		}
 		output.WriteString("STATUS:\n")
 		output.WriteString(status)
-		return output.String(), acknowledge, nil
+		return output.String(), nil
 	}
 
 	summaries, tasks, err := store.ListInitiativesWithTasks(ctx, opts.ProjectID, false, true)
 	if err != nil {
-		return "", false, err
+		return "", err
 	}
 	dashboard, err := renderDashboard(ctx, store, opts, summaries, tasks, focus, false, false)
 	if err != nil {
-		return "", false, err
+		return "", err
 	}
 	output.WriteString("PONDER:\n")
 	output.WriteString(dashboard)
-	return output.String(), acknowledge, nil
+	return output.String(), nil
 }
 
 func onboardFocusedInitiative(

@@ -412,13 +412,40 @@ type SessionInfo struct {
 	Handoff        string
 }
 
-// SessionNote stores a resumable handoff note for one project session.
+// SessionNote stores a legacy-compatible resumable handoff note for one project session.
 type SessionNote struct {
 	ProjectID      string
 	SessionID      string
 	Content        string
 	AcknowledgedAt string
 	UpdatedAt      string
+}
+
+// SessionDumpStatus describes one native session dump lifecycle state.
+type SessionDumpStatus string
+
+const (
+	SessionDumpDraft   SessionDumpStatus = "draft"
+	SessionDumpPending SessionDumpStatus = "pending"
+	SessionDumpRead    SessionDumpStatus = "read"
+)
+
+// SessionDump stores dump metadata and its compressed native payload.
+type SessionDump struct {
+	ID              string
+	ProjectID       string
+	SessionID       string
+	Sequence        int64
+	Status          SessionDumpStatus
+	CreatedAt       string
+	DeliveredAt     string
+	AcknowledgedAt  string
+	FocusSummary    string
+	ContentEncoding string
+	Content         []byte
+	ContentSize     int64
+	ContentSHA256   string
+	UpdatedAt       string
 }
 
 // FocusEntry records one task in the focus stack.

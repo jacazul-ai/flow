@@ -162,6 +162,18 @@ func (s *Store) ListSessions(ctx context.Context, projectID string) ([]task.Sess
 		SELECT s.project_id, s.session_id, s.focused_initiative_id,
 		       COALESCE(i.name, ''), s.focused_task_id, s.updated_at,
 		       CASE
+		           WHEN EXISTS (
+		               SELECT 1 FROM session_dumps d
+		               WHERE d.project_id = s.project_id
+		                 AND d.session_id = s.session_id
+		                 AND d.status IN ('draft', 'pending')
+		           ) THEN 'pending'
+		           WHEN EXISTS (
+		               SELECT 1 FROM session_dumps d
+		               WHERE d.project_id = s.project_id
+		                 AND d.session_id = s.session_id
+		                 AND d.status = 'read'
+		           ) THEN 'acknowledged'
 		           WHEN n.session_id IS NULL THEN ''
 		           WHEN n.acknowledged_at = '' THEN 'pending'
 		           ELSE 'acknowledged'

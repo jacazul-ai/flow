@@ -12,7 +12,7 @@ import (
 	"github.com/jacazul-ai/flow/internal/testharness"
 )
 
-func TestOnboardPresentsHandoffBeforeFocusAndAcknowledgesIt(t *testing.T) {
+func TestOnboardPresentsHandoffBeforeFocusWithoutAcknowledgingIt(t *testing.T) {
 	harness := testharness.NewHarness(t, "project", "session")
 
 	planOutput, err := runFlow(t, harness, "plan", "parity", "First")
@@ -26,9 +26,7 @@ func TestOnboardPresentsHandoffBeforeFocusAndAcknowledgesIt(t *testing.T) {
 	if output, err := runFlow(t, harness, "focus", "task", match[1]); err != nil {
 		t.Fatalf("focus task: %v\n%s", err, output)
 	}
-	if output, err := runFlow(t, harness, "session", "dump"); err != nil {
-		t.Fatalf("session dump: %v\n%s", err, output)
-	}
+	createFinalizedSessionDump(t, harness)
 
 	output, err := runFlow(t, harness, "onboard")
 	if err != nil {
@@ -47,8 +45,18 @@ func TestOnboardPresentsHandoffBeforeFocusAndAcknowledgesIt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resume after onboard: %v\n%s", err, resume)
 	}
+	if !strings.Contains(resume, "SESSION HANDOFF") {
+		t.Fatalf("resume after onboard = %q, want redelivery", resume)
+	}
+	if output, err := runFlow(t, harness, "session", "ack"); err != nil {
+		t.Fatalf("ack after onboard: %v\n%s", err, output)
+	}
+	resume, err = runFlow(t, harness, "session", "resume")
+	if err != nil {
+		t.Fatalf("resume after ack: %v\n%s", err, resume)
+	}
 	if !strings.Contains(resume, "already acknowledged") {
-		t.Fatalf("resume after onboard = %q, want acknowledgement", resume)
+		t.Fatalf("resume after ack = %q, want acknowledgement", resume)
 	}
 }
 
@@ -75,9 +83,7 @@ func TestOnboardPendingHandoffUsesPonderWithoutFocus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create plan: %v\n%s", err, planOutput)
 	}
-	if output, err := runFlow(t, harness, "session", "dump"); err != nil {
-		t.Fatalf("session dump: %v\n%s", err, output)
-	}
+	createFinalizedSessionDump(t, harness)
 
 	output, err := runFlow(t, harness, "onboard")
 	if err != nil {
@@ -113,9 +119,7 @@ func TestOnboardPreservesInheritedContextAfterHandoff(t *testing.T) {
 	if output, err := runFlow(t, harness, "focus", "task", leaf); err != nil {
 		t.Fatalf("focus leaf task: %v\n%s", err, output)
 	}
-	if output, err := runFlow(t, harness, "session", "dump"); err != nil {
-		t.Fatalf("session dump: %v\n%s", err, output)
-	}
+	createFinalizedSessionDump(t, harness)
 
 	output, err := runFlow(t, harness, "onboard")
 	if err != nil {
@@ -150,9 +154,7 @@ func TestOnboardDoesNotExecuteFocusedTask(t *testing.T) {
 	if output, err := runFlow(t, harness, "focus", "task", match[1]); err != nil {
 		t.Fatalf("focus task: %v\n%s", err, output)
 	}
-	if output, err := runFlow(t, harness, "session", "dump"); err != nil {
-		t.Fatalf("session dump: %v\n%s", err, output)
-	}
+	createFinalizedSessionDump(t, harness)
 
 	output, err := runFlow(t, harness, "onboard", "--format", "json")
 	if err != nil {
@@ -182,9 +184,7 @@ func TestOnboardFailureKeepsPendingHandoff(t *testing.T) {
 			if output, err := runFlow(t, harness, "focus", "task", match[1]); err != nil {
 				t.Fatalf("focus task: %v\n%s", err, output)
 			}
-			if output, err := runFlow(t, harness, "session", "dump"); err != nil {
-				t.Fatalf("session dump: %v\n%s", err, output)
-			}
+			createFinalizedSessionDump(t, harness)
 
 			args := append([]string{"onboard"}, formatArgs...)
 			var stderr bytes.Buffer
@@ -203,6 +203,22 @@ func TestOnboardFailureKeepsPendingHandoff(t *testing.T) {
 				t.Fatalf("failed onboard acknowledged handoff: %q", resume)
 			}
 		})
+	}
+}
+
+func createFinalizedSessionDump(t *testing.T, harness *testharness.Harness) {
+	t.Helper()
+
+	output, err := runFlow(t, harness, "session", "dump")
+	if err != nil {
+		t.Fatalf("session dump: %v\n%s", err, output)
+	}
+	match := regexp.MustCompile(`Session dump draft ([0-9a-f]{8})`).FindStringSubmatch(output)
+	if len(match) != 2 {
+		t.Fatalf("session dump = %q, want draft UUID", output)
+	}
+	if output, err := runFlow(t, harness, "session", "finalize", match[1], "--actions", "Read the next task"); err != nil {
+		t.Fatalf("finalize session dump: %v\n%s", err, output)
 	}
 }
 

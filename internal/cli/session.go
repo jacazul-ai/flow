@@ -14,12 +14,14 @@ import (
 
 // SessionCommand groups native session lifecycle commands.
 type SessionCommand struct {
-	List   SessionListCommand   `command:"list" description:"List project sessions"`
-	Show   SessionShowCommand   `command:"show" description:"Show the current session"`
-	Resume SessionResumeCommand `command:"resume" description:"Resume a session handoff"`
-	Ack    SessionAckCommand    `command:"ack" description:"Acknowledge a session handoff"`
-	Dump   SessionDumpCommand   `command:"dump" description:"Create a session handoff"`
-	Purge  SessionPurgeCommand  `command:"purge" description:"Purge orphan sessions"`
+	List     SessionListCommand     `command:"list" description:"List project sessions"`
+	Show     SessionShowCommand     `command:"show" description:"Show the current session"`
+	Resume   SessionResumeCommand   `command:"resume" description:"Resume a session handoff"`
+	Ack      SessionAckCommand      `command:"ack" description:"Acknowledge a session handoff"`
+	Dump     SessionDumpCommand     `command:"dump" description:"Create a session handoff draft"`
+	Finalize SessionFinalizeCommand `command:"finalize" description:"Finalize a session dump"`
+	Dumps    SessionDumpsCommand    `command:"dumps" description:"List session dumps"`
+	Purge    SessionPurgeCommand    `command:"purge" description:"Purge orphan sessions"`
 }
 
 // Execute requires a session subcommand.
@@ -141,6 +143,22 @@ func (cmd *SessionResumeCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
+	dump, found, err := store.DeliverLatestSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	if err != nil {
+		return err
+	}
+	if found {
+		fmt.Fprintf(cmd.appOpts.Out(), "📋 SESSION HANDOFF — session %s\n\n%s", cmd.appOpts.SessionID, dump.Content)
+		return nil
+	}
+	latest, found, err := store.GetLatestSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	if err != nil {
+		return err
+	}
+	if found && latest.Status == task.SessionDumpRead {
+		fmt.Fprintf(cmd.appOpts.Out(), "Session dump already acknowledged: session %s. Context will not be replayed.\n", cmd.appOpts.SessionID)
+		return nil
+	}
 	note, found, err := store.GetSessionNote(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil || !found {
 		return err
@@ -174,6 +192,12 @@ func (cmd *SessionAckCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 
+	if _, found, err := store.AcknowledgeLatestSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
+		return err
+	} else if found {
+		fmt.Fprintln(cmd.appOpts.Out(), "Session dump acknowledged. Context loaded.")
+		return nil
+	}
 	note, found, err := store.GetSessionNote(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
@@ -193,9 +217,8 @@ func (cmd *SessionAckCommand) Execute(args []string) error {
 	return nil
 }
 
-// SessionDumpCommand creates a resumable note from the current focus.
+// SessionDumpCommand creates a draft from the current focus.
 type SessionDumpCommand struct {
-	Force   bool `long:"force" description:"Overwrite an existing session note"`
 	appOpts *config.AppOptions
 }
 
@@ -216,12 +239,12 @@ func (cmd *SessionDumpCommand) Execute(args []string) error {
 	defer store.Close()
 
 	ctx := cmd.appOpts.Context()
-	existing, found, err := store.GetSessionNote(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	latest, found, err := store.GetLatestSessionDump(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
 	}
-	if found && !cmd.Force {
-		return existingSessionNoteError(existing)
+	if found && latest.Status != task.SessionDumpRead {
+		return fmt.Errorf("session dump already exists for session %s and is not acknowledged\nACTION: Read, finalize, and acknowledge the pending dump before creating another.", cmd.appOpts.SessionID)
 	}
 	focus, err := store.LoadFocus(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
@@ -234,15 +257,91 @@ func (cmd *SessionDumpCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	note := task.SessionNote{
-		ProjectID: cmd.appOpts.ProjectID,
-		SessionID: cmd.appOpts.SessionID,
-		Content:   content,
-	}
-	if err := store.SaveSessionNote(ctx, note); err != nil {
+	focusSummary, err := sessionFocusSummary(ctx, store, cmd.appOpts.ProjectID, focus)
+	if err != nil {
 		return err
 	}
-	fmt.Fprintf(cmd.appOpts.Out(), "Session dump written for session %s.\n\n%s", cmd.appOpts.SessionID, content)
+	dump, err := store.CreateSessionDumpDraft(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID, focusSummary, content)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(cmd.appOpts.Out(), "Session dump draft %s created for session %s.\n\n%s", shortSessionDumpID(dump.ID), cmd.appOpts.SessionID, content)
+	return nil
+}
+
+// SessionFinalizeCommand seals a draft after the agent supplies its sections.
+type SessionFinalizeCommand struct {
+	Actions string `long:"actions" description:"Ordered next actions for the dump"`
+	Notes   string `long:"notes" description:"Additional dump notes"`
+	appOpts *config.AppOptions
+}
+
+// SetAppOptions supplies project-scoped runtime options.
+func (cmd *SessionFinalizeCommand) SetAppOptions(opts *config.AppOptions) {
+	cmd.appOpts = opts
+}
+
+// Execute finalizes one draft dump.
+func (cmd *SessionFinalizeCommand) Execute(args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("session finalize requires a dump UUID")
+	}
+	if strings.TrimSpace(cmd.Actions) == "" {
+		return fmt.Errorf("session dump Actions cannot be empty\nACTION: Provide --actions with the ordered next commands.")
+	}
+	store, err := openStore(cmd.appOpts)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+	dump, found, err := store.GetSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, args[0])
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("session dump %q not found", args[0])
+	}
+	content := dumpContent(string(dump.Content), cmd.Actions, cmd.Notes)
+	finalized, err := store.FinalizeSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, dump.ID, content)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(cmd.appOpts.Out(), "Session dump %s finalized and pending acknowledgement.\n", shortSessionDumpID(finalized.ID))
+	return nil
+}
+
+// SessionDumpsCommand lists the current session's dump metadata.
+type SessionDumpsCommand struct {
+	All     bool `long:"all" description:"Include history outside the current session state"`
+	appOpts *config.AppOptions
+}
+
+// SetAppOptions supplies project-scoped runtime options.
+func (cmd *SessionDumpsCommand) SetAppOptions(opts *config.AppOptions) {
+	cmd.appOpts = opts
+}
+
+// Execute lists dumps without loading their payloads.
+func (cmd *SessionDumpsCommand) Execute(args []string) error {
+	if len(args) != 0 {
+		return fmt.Errorf("session dumps accepts no arguments")
+	}
+	store, err := openStore(cmd.appOpts)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+	dumps, err := store.ListSessionDumps(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	if err != nil {
+		return err
+	}
+	if len(dumps) == 0 {
+		fmt.Fprintln(cmd.appOpts.Out(), "No session dumps found.")
+		return nil
+	}
+	for _, dump := range dumps {
+		fmt.Fprintf(cmd.appOpts.Out(), "%s %s %s %s\n", dump.CreatedAt, displaySessionDumpStatus(dump.Status), shortSessionDumpID(dump.ID), dump.FocusSummary)
+	}
 	return nil
 }
 
@@ -348,6 +447,52 @@ func formatAge(seconds float64) string {
 	default:
 		return fmt.Sprintf("%dd", int(seconds/86400))
 	}
+}
+
+func sessionFocusSummary(ctx context.Context, store *sqlite.Store, projectID string, focus task.FocusState) (string, error) {
+	if focus.FocusedTaskID != "" {
+		current, err := store.GetTask(ctx, focus.FocusedTaskID)
+		if err != nil {
+			return "", err
+		}
+		if current.InitiativeName != "" {
+			return current.InitiativeName, nil
+		}
+		return shortSessionDumpID(focus.FocusedTaskID), nil
+	}
+	if focus.InitiativeID != "" {
+		initiative, err := store.FindInitiativeByID(ctx, projectID, focus.InitiativeID)
+		if err != nil {
+			return "", err
+		}
+		return initiative.Name, nil
+	}
+	return "no focus", nil
+}
+
+func shortSessionDumpID(id string) string {
+	if len(id) <= 8 {
+		return id
+	}
+	return id[:8]
+}
+
+func displaySessionDumpStatus(status task.SessionDumpStatus) string {
+	if status == task.SessionDumpRead {
+		return "acknowledged"
+	}
+	return string(status)
+}
+
+func dumpContent(content string, actions string, notes string) string {
+	body := strings.TrimSpace(actions)
+	if strings.TrimSpace(notes) != "" {
+		body += "\n\n" + strings.TrimSpace(notes)
+	}
+	if strings.Contains(content, "<!-- FILL IN -->") {
+		return strings.Replace(content, "<!-- FILL IN -->", body, 1) + "\n"
+	}
+	return strings.TrimRight(content, "\n") + "\n\n" + body + "\n"
 }
 
 func existingSessionNoteError(note task.SessionNote) error {

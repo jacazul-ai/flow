@@ -635,8 +635,16 @@ func TestSessionDumpHistoryIsAppendOnlyAndAcknowledged(t *testing.T) {
 	if output, err := runFlow(t, harness, "focus", "task", match[1]); err != nil {
 		t.Fatalf("focus session history task: %v\n%s", err, output)
 	}
-	if output, err := runFlow(t, harness, "session", "dump"); err != nil {
+	output, err = runFlow(t, harness, "session", "dump")
+	if err != nil {
 		t.Fatalf("first session dump: %v\n%s", err, output)
+	}
+	match = regexp.MustCompile(`Session dump draft ([0-9a-f]{8})`).FindStringSubmatch(output)
+	if len(match) != 2 {
+		t.Fatalf("first session dump = %q, want draft UUID", output)
+	}
+	if output, err := runFlow(t, harness, "session", "finalize", match[1], "--actions", "Run the next command"); err != nil {
+		t.Fatalf("finalize first session dump: %v\n%s", err, output)
 	}
 	if output, err := runFlow(t, harness, "session", "dump"); err == nil || !strings.Contains(output, "acknowledge") {
 		t.Fatalf("pending second dump = %q, err %v; want acknowledgement guard", output, err)
@@ -647,8 +655,16 @@ func TestSessionDumpHistoryIsAppendOnlyAndAcknowledged(t *testing.T) {
 	if output, err := runFlow(t, harness, "session", "ack"); err != nil {
 		t.Fatalf("ack first dump: %v\n%s", err, output)
 	}
-	if output, err := runFlow(t, harness, "session", "dump"); err != nil {
+	output, err = runFlow(t, harness, "session", "dump")
+	if err != nil {
 		t.Fatalf("second session dump after ack: %v\n%s", err, output)
+	}
+	match = regexp.MustCompile(`Session dump draft ([0-9a-f]{8})`).FindStringSubmatch(output)
+	if len(match) != 2 {
+		t.Fatalf("second session dump = %q, want draft UUID", output)
+	}
+	if output, err := runFlow(t, harness, "session", "finalize", match[1], "--actions", "Run the follow-up command"); err != nil {
+		t.Fatalf("finalize second session dump: %v\n%s", err, output)
 	}
 	output, err = runFlow(t, harness, "session", "dumps")
 	if err != nil {
@@ -673,8 +689,16 @@ func TestSessionListRendersTableAndHandoffState(t *testing.T) {
 	if output, err := runFlow(t, harness, "focus", "task", taskID[1]); err != nil {
 		t.Fatalf("focus session task: %v\n%s", err, output)
 	}
-	if output, err := runFlow(t, harness, "session", "dump"); err != nil {
+	output, err = runFlow(t, harness, "session", "dump")
+	if err != nil {
 		t.Fatalf("session dump: %v\n%s", err, output)
+	}
+	dumpID := regexp.MustCompile(`Session dump draft ([0-9a-f]{8})`).FindStringSubmatch(output)
+	if len(dumpID) != 2 {
+		t.Fatalf("session dump = %q, want draft UUID", output)
+	}
+	if output, err := runFlow(t, harness, "session", "finalize", dumpID[1], "--actions", "Read the next task"); err != nil {
+		t.Fatalf("finalize session dump: %v\n%s", err, output)
 	}
 
 	output, err = runFlow(t, harness, "session", "list")
@@ -776,14 +800,22 @@ func TestIndependentFocusAndNativeSessionLifecycle(t *testing.T) {
 	if output, err := runFlow(t, harness, "session", "list"); err != nil || !strings.Contains(output, "* session") {
 		t.Fatalf("session list = %q, err %v; want current session", output, err)
 	}
-	if output, err := runFlow(t, harness, "session", "dump"); err != nil {
+	output, err = runFlow(t, harness, "session", "dump")
+	if err != nil {
 		t.Fatalf("session dump: %v\n%s", err, output)
+	}
+	dumpID := regexp.MustCompile(`Session dump draft ([0-9a-f]{8})`).FindStringSubmatch(output)
+	if len(dumpID) != 2 {
+		t.Fatalf("session dump = %q, want draft UUID", output)
+	}
+	if output, err := runFlow(t, harness, "session", "finalize", dumpID[1], "--actions", "Read the next task"); err != nil {
+		t.Fatalf("finalize session dump: %v\n%s", err, output)
 	}
 	if output, err := runFlow(t, harness, "session", "resume"); err != nil || !strings.Contains(output, "SESSION HANDOFF") {
 		t.Fatalf("session resume = %q, err %v; want handoff", output, err)
 	}
-	if output, err := runFlow(t, harness, "session", "dump"); err == nil || !strings.Contains(output, "unfilled") {
-		t.Fatalf("duplicate session dump = %q, err %v; want unfilled guard", output, err)
+	if output, err := runFlow(t, harness, "session", "dump"); err == nil || !strings.Contains(output, "acknowledge") {
+		t.Fatalf("duplicate session dump = %q, err %v; want acknowledgement guard", output, err)
 	}
 	if output, err := runFlow(t, harness, "session", "ack"); err != nil {
 		t.Fatalf("session ack: %v\n%s", err, output)
