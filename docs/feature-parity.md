@@ -99,7 +99,7 @@ later documented with evidence.
 | `amend`, `rename` | Amend description/ticket metadata; rename an initiative and synchronize task grouping, focus, interest state, and inherited references. | Keep completed-task safety rules, update all native references consistently, and provide an actionable validation error. | `flow_test.py` |
 | `note`, `notes`, `context`, `ticket` | Persist semantic annotations, list/delete timestamped notes, collect dependency-first context, and resolve direct or inherited tickets. | Keep annotation kinds, timestamps, signatures, inheritance order, UUID resolution, and ticket cache invalidation compatible. | `flow_test.py`, `test_task_signature.py` |
 | `focus` | Support global and independent plan/task focus, task stack/pop, interest add/remove/list, clear, back, aliases, and smart focus. | Scope anchors by project and session, select only valid ready work where execution is implied, and never cross initiative boundaries. | `flow_test.py`, `test_execute_loop_control.py` |
-| `session` | Support `list`, `show`, `resume`, `ack`, `dump`, and `purge`; track heartbeat age and current-session markers; preserve handoff lifecycle. | Persist native sessions separately per project/session, classify active/idle/orphan consistently, and require confirmation for purge. | `flow_test.py`, `test_session_list.py` |
+| `session` | Support `list`, `show`, `resume`, `ack`, `dump`, `finalize`, `dumps`, and `purge`; track heartbeat age, current-session markers, append-only dump history, delivery, acknowledgement, and logical/hard purge state. | Persist compressed native dumps separately per project/session, keep fixed handoff sections, isolate current versus `--all` history, and reserve physical deletion for `--hard --confirm`. | `flow_test.py`, `test_session_list.py`, native session contracts |
 | `active`, `blocked`, `overdue`, `urgent`, `tree` | Report derived task views; mark urgency; show dependency tree; preserve status and dependency semantics. | Match filters, output, metadata mutation, and actionable failures while keeping blocked and ready states distinct. | `flow_test.py`, `flow.py` dispatch; add focused tests where absent |
 | `block`, `unblock`, `wait` | Add/remove dependency edges and set waiting dates through the workflow command boundary. | Validate UUIDs, prevent invalid or cross-project edges, preserve dependency readiness, and invalidate affected views. | `flow.py` dispatch; add focused contract tests |
 | `backlog`, `activate` | Hide or restore an initiative in dashboard views while preserving its tasks and recoverability. | Persist initiative backlog state, render markers, and invalidate only affected derived views. | `test_backlog.py` |
@@ -176,7 +176,7 @@ jczl-flow ticket <uuid> <ticket>
 jczl-flow handoff <uuid> <message...>
 jczl-flow focus ind task <uuid>
 jczl-flow focus back
-jczl-flow session <list|show|resume|ack|dump|purge>
+jczl-flow session <list|show|resume|ack|dump|finalize|dumps|purge>
 jczl-flow active [initiative]
 jczl-flow blocked [initiative]
 jczl-flow overdue [initiative]

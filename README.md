@@ -226,7 +226,16 @@ jczl-flow focus task <uuid>
 jczl-flow focus pop
 jczl-flow focus clear
 jczl-flow session list
+jczl-flow session dump
+jczl-flow session finalize <dump-id> --actions "Run the next command"
+jczl-flow session dumps --all
 ```
+
+`session dump` creates an append-only draft with fixed Focus, References,
+Actions, and Notes sections. Finalization requires Actions; resume/onboard
+records native delivery, while `session ack` explicitly releases the next
+sequence. `session purge` preserves history logically; only
+`session purge --hard --confirm` deletes already-purged orphan history.
 
 Use `JACAZUL_SESSION` to isolate one agent session from another while they
 share the same project database.

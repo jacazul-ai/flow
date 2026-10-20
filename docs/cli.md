@@ -58,15 +58,27 @@ replacing the individual commands:
 2. render the current session focus and focused task context;
 3. render focused `status` when an anchor exists;
 4. render project-wide `ponder` when no anchor exists;
-5. acknowledge the handoff only after the complete briefing renders
-   successfully.
+5. deliver the handoff after the complete briefing renders successfully;
+   native dumps remain pending until `session ack` explicitly acknowledges them.
 
-`jczl-flow session dump` remains the producer of a resumable handoff,
-`jczl-flow session resume` remains the low-level reader, and `jczl-flow session ack`
-remains available for explicit acknowledgement and diagnostics. Onboard is
-observational: it does not execute or start the focused task. Text and
-structured output are written before a pending handoff is acknowledged; an
-output failure returns an error and leaves the handoff pending for retry.
+`jczl-flow session dump` creates a native draft. Finalize it before delivery:
+
+```bash
+jczl-flow session dump
+jczl-flow session finalize <dump-id> \
+  --references 'Refs: #27; internal/cli/session.go:223' \
+  --actions 'Run the next command' \
+  --notes 'Record gotchas and decisions'
+```
+
+The finalized dump contains fixed `Focus`, `References`, `Actions`, and `Notes`
+sections. `Actions` is mandatory; the other agent-owned fields may use their
+explicit empty defaults. `session resume` and `onboard` deliver the latest
+pending dump and record delivery without acknowledging it. Use
+`jczl-flow session ack` to release the next dump. Legacy session notes retain
+their compatibility behavior. Onboard is observational: it does not execute or
+start the focused task, and output failure leaves the native handoff pending for
+retry.
 
 ### Runtime info report
 
@@ -100,6 +112,7 @@ The current session is prefixed with `*`. `PLAN` is the initiative name,
 after eight hours. `HANDOFF` is `pending` until `session ack` records the
 acknowledgement, then becomes `acknowledged`; sessions without a note show `-`.
 The report is project-scoped and never lists sessions from another project.
+Logically purged sessions are hidden from the default list.
 
 Structured formats preserve the existing session identity fields and add
 `plan`, `task`, and `handoff` fields:
@@ -107,6 +120,32 @@ Structured formats preserve the existing session identity fields and add
 ```bash
 jczl-flow session list --format json
 ```
+
+### Session dump history
+
+`session dumps` lists the current session's dump sequence without loading
+payloads. Each row includes the creation time, lifecycle status, short dump ID,
+and focus summary. Statuses are `draft`, `pending`, and `acknowledged`:
+
+```bash
+jczl-flow session dumps
+jczl-flow session dumps --all
+```
+
+The default view is session-scoped. `--all` adds the session ID and exposes
+history, including logically purged sessions, until an explicit hard purge
+removes their records. Logical purge preserves session dumps and notes:
+
+```bash
+jczl-flow session purge
+jczl-flow session purge --hard
+jczl-flow session purge --hard --confirm
+```
+
+The default purge marks orphan sessions as purged and hides them from normal
+session views. Only `--hard --confirm` physically deletes an already-purged
+orphan session and its dumps, notes, and cache. It never targets the current or
+global session.
 
 ## Initiative and task metadata
 

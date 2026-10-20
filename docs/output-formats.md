@@ -149,7 +149,7 @@ its structured twin.
 | `session list` | not `dump`, `ack` or `purge` |
 | `roadmap show` | not `init`, `add` or `ship` |
 | `cache info` | not `cache clear`; bare `cache` is `cache info` |
-| `onboard` | the composite briefing; a pending handoff is acknowledged exactly as in `text` |
+| `onboard` | the composite briefing; native dump delivery is recorded but explicit `session ack` remains required |
 
 Everything else is a state change or a human-facing briefing. A command that
 creates, transitions, annotates or closes work reports what changed in `text`
