@@ -62,9 +62,7 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	for _, warning := range warnings {
-		fmt.Fprintf(cmd.appOpts.Out(), "WARNING: %s\n", warning)
-	}
+	hasErrors := printMigrationIssues(cmd.appOpts.Out(), warnings)
 	if !cmd.Apply {
 		result, err := migration.NewImporter(nil).DryRun(cmd.appOpts.Context(), bundle)
 		if err != nil {
@@ -72,6 +70,9 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 		}
 		fmt.Fprintln(cmd.appOpts.Out(), "Migration dry-run: no changes written")
 		printMigrationResult(cmd.appOpts.Out(), result)
+		if hasErrors {
+			return migrationRecordErrors()
+		}
 		return nil
 	}
 
@@ -93,7 +94,27 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 	}
 	fmt.Fprintln(cmd.appOpts.Out(), "Migration applied")
 	printMigrationResult(cmd.appOpts.Out(), result)
+	if hasErrors {
+		return migrationRecordErrors()
+	}
 	return nil
+}
+
+func printMigrationIssues(out io.Writer, issues []string) bool {
+	hasErrors := false
+	for _, issue := range issues {
+		if strings.HasPrefix(issue, "ERROR:") {
+			fmt.Fprintln(out, issue)
+			hasErrors = true
+			continue
+		}
+		fmt.Fprintf(out, "WARNING: %s\n", issue)
+	}
+	return hasErrors
+}
+
+func migrationRecordErrors() error {
+	return fmt.Errorf("migration completed with record errors\nACTION: Review the ERROR entries and correct the source snapshot before rerunning")
 }
 
 func printMigrationResult(out io.Writer, result task.ImportResult) {

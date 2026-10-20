@@ -105,14 +105,16 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 
 		createdAt, err := normalizeTimestamp(current.Entry)
 		if err != nil {
-			return task.ImportBundle{}, warnings, fmt.Errorf("task %s entry: %w", current.UUID, err)
+			warnings = append(warnings, fmt.Sprintf("ERROR: task %s entry: %v", current.UUID, err))
+			createdAt = ""
 		}
 		if createdAt == "" {
 			createdAt = migrationTimestamp()
 		}
 		updatedAt, err := normalizeTimestamp(current.Modified)
 		if err != nil {
-			return task.ImportBundle{}, warnings, fmt.Errorf("task %s modified: %w", current.UUID, err)
+			warnings = append(warnings, fmt.Sprintf("ERROR: task %s modified: %v", current.UUID, err))
+			updatedAt = ""
 		}
 		if updatedAt == "" {
 			updatedAt = createdAt
@@ -125,19 +127,23 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 		tags, hasDiscardedTag := migrateTags(current.Tags)
 		dueAt, err := normalizeDate(current.Due)
 		if err != nil {
-			return task.ImportBundle{}, warnings, fmt.Errorf("task %s due: %w", current.UUID, err)
+			warnings = append(warnings, fmt.Sprintf("ERROR: task %s due: %v", current.UUID, err))
+			dueAt = ""
 		}
 		waitUntil, err := normalizeDate(current.Wait)
 		if err != nil {
-			return task.ImportBundle{}, warnings, fmt.Errorf("task %s wait: %w", current.UUID, err)
+			warnings = append(warnings, fmt.Sprintf("ERROR: task %s wait: %v", current.UUID, err))
+			waitUntil = ""
 		}
 		startedAt, err := normalizeTimestamp(current.Start)
 		if err != nil {
-			return task.ImportBundle{}, warnings, fmt.Errorf("task %s start: %w", current.UUID, err)
+			warnings = append(warnings, fmt.Sprintf("ERROR: task %s start: %v", current.UUID, err))
+			startedAt = ""
 		}
 		completedAt, err := normalizeTimestamp(current.End)
 		if err != nil {
-			return task.ImportBundle{}, warnings, fmt.Errorf("task %s end: %w", current.UUID, err)
+			warnings = append(warnings, fmt.Sprintf("ERROR: task %s end: %v", current.UUID, err))
+			completedAt = ""
 		}
 
 		status := task.Pending
@@ -173,7 +179,8 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 			}
 			created, err := normalizeTimestamp(annotation.Entry)
 			if err != nil {
-				return task.ImportBundle{}, warnings, fmt.Errorf("task %s annotation: %w", current.UUID, err)
+				warnings = append(warnings, fmt.Sprintf("ERROR: task %s annotation: %v", current.UUID, err))
+				created = ""
 			}
 			if created == "" {
 				created = createdAt
@@ -190,11 +197,13 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 		}
 		for _, sourceEvent := range current.History {
 			if strings.TrimSpace(sourceEvent.SourceEventID) == "" || strings.TrimSpace(sourceEvent.EventType) == "" {
-				return task.ImportBundle{}, warnings, fmt.Errorf("task %s history event is missing source ID or type", current.UUID)
+				warnings = append(warnings, fmt.Sprintf("ERROR: task %s history event is missing source ID or type", current.UUID))
+				continue
 			}
 			occurredAt, err := normalizeTimestamp(sourceEvent.OccurredAt)
 			if err != nil {
-				return task.ImportBundle{}, warnings, fmt.Errorf("task %s history: %w", current.UUID, err)
+				warnings = append(warnings, fmt.Sprintf("ERROR: task %s history: %v", current.UUID, err))
+				occurredAt = ""
 			}
 			if occurredAt == "" {
 				occurredAt = createdAt
@@ -246,15 +255,18 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 	for _, current := range source {
 		refs, err := dependencyReferences(current.Depends)
 		if err != nil {
-			return task.ImportBundle{}, warnings, fmt.Errorf("task %s dependencies: %w", current.UUID, err)
+			warnings = append(warnings, fmt.Sprintf("ERROR: task %s dependencies: %v", current.UUID, err))
+			continue
 		}
 		for _, reference := range refs {
 			dependencyID, err := resolveReference(reference, byReference, byUUID)
 			if err != nil {
-				return task.ImportBundle{}, warnings, fmt.Errorf("task %s dependency %q: %w", current.UUID, reference, err)
+				warnings = append(warnings, fmt.Sprintf("ERROR: task %s dependency %q: %v", current.UUID, reference, err))
+				continue
 			}
 			if dependencyID == current.UUID {
-				return task.ImportBundle{}, warnings, fmt.Errorf("task %s depends on itself", current.UUID)
+				warnings = append(warnings, fmt.Sprintf("ERROR: task %s depends on itself", current.UUID))
+				continue
 			}
 			key := current.UUID + "\x00" + dependencyID
 			if _, exists := seenDependencies[key]; exists {
