@@ -1,253 +1,238 @@
-# Taskwarrior to flow Migration
+# Taskwarrior to flow migration playbook
 
-## Purpose
+This is the operational source of truth for the Taskwarrior-to-`flow`
+migration. Read it before changing the importer, writing canonical fixtures, or
+running a cutover. The native SQLite database is the destination; Taskwarrior
+is a read-only compatibility source.
 
-This document defines the first local migration from the legacy
-Taskwarrior-backed `jacazul/launcher` workflow to native flow. The migration
-moves workflow state into the project-scoped flow SQLite database while
-keeping `jacazul/launcher` available as the behavioral oracle and temporary
-compatibility client.
+## 1. Contract first
 
-The migration is not a runtime dependency of flow. Normal flow commands
-must not invoke Taskwarrior, read legacy `TASKDATA`, call a ticket broker, or
-load output caches. Legacy access belongs to an explicit importer boundary.
+The migration contract is recorded in the `taskwarrior-migration-0.0.1`
+initiative, beginning at task `c1a0ca77`. Do not infer behavior from an old
+agent handoff when this document or the task annotations says otherwise.
 
-## Source and target
+### Domain terms
 
-### Source
+- **`PROJECT_ID`** selects the top-level native silo. It is not an initiative
+  name and must never be concatenated into a user-visible initiative name.
+- **Taskwarrior `project`** is the source grouping label. After the archive
+  rule below is applied, its final name becomes the native initiative/plan
+  name.
+- **Task UUID** is the durable task identity. Taskwarrior numeric IDs are
+  lookup-only values inside one export.
+- The destination has one initiative name per target silo:
+  `UNIQUE(project_id, name)`. The internal lookup key is therefore the pair
+  `(target project, final initiative name)`, not a synthetic name such as
+  `PROJECT_ID/foo`.
 
-The importer consumes an isolated Taskwarrior export snapshot and optional
-legacy session files:
+### Task buckets
 
-- `task export` JSON from the selected legacy `TASKDATA`;
-- the resolved `PROJECT_ID` and source project names;
-- `focus.json` and `focus-<SESSION_ID>.json` files when session migration is
-  requested;
-- session handoff notes associated with those focus files;
-- no cache files, credentials, broker tokens, source code, or client prompt
-  artifacts.
+Buckets classify **tasks**, not initiatives/plans. A bucket is a task-level
+field with one of the initial kinds `active`, `archive`, or `trash`; it is not a
+tag, initiative status, or relationship to an initiative bucket table.
 
-The source snapshot must be captured before applying changes. The importer
-must receive explicit paths and environment values; it must not discover or
-modify the operator's real home, `TASKDATA`, or production ticket state by
-accident.
+The source project label is split into two independent mappings:
 
-### Target
+| Source project | Destination initiative | Task bucket | Task lifecycle |
+|---|---|---|---|
+| `foo` | `foo` | `active` | preserve source state |
+| `foo:_archive` | `foo` | `archive` | preserve source state |
+| `foo:_trash` | `foo` | `trash` | preserve source state |
+| only `foo:_archive` exists | create normal `foo` | `archive` | preserve source state |
+| only `foo:_trash` exists | create normal `foo` | `trash` | preserve source state |
 
-The target is one native database selected by the canonical `PROJECT_ID`:
+Do not create `foo:_archive` or `foo:_trash` as native initiatives. Do not put
+`archived` on the initiative: archive is a task bucket. Initiative lifecycle
+remains limited to its native workflow states such as active, backlog, and
+completed. Bucket membership and task lifecycle are independent.
+
+The operational chain and tree are projections of active-bucket tasks. If the
+source chain is `1 -> 2 -> 3 -> 4` and task `2` moves to `archive`, native tree
+output is `1 -> 3 -> 4`. The archived task remains persisted for history but
+must not render as an error, placeholder, ghost, or phantom node.
+
+The current canonical source has 11 exact `foo`/`foo:_archive` pairs. They all
+map to one initiative name with different task bucket values, so there is no
+initiative status conflict. The snapshot has no `:_trash` labels; add a
+synthetic fixture before claiming trash parity.
+
+The native persistence shape is intentionally small:
 
 ```text
-$JACAZUL_HOME/flow/<PROJECT_ID>/flow.sqlite3
+tasks.bucket TEXT NOT NULL DEFAULT 'active'
+valid values: active, archive, trash
 ```
 
-The native database owns initiatives, tasks, dependencies, annotations,
-focus, sessions, session notes, roadmap entries, and derived cache policy.
-Imported caches are discarded because they are derived and may contain stale
-or private output.
+There is no `initiative_buckets` table and no bucket-to-initiative
+relationship. The task keeps its existing initiative reference; bucket is an
+independent task classification. `trash` does not set
+`disposition=discarded`; that disposition remains reserved for explicit
+discard evidence or the native discard operation.
 
-### Home cutover
+### Identity and idempotency
 
-The new default home is the migration destination:
+- Preserve every source task UUID when importing.
+- Derive or persist a stable native initiative UUID for the final initiative
+  name within the selected target project. This is an internal identity rule;
+  it does not change the initiative name.
+- A repeated dry-run must not write anything.
+- A repeated apply must create no duplicate tasks, initiatives, dependencies,
+  annotations, tags, history records, focus records, or session notes.
+- A changed source snapshot may update mutable imported fields, but must not
+  silently overwrite native-only edits without an explicit conflict policy.
+
+### Error policy
+
+The migration must distinguish output severity from process failure:
+
+- **WARNING:** optional metadata is normalized, retained elsewhere, or cannot
+  be represented exactly. Continue. If there are warnings only, exit `0`.
+- **ERROR:** a record-level conversion problem or incompatible metadata. Record
+  the error, use the documented safe fallback or skip only the affected
+  record, and continue processing the rest of the snapshot. If any ERROR was
+  recorded, complete the run and exit `1`.
+- **FATAL:** the source cannot be read or decoded, the target cannot be opened,
+  the transaction cannot commit, or the database is otherwise unsafe to use.
+  Abort rather than claiming a completed migration and exit non-zero.
+
+No field may be silently dropped. Reports must identify the task, initiative,
+field, severity, fallback, and whether the source value was retained in
+metadata or annotations.
+
+## 2. Current canonical source baseline
+
+The launcher source is the explicit Taskwarrior data directory:
 
 ```text
-legacy source:  $HOME/.jacazul-ai
-new destination: $HOME/.jacazul
+$HOME/.jacazul-ai/.task/jacazul-ai_launcher
 ```
 
-The legacy home is read-only migration input. The migration must not rename,
-delete, or write into `$HOME/.jacazul-ai`. Capture the selected legacy export
-and focus/session state explicitly, then apply it to a target database under
-`$HOME/.jacazul`:
+The latest read-only verification used during this design work found:
+
+| Measure | Count |
+|---|---:|
+| Tasks | 1,961 |
+| Distinct project labels | 236 |
+| Non-archive labels | 212 |
+| `:_archive` labels | 24 |
+| Exact `foo` + `foo:_archive` pairs | 11 |
+| Archive-only buckets | 13 |
+| Labels after archive folding | 225 |
+
+These are a snapshot baseline, not permanent constants. Always recapture the
+export before creating or updating canonical fixtures. The current exact pairs
+were:
+
+```text
+enforce-outcome
+flow-cached-signal
+jacazul-home
+jacazul-pi
+onboard
+skill-agent-modularization
+skill-system-evolution
+smoke
+test-feature
+tw-flow-visibility
+workflow_stabilization
+```
+
+The archive-only buckets observed in that snapshot were:
+
+```text
+"urgency-test-v4":_archive
+i-d-clarity:_archive
+jacazul-go-launcher:_archive
+mode-test:_archive
+pending:_archive
+personas:_archive
+smoke-debug2:_archive
+smoke-debug3:_archive
+test-backlog-sandbox:_archive
+test_del:_archive
+test_rename_new:_archive
+unscoped:_archive
+worktree-support-chase:_archive
+```
+
+Archive-bucket task statuses in the same snapshot were:
+
+```text
+completed=404
+deleted=1
+pending=22
+```
+
+Those pending tasks are why archive projects must not force every task into an
+archived lifecycle state.
+
+## 3. Capture and inspect the source safely
+
+Never manually export `TASKDATA`, and never use a raw `task` command for this
+workflow. Use the project-aware wrapper with the exact launcher data location.
+The source is read-only input.
 
 ```bash
-LEGACY_HOME="$HOME/.jacazul-ai"
-NEW_HOME="$HOME/.jacazul"
-PROJECT_ID="<project-id>"
+set -eu
 
-jczl-flow \
-  --home "$NEW_HOME" \
-  --project "$PROJECT_ID" \
-  --database-path "$NEW_HOME/flow/$PROJECT_ID/flow.sqlite3" \
-  migrate taskwarrior \
-  --source /tmp/flow-migration/tasks.json \
-  --legacy-data-dir "$LEGACY_HOME/.task/$PROJECT_ID" \
-  --dry-run
-```
+SOURCE_DATA="$HOME/.jacazul-ai/.task/jacazul-ai_launcher"
+WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/flow-migration.XXXXXX")"
+TASK_EXPORT="$WORK_DIR/tasks.json"
 
-Review the dry-run before repeating the command with `--apply`. The source
-snapshot and legacy state remain available for rollback and comparison.
-
-## Mapping contract
-
-| Legacy value | Native value | Migration rule |
-|---|---|---|
-| Taskwarrior `project` | `initiatives.project_id` + `initiatives.name` | Derive one first-class initiative per project name within the selected project. Never use a grouping string as the runtime source of truth. |
-| Taskwarrior `uuid` | `tasks.id` | Preserve the full UUID. Numeric Taskwarrior IDs are lookup-only and are never persisted as identity. |
-| `description` with a recognized `[MODE]` prefix | `tasks.description` + `task_mode_code` | Extract the mode into the native catalog and store the clean description. Unknown prefixes remain in the description and are reported. |
-| `status:pending` without a start | `tasks.status = pending` | Preserve pending state. Dependency readiness is recalculated in the native store. |
-| `status:pending` with `start` | `tasks.status = active` | Preserve the active execution state and `started_at`. |
-| `status:waiting` or future `wait` | `tasks.status = pending` + `wait_until` | Preserve the wait date; the task is not ready before that date. |
-| `status:completed` | `tasks.status = completed` | Preserve `completed_at`, outcome, priority, urgency, due date, and metadata. Historical completed tasks may lack an outcome; report that condition instead of inventing one. |
-| archived/discarded task markers | completed task + `disposition = discarded` | Preserve the task and add the discard audit when the source proves it was discarded. Do not silently delete archive history. |
-| `depends` | `task_dependencies` | Resolve UUID and numeric references through the snapshot map before inserting edges. Unresolved or self-referential edges fail the apply with an actionable report. |
-| `externalid` | `tasks.external_ticket` | Preserve direct ticket metadata without contacting a broker. Inherited ticket lookup remains a native behavior. |
-| `priority`, `urgency` | task priority and urgency metadata | Preserve values; default only when the source field is absent. Do not recalculate historical urgency during import. |
-| `due` | `tasks.due_at` | Normalize supported Taskwarrior date forms to the native date representation and report invalid values. |
-| annotations | `annotations` | Preserve body and source timestamp. Map recognized semantic prefixes to canonical kinds; preserve unknown kinds in a lossless migration representation and report them. |
-| stored Taskwarrior `tags` | `task_tags` | Preserve arbitrary stored one-word tags as a duplicate-free relational set. Do not import Taskwarrior virtual tags because they are derived predicates. A legacy `DISCARDED` marker is consumed into `tasks.disposition = discarded` rather than stored as a native tag. |
-| `focus.json` | the global native session | Preserve focused initiative, focused task, task stack, and plans of interest after UUID resolution. A blocked imported anchor may be preserved as navigation history but must remain non-executable. |
-| `focus-<SESSION_ID>.json` | a native session keyed by `project_id` and `session_id` | Import each independent focus file into its matching native session without crossing project boundaries. |
-| session handoff note | `session_notes` | Preserve content, session identity, timestamps, and acknowledged state. |
-| roadmap task metadata | `roadmap_entries` | Import recognized roadmap phases as ledger entries; do not turn roadmap records into operational task dependencies. |
-| output cache files | nothing | Never import caches. The first native report must be fresh and session-scoped. |
-
-Taskwarrior virtual tags are derived filters, not stored source data. The native
-flow may map a virtual predicate to an equivalent derived state such as
-`BLOCKED`, `READY`, or `ACTIVE`, but must not persist it in `task_tags`.
-Unsupported Taskwarrior fields outside this mapping must be included in the
-dry-run report as retained-data gaps; the importer may not silently drop them.
-
-## Import modes
-
-The first importer interface should expose the following modes:
-
-```text
-jczl-flow migrate taskwarrior --source <export.json> --project <id> --dry-run
-jczl-flow migrate taskwarrior --source <export.json> --project <id> --apply
-```
-
-- **Dry-run is the default.** It validates the snapshot, resolves references,
-  computes changes, and writes a report without opening the target for mutation.
-- **Apply is explicit.** It requires a source snapshot and a target project
-  identity. It must not infer an untrusted target from the current directory.
-- **Repeat imports are idempotent.** Reapplying the same snapshot does not
-  duplicate initiatives, tasks, dependencies, annotations, focus entries, or
-  session notes.
-- **Changed snapshots are reported.** The importer compares source identity
-  and source fingerprints with prior imports. Mutable source fields may be
-  updated before cutover; native-only changes and conflicts require an
-  explicit force policy rather than silent overwrite.
-- **One project is one transaction boundary.** A failed apply rolls back the
-  project import rather than leaving a half-migrated dependency graph.
-
-The import report must include created, updated, unchanged, skipped, and
-conflicted records, unresolved dependency references, invalid dates, unknown
-modes or annotation kinds, retained-data gaps, and the exact target database
-path. Reports must not include secrets or ticket credentials.
-
-## Identity and idempotency
-
-The source UUID is the primary import key. Numeric Taskwarrior IDs are mapped
-only while reading one snapshot because they can change across exports. The
-importer must build all UUID and numeric lookup maps before writing edges.
-
-An import ledger or equivalent source metadata must record at least:
-
-- source snapshot identity and fingerprint;
-- target project identity;
-- source task UUID and imported native UUID;
-- import timestamp and importer version;
-- field-level conflict or warning state.
-
-The importer must reject ambiguous UUID prefixes and duplicate source UUIDs.
-A duplicate source UUID is a malformed snapshot, not two tasks to merge.
-
-## Safety boundary
-
-The migration path is privileged over ordinary reporting because it writes the
-workflow database. It therefore follows these rules:
-
-- no real migration during tests or investigations;
-- fixtures use `t.TempDir()` or the persistent sandbox root;
-- source export is treated as untrusted input;
-- SQL remains parameterized and identifiers are validated before use;
-- external command execution uses an explicit command path, controlled
-  environment, context cancellation, and captured diagnostics;
-- no shell interpolation of descriptions, projects, annotations, UUIDs, or
-  ticket values;
-- no broker calls, network access, credential reads, or production ticket
-  synchronization;
-- apply creates a native backup/checkpoint before mutation and reports its
-  location without embedding secrets;
-- rollback restores the pre-apply target or removes the new target database;
-- dry-run and apply expose the same validation report so the operator can
-  inspect the exact planned changes first.
-
-The existing `scripts/migrate-project-prefix.sh` is not the migration engine.
-It mutates legacy state in place, uses shell parsing, and cannot provide native
-transactional import or rollback. It may remain a historical compatibility
-script but must not be called by the native importer.
-
-## Verification and cutover
-
-Migration verification has two separate oracles:
-
-1. **State verification:** compare normalized source and native records for
-   UUIDs, initiatives, statuses, dependency edges, annotations, tickets,
-   focus, sessions, and dates.
-2. **Behavior verification:** run the same isolated scenarios through the
-   legacy `tw-flow` adapter and the native `flow` adapter. Normalize UUIDs,
-   timestamps, paths, and known formatting differences before comparison.
-
-Known legacy defects are not migration targets. For example, an imported
-blocked focus anchor may be preserved as historical state, but native
-`next`, `focus plan`, and automatic advancement must use readiness and never
-select blocked work merely because it is pending.
-
-The cutover sequence is:
-
-1. capture and checksum a source export snapshot;
-2. run dry-run and review the report;
-3. create a native backup/checkpoint;
-4. apply into an isolated target and run state verification;
-5. run differential behavior scenarios;
-6. switch `jacazul/launcher` to the native flow client path;
-7. keep the legacy path read-only and available for rollback;
-8. monitor native errors and retain the source snapshot until acceptance;
-9. remove legacy runtime writes only after an explicit rollback window.
-
-The migration is complete only when a second apply is unchanged, no required
-fields are silently lost, state and behavior verification pass, and rollback
-has been exercised on an isolated target.
-
-## Operator runbook
-
-The following procedure is for an explicitly selected project and an isolated
-sandbox first. Replace every path with a deliberate target; do not run it
-against the operator's real `TASKDATA` or flow database until the dry-run and
-acceptance review are complete.
-
-### 1. Capture the source snapshot
-
-Use the controlled legacy boundary to create a JSON snapshot and retain its
-checksum. Do not build the snapshot with shell interpolation of task fields.
-
-```bash
-mkdir -p /tmp/flow-migration
-TASK_EXPORT=/tmp/flow-migration/tasks.json
-taskp export > "$TASK_EXPORT"
+# Read only the canonical launcher silo.
+taskp "rc.data.location=$SOURCE_DATA" export > "$TASK_EXPORT"
 sha256sum "$TASK_EXPORT" > "$TASK_EXPORT.sha256"
 ```
 
-When focus or handoff continuity is required, copy the selected legacy focus
-files into an isolated state directory and pass it explicitly:
+To verify archive pairs before changing fixtures:
 
 ```bash
-LEGACY_STATE=/tmp/flow-migration/legacy-state
-mkdir -p "$LEGACY_STATE"
-# Copy only the selected focus*.json and session-note-*.md files here.
+python3 - "$TASK_EXPORT" <<'PY'
+import json
+import sys
+
+suffix = ":_archive"
+with open(sys.argv[1], encoding="utf-8") as handle:
+    tasks = json.load(handle)
+labels = {task.get("project", "") for task in tasks}
+archives = {label for label in labels if label.endswith(suffix)}
+pairs = {label for label in archives if label[:-len(suffix)] in labels}
+archive_only = archives - pairs
+folded = {
+    label[:-len(suffix)] if label.endswith(suffix) else label
+    for label in labels
+}
+print(f"tasks={len(tasks)}")
+print(f"labels={len(labels)}")
+print(f"archive_labels={len(archives)}")
+print(f"pairs={len(pairs)}")
+print(f"archive_only={len(archive_only)}")
+print(f"folded_labels={len(folded)}")
+for label in sorted(pairs):
+    print(f"pair={label[:-len(suffix)]} <-> {label}")
+PY
 ```
 
-The source directory is input-only. The importer must never modify it.
+If focus or handoff continuity is part of the migration, copy only the
+selected `focus.json`, `focus-<SESSION_ID>.json`, and
+`session-note-<SESSION_ID>.md` files into a separate working directory. Never
+let the importer discover or mutate the real legacy state implicitly.
 
-### 2. Dry-run and review
+## 4. Run the importer
 
-Run the importer with an explicit project and database target. Omit `--apply`
-to keep the operation read-only; `--dry-run` may be supplied for clarity.
+The destination must be explicit and isolated during development:
 
 ```bash
+PROJECT_ID="<target-project>"
+TARGET_HOME="$(mktemp -d "${TMPDIR:-/tmp}/flow-home.XXXXXX")"
+TARGET_DB="$TARGET_HOME/flow/$PROJECT_ID/flow.sqlite3"
+LEGACY_STATE="$WORK_DIR/legacy-state"
+
+mkdir -p "$LEGACY_STATE"
+
 jczl-flow \
-  --project "$JACAZUL_PROJECT" \
+  --home "$TARGET_HOME" \
+  --project "$PROJECT_ID" \
   --database-path "$TARGET_DB" \
   migrate taskwarrior \
   --source "$TASK_EXPORT" \
@@ -255,26 +240,16 @@ jczl-flow \
   --dry-run
 ```
 
-Review the report for:
+Dry-run is the default and must not create or mutate the target database. It
+must validate the same bundle and produce the same warnings/errors that apply
+would produce.
 
-- task, initiative, dependency, annotation, focus, and session counts;
-- unresolved or ambiguous UUID/numeric references;
-- unknown statuses, modes, annotation kinds, and invalid dates;
-- retained-data warnings such as unsupported tags;
-- the exact target project and database path.
-
-Do not apply while required data has a warning that has not been accepted or
-mapped. A dry-run must not create the target database.
-
-### 3. Apply with a checkpoint
-
-After reviewing the report, apply the same snapshot to the same explicit
-project and target. The command creates a timestamped backup of an existing
-SQLite database and available `-wal`/`-shm` sidecars before applying.
+After reviewing the report, apply the exact same snapshot and target:
 
 ```bash
 jczl-flow \
-  --project "$JACAZUL_PROJECT" \
+  --home "$TARGET_HOME" \
+  --project "$PROJECT_ID" \
   --database-path "$TARGET_DB" \
   migrate taskwarrior \
   --source "$TASK_EXPORT" \
@@ -282,77 +257,119 @@ jczl-flow \
   --apply
 ```
 
-Record the printed backup path, migration counts, source checksum, target
-path, and command version together in the change record. Keep the source
-snapshot and backup through the rollback window.
+Apply is one project-scoped transaction. Create a backup/checkpoint before
+mutating an existing database and retain the source checksum, target path,
+backup path, importer version, and final report together.
 
-### 4. Verify the native result
+## 5. Mapping checklist
 
-Run the state and behavior checks in a new process using the same project and
-session identity:
+The importer must cover these source values without losing identity:
+
+| Taskwarrior source | Native flow destination |
+|---|---|
+| `uuid` | `tasks.id`, unchanged |
+| `id` | temporary lookup only |
+| final project name | `initiatives.name`, scoped by target project |
+| terminal `:_archive` / `:_trash` | fold into the base initiative and set the task bucket to `archive` / `trash` |
+| `description` and `[MODE]` prefix | cleaned task title plus native mode |
+| `pending` | pending, or active when the source has `start` |
+| `waiting` / `wait` | pending plus `wait_until` |
+| `completed` | completed plus source completion metadata |
+| `deleted` / discard evidence | completed plus `disposition=discarded` when proven |
+| `depends` | native dependency edges after UUID resolution |
+| `externalid` | task external ticket metadata |
+| priority and urgency | native values; do not recalculate historical urgency |
+| dates | normalized native dates, with warnings/errors for invalid values |
+| annotations | structured annotations with source timestamps |
+| stored tags | relational native tags; virtual tags are not persisted |
+| focus/session files | native focus, sessions, and session notes |
+| caches | nothing; caches are derived and discarded |
+
+The source UUID map and numeric-ID map must be built before dependency edges are
+written. Duplicate UUIDs, ambiguous references, self-dependencies, and
+cross-project records must be reported with enough context to correct the
+source or fixture.
+
+## 6. E2E development loop
+
+This migration is implemented through `flow.Run` contracts, not by testing
+private helpers alone. Every test uses `t.TempDir()` or the persistent sandbox
+root and an explicit `Env`; it never reads the real launcher data.
+
+For each migration slice:
+
+1. **Red:** add a failing contract test with a small export fixture.
+2. **Green:** implement the smallest importer change that satisfies it.
+3. **Refactor:** keep source loading, archive normalization, bundle building,
+   persistence, and report/exit-code handling in separate responsibilities.
+4. **Mutation check:** intentionally break the protected rule and prove the
+   contract fails.
+5. **Parity check:** compare the relevant legacy behavior and the documented
+   migration contract.
+6. **Quality gate:** run `gofmt`, `goimports` when installed, `go test ./...`,
+   `go vet ./...`, and `go test -race ./...` (or `make test`).
+
+The canonical contract must prove at least:
+
+- all source tasks are preserved or explicitly reported as record-level
+  errors;
+- archive and trash buckets fold into base initiatives without creating bucket initiatives;
+- archive-only and trash-only buckets create normal base initiatives;
+- bucket membership and task lifecycle remain independent;
+- tree and chain projections omit non-active bucket tasks without phantom nodes;
+- warnings do not stop migration and return exit `0`;
+- errors do not stop record processing and return exit `1`;
+- dry-run is side-effect free;
+- apply is atomic and idempotent;
+- project isolation is preserved;
+- unsupported metadata is visible in the report;
+- mixed `foo`/`foo:_archive` bucket coexistence is covered before release.
+
+## 7. Verification and rollback
+
+After apply, verify through the public command boundary:
 
 ```bash
-jczl-flow --project "$JACAZUL_PROJECT" --database-path "$TARGET_DB" status --force
-jczl-flow --project "$JACAZUL_PROJECT" --database-path "$TARGET_DB" next <initiative>
-jczl-flow --project "$JACAZUL_PROJECT" --database-path "$TARGET_DB" focus
-jczl-flow --project "$JACAZUL_PROJECT" --database-path "$TARGET_DB" session list
-jczl-flow --project "$JACAZUL_PROJECT" --database-path "$TARGET_DB" session resume
+jczl-flow --project "$PROJECT_ID" --database-path "$TARGET_DB" ponder
+jczl-flow --project "$PROJECT_ID" --database-path "$TARGET_DB" plans --all
+jczl-flow --project "$PROJECT_ID" --database-path "$TARGET_DB" status
 ```
 
-Confirm that:
+Then apply the same snapshot a second time and verify that no duplicate
+records appear. Compare normalized source and native state for task UUIDs,
+final initiative names, initiative status, task lifecycle, dependencies,
+annotations, tags, focus, sessions, and dates.
 
-- every required source UUID appears exactly once;
-- initiative and dependency counts match the normalized source snapshot;
-- annotations and direct/inherited tickets are available;
-- active, completed, waiting, and blocked states behave correctly;
-- focus and session notes point to the migrated native UUIDs;
-- a second `--apply` produces no duplicate tasks, edges, annotations, or
-  session records;
-- a separate project database cannot observe the migrated records;
-- the first native report is fresh and does not reuse legacy cache output.
+Rollback is explicit and operator-controlled:
 
-For differential verification, run the same isolated scenario through the
-legacy adapter and the native binary. Compare normalized state and behavior,
-not volatile UUID formatting, timestamps, paths, or known intentional fixes.
+1. stop native writers;
+2. preserve the failed database for investigation;
+3. restore the backup and any reported WAL/SHM sidecars;
+4. rerun native reports;
+5. keep the source snapshot and failed target until acceptance is complete.
 
-### 5. Rollback
+Do not delete the legacy source or switch launcher consumers until dry-run,
+apply, idempotency, differential behavior, and rollback checks pass.
 
-Rollback is an operator-controlled file restoration, not a hidden importer
-operation. Stop all flow writers first and preserve the failed target for
-forensics. Then restore the backup printed by the apply command, including
-sidecars when they exist:
+## 8. Do not repeat these mistakes
 
-```bash
-mv "$TARGET_DB" "$TARGET_DB.failed-$(date -u +%Y%m%dT%H%M%SZ)"
-mv "$BACKUP_DB" "$TARGET_DB"
-# Restore "$BACKUP_DB-wal" and "$BACKUP_DB-shm" to the matching target names
-# when the backup command reported those sidecars.
-```
-
-Reopen the restored target only after the file moves finish, rerun the native
-status/session checks, and compare against the pre-apply checksum or snapshot.
-Do not delete the failed target until acceptance or incident review is
-complete.
-
-### Current v1 limitations
-
-The current importer is the first vertical slice, not the final cutover gate:
-
-- source fingerprints and a persistent import ledger are not yet exposed;
-- changed-snapshot conflict policy and a `--force` overwrite policy are not
-  yet exposed;
-- Taskwarrior tags are reported as retained-data warnings but are not yet
-  persisted natively;
-- roadmap phase import is documented but not yet implemented by the snapshot
-  mapper;
-- rollback is documented as an operator procedure rather than a CLI command.
-
-These limitations must remain visible in migration reports and must be closed
-before production cutover.
+- Do not preserve `foo:_archive` or `foo:_trash` as native initiatives.
+- Do not create a synthetic initiative named `PROJECT_ID/foo`.
+- Do not treat `PROJECT_ID` as initiative identity.
+- Do not put `archived` on an initiative to represent a task bucket.
+- Do not force archive-bucket tasks into an archived task state.
+- Do not silently drop incompatible metadata.
+- Do not abort the whole migration for a record-level metadata ERROR.
+- Do not manually set `TASKDATA` or bypass `taskp`/the explicit importer.
+- Do not run migration tests against the operator's real database.
+- Do not use stale handoff counts as canonical fixtures; recapture and checksum
+  the launcher export first.
+- Do not close the design task until mixed `foo`/`foo:_archive` bucket
+  coexistence is recorded and tested.
 
 ## Scope boundary
 
-This initiative covers local import and cutover preparation. It does not
-implement live server synchronization, multi-agent conflict resolution,
-remote ownership, prompt generation, persona artifacts, or GitHub broker
-internals. Those remain separate boundaries above the native local engine.
+This playbook covers local snapshot import, archive normalization, validation,
+idempotency, and cutover preparation. It does not cover live Taskwarrior
+synchronization, remote ownership, multi-agent conflict resolution, prompt or
+persona generation, broker internals, or production deployment automation.
