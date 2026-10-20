@@ -3,6 +3,7 @@ package flow_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -377,6 +378,147 @@ func TestMigrationRecordErrorsContinueAndReturnFailure(t *testing.T) {
 	if err != nil || !strings.Contains(output, "Valid task") || !strings.Contains(output, "Invalid date task") {
 		t.Fatalf("record-error migration state = %q, err %v; want both tasks preserved", output, err)
 	}
+}
+
+func TestMigrationCanonicalLauncherSnapshotPreservesShape(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	source := harness.WriteFile(t, "canonical-source.json", canonicalLauncherSnapshot(t))
+
+	output, err := runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--dry-run")
+	if err != nil {
+		t.Fatalf("canonical dry-run: %v\n%s", err, output)
+	}
+	if !strings.Contains(output, "Records: created=1961") {
+		t.Fatalf("canonical dry-run = %q, want 1961 planned tasks", output)
+	}
+	if _, err := os.Stat(harness.DatabasePath); !os.IsNotExist(err) {
+		t.Fatalf("canonical dry-run created target database: %v", err)
+	}
+
+	output, err = runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--apply")
+	if err != nil {
+		t.Fatalf("canonical apply: %v\n%s", err, output)
+	}
+
+	output, err = runFlow(t, harness, "status", "--format", "json", "--force")
+	if err != nil {
+		t.Fatalf("canonical status: %v\n%s", err, output)
+	}
+	var tasks struct {
+		Records []struct {
+			Bucket string `json:"bucket"`
+		} `json:"records"`
+	}
+	if err := json.Unmarshal([]byte(output), &tasks); err != nil {
+		t.Fatalf("decode canonical tasks: %v\n%s", err, output)
+	}
+	if len(tasks.Records) != 1961 {
+		t.Fatalf("canonical tasks = %d, want 1961", len(tasks.Records))
+	}
+	bucketCounts := map[string]int{}
+	for _, record := range tasks.Records {
+		bucketCounts[record.Bucket]++
+	}
+	if bucketCounts["active"] != 1534 || bucketCounts["archive"] != 427 || bucketCounts["trash"] != 0 {
+		t.Fatalf("canonical buckets = %#v, want active=1534 archive=427 trash=0", bucketCounts)
+	}
+
+	output, err = runFlow(t, harness, "plans", "--all", "--format", "json", "--force")
+	if err != nil {
+		t.Fatalf("canonical plans: %v\n%s", err, output)
+	}
+	var plans struct {
+		Records []struct {
+			Name string `json:"name"`
+		} `json:"records"`
+	}
+	if err := json.Unmarshal([]byte(output), &plans); err != nil {
+		t.Fatalf("decode canonical plans: %v\n%s", err, output)
+	}
+	if len(plans.Records) != 225 {
+		t.Fatalf("canonical initiatives = %d, want 225", len(plans.Records))
+	}
+	for _, plan := range plans.Records {
+		if strings.HasSuffix(plan.Name, ":_archive") || strings.HasSuffix(plan.Name, ":_trash") {
+			t.Fatalf("canonical plan retained source bucket suffix: %q", plan.Name)
+		}
+	}
+}
+
+func canonicalLauncherSnapshot(t *testing.T) []byte {
+	t.Helper()
+	pairBases := []string{
+		"enforce-outcome", "flow-cached-signal", "jacazul-home", "jacazul-pi",
+		"onboard", "skill-agent-modularization", "skill-system-evolution",
+		"smoke", "test-feature", "tw-flow-visibility", "workflow_stabilization",
+	}
+	archiveOnlyBases := []string{
+		"urgency-test-v4", "i-d-clarity", "jacazul-go-launcher", "mode-test",
+		"pending", "personas", "smoke-debug2", "smoke-debug3",
+		"test-backlog-sandbox", "test_del", "test_rename_new", "unscoped",
+		"worktree-support-chase",
+	}
+	normalLabels := append([]string{}, pairBases...)
+	for index := 0; len(normalLabels) < 212; index++ {
+		normalLabels = append(normalLabels, fmt.Sprintf("canonical-%03d", index))
+	}
+	archiveLabels := make([]string, 0, 24)
+	for _, base := range pairBases {
+		archiveLabels = append(archiveLabels, base+":_archive")
+	}
+	for _, base := range archiveOnlyBases {
+		archiveLabels = append(archiveLabels, base+":_archive")
+	}
+
+	type sourceTask struct {
+		UUID        string   `json:"uuid"`
+		Project     string   `json:"project"`
+		Description string   `json:"description"`
+		Status      string   `json:"status"`
+		Entry       string   `json:"entry"`
+		Modified    string   `json:"modified"`
+		End         string   `json:"end,omitempty"`
+		Tags        []string `json:"tags,omitempty"`
+	}
+	tasks := make([]sourceTask, 0, 1961)
+	appendTask := func(project, status, description string, index int) {
+		task := sourceTask{
+			UUID:        fmt.Sprintf("%08x-0000-4000-8000-%012x", index, index),
+			Project:     project,
+			Description: description,
+			Status:      status,
+			Entry:       "20260101T000000Z",
+			Modified:    "20260101T000100Z",
+		}
+		if status == "completed" || status == "deleted" {
+			task.End = "20260101T000200Z"
+		}
+		if index%100 == 0 {
+			task.Tags = []string{"canonical"}
+		}
+		tasks = append(tasks, task)
+	}
+
+	index := 1
+	for archiveIndex := 0; archiveIndex < 427; archiveIndex++ {
+		status := "pending"
+		if archiveIndex < 404 {
+			status = "completed"
+		} else if archiveIndex == 404 {
+			status = "deleted"
+		}
+		appendTask(archiveLabels[archiveIndex%len(archiveLabels)], status, fmt.Sprintf("Canonical archive task %04d", archiveIndex), index)
+		index++
+	}
+	for normalIndex := 0; index <= 1961; normalIndex++ {
+		appendTask(normalLabels[normalIndex%len(normalLabels)], "pending", fmt.Sprintf("Canonical active task %04d", normalIndex), index)
+		index++
+	}
+	data, err := json.Marshal(tasks)
+	if err != nil {
+		t.Fatalf("encode canonical launcher snapshot: %v", err)
+	}
+	return data
 }
 
 func TestMigrationMapsTaskBucketsAndProjectsInactiveTasksOutOfTree(t *testing.T) {
