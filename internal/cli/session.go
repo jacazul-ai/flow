@@ -271,9 +271,10 @@ func (cmd *SessionDumpCommand) Execute(args []string) error {
 
 // SessionFinalizeCommand seals a draft after the agent supplies its sections.
 type SessionFinalizeCommand struct {
-	Actions string `long:"actions" description:"Ordered next actions for the dump"`
-	Notes   string `long:"notes" description:"Additional dump notes"`
-	appOpts *config.AppOptions
+	References string `long:"references" description:"Relevant tickets, commits, files, or links"`
+	Actions    string `long:"actions" description:"Ordered next actions for the dump"`
+	Notes      string `long:"notes" description:"Additional dump notes"`
+	appOpts    *config.AppOptions
 }
 
 // SetAppOptions supplies project-scoped runtime options.
@@ -301,7 +302,7 @@ func (cmd *SessionFinalizeCommand) Execute(args []string) error {
 	if !found {
 		return fmt.Errorf("session dump %q not found", args[0])
 	}
-	content := dumpContent(string(dump.Content), cmd.Actions, cmd.Notes)
+	content := dumpContent(string(dump.Content), cmd.References, cmd.Actions, cmd.Notes)
 	finalized, err := store.FinalizeSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, dump.ID, content)
 	if err != nil {
 		return err
@@ -484,56 +485,69 @@ func displaySessionDumpStatus(status task.SessionDumpStatus) string {
 	return string(status)
 }
 
-func dumpContent(content string, actions string, notes string) string {
-	body := strings.TrimSpace(actions)
-	if strings.TrimSpace(notes) != "" {
-		body += "\n\n" + strings.TrimSpace(notes)
-	}
+func dumpContent(content string, references string, actions string, notes string) string {
+	references = sectionValue(references, "No additional references recorded.")
+	notes = sectionValue(notes, "No additional notes recorded.")
+	content = strings.Replace(content, "<!-- FILL IN REFERENCES -->", references, 1)
+	content = strings.Replace(content, "<!-- FILL IN ACTIONS -->", strings.TrimSpace(actions), 1)
+	content = strings.Replace(content, "<!-- FILL IN NOTES -->", notes, 1)
 	if strings.Contains(content, "<!-- FILL IN -->") {
-		return strings.Replace(content, "<!-- FILL IN -->", body, 1) + "\n"
+		body := strings.TrimSpace(actions)
+		if notes != "No additional notes recorded." {
+			body += "\n\n" + notes
+		}
+		content = strings.Replace(content, "<!-- FILL IN -->", body, 1)
 	}
-	return strings.TrimRight(content, "\n") + "\n\n" + body + "\n"
+	return strings.TrimRight(content, "\n") + "\n"
 }
 
-func existingSessionNoteError(note task.SessionNote) error {
-	if strings.Contains(note.Content, "<!-- FILL IN -->") {
-		return fmt.Errorf("session note already exists for session %s\nIt has an unfilled section. Fill it in instead of regenerating.\nACTION: Use --force to overwrite.", note.SessionID)
+func sectionValue(value string, fallback string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallback
 	}
-	if note.AcknowledgedAt != "" || strings.Contains(note.Content, "acknowledged:") {
-		return fmt.Errorf("session note already acknowledged for session %s\nACTION: Read it before replacing it, or use --force to overwrite.", note.SessionID)
-	}
-	return fmt.Errorf("session note already exists for session %s\nACTION: Read it before replacing it, or use --force to overwrite.", note.SessionID)
+	return strings.TrimSpace(value)
 }
 
 func renderSessionDump(ctx context.Context, store *sqlite.Store, opts *config.AppOptions, focus task.FocusState) (string, error) {
 	var output strings.Builder
-	output.WriteString("# Session Handoff Note\n")
-	output.WriteString("\n")
+	output.WriteString("# Session Handoff Note\n\n")
 	output.WriteString(fmt.Sprintf("**Date:** %s\n", time.Now().UTC().Format("2006-01-02")))
-	output.WriteString(fmt.Sprintf("**Session:** %s\n", opts.SessionID))
-	output.WriteString("\n---\n\n")
-	output.WriteString("## Current Focus\n\n")
+	output.WriteString(fmt.Sprintf("**Session:** %s\n\n---\n\n", opts.SessionID))
+	output.WriteString("## Focus\n\n")
 
-	if focus.InitiativeID == "" && focus.FocusedTaskID == "" {
-		output.WriteString("No focused initiative or task.\n\n")
+	var focusedTask task.Task
+	if focus.FocusedTaskID != "" {
+		current, err := store.GetTask(ctx, focus.FocusedTaskID)
+		if err != nil {
+			return "", err
+		}
+		focusedTask = current
+		output.WriteString(fmt.Sprintf("**Plan:** `%s`\n", current.InitiativeName))
+		output.WriteString(fmt.Sprintf("**Task:** `%s` %s\n", shortID(current.ID), current.Description))
+	} else if focus.InitiativeID != "" {
+		initiative, err := store.FindInitiativeByID(ctx, opts.ProjectID, focus.InitiativeID)
+		if err != nil {
+			return "", err
+		}
+		output.WriteString(fmt.Sprintf("**Plan:** `%s`\n", initiative.Name))
 	} else {
-		if focus.InitiativeID != "" {
-			output.WriteString(fmt.Sprintf("**Initiative:** `%s`\n", focus.InitiativeID))
-		}
-		if focus.FocusedTaskID != "" {
-			current, err := store.GetTask(ctx, focus.FocusedTaskID)
-			if err != nil {
-				return "", err
-			}
-			output.WriteString(fmt.Sprintf("**Task:** `%s` %s\n", shortID(current.ID), current.Description))
-		}
+		output.WriteString("No focused plan or task.\n")
 	}
-	output.WriteString("\nRestore focus:\n\n")
+	output.WriteString("\n**Restore focus:**\n\n")
 	if focus.FocusedTaskID != "" {
 		output.WriteString(fmt.Sprintf("jczl-flow focus task %s\n", shortID(focus.FocusedTaskID)))
 	} else if focus.InitiativeID != "" {
 		output.WriteString(fmt.Sprintf("jczl-flow focus plan %s\n", focus.InitiativeID))
+	} else {
+		output.WriteString("No focus command.\n")
 	}
-	output.WriteString("\n---\n\n## Session Notes\n\n<!-- FILL IN -->\n")
+
+	output.WriteString("\n---\n\n## References\n\n")
+	if focusedTask.ExternalTicket != "" {
+		output.WriteString(fmt.Sprintf("**Ticket:** `%s`\n\n", focusedTask.ExternalTicket))
+	}
+	output.WriteString("<!-- FILL IN REFERENCES -->\n\n")
+	output.WriteString("## Actions\n\n<!-- FILL IN ACTIONS -->\n\n")
+	output.WriteString("## Notes\n\n<!-- FILL IN NOTES -->\n")
 	return output.String(), nil
 }

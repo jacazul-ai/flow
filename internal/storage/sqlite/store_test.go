@@ -1,8 +1,13 @@
 package sqlite_test
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
+	"io"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -285,6 +290,61 @@ func TestOpenAppliesAllGooseMigrations(t *testing.T) {
 	}
 	if taskPositionIndex != 1 {
 		t.Fatal("task position index was not created")
+	}
+}
+
+func TestSessionDumpStoresGzipPayloadAndPlaintextHash(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "flow.sqlite3")
+	store := openStore(t, path)
+	content := "# Session Handoff\n\n## Actions\n\nRun the next command\n"
+
+	dump, err := store.CreateSessionDumpDraft(ctx, "project", "session", "plan", content)
+	if err != nil {
+		t.Fatalf("create session dump: %v", err)
+	}
+	if dump.ContentEncoding != "gzip" {
+		t.Fatalf("draft encoding = %q, want gzip", dump.ContentEncoding)
+	}
+
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("open dump database: %v", err)
+	}
+	defer db.Close()
+	var encoding string
+	var blob []byte
+	var size int64
+	var checksum string
+	if err := db.QueryRow(`
+		SELECT content_encoding, content_blob, content_size, content_sha256
+		FROM session_dumps WHERE id = ?
+	`, dump.ID).Scan(&encoding, &blob, &size, &checksum); err != nil {
+		t.Fatalf("read session dump payload: %v", err)
+	}
+	if encoding != "gzip" {
+		t.Fatalf("stored encoding = %q, want gzip", encoding)
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(blob))
+	if err != nil {
+		t.Fatalf("open gzip payload: %v", err)
+	}
+	decoded, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("read gzip payload: %v", err)
+	}
+	if err := reader.Close(); err != nil {
+		t.Fatalf("close gzip payload: %v", err)
+	}
+	if string(decoded) != content {
+		t.Fatalf("decoded payload = %q, want %q", decoded, content)
+	}
+	if size != int64(len(decoded)) {
+		t.Fatalf("stored plaintext size = %d, want %d", size, len(decoded))
+	}
+	digest := sha256.Sum256(decoded)
+	if checksum != hex.EncodeToString(digest[:]) {
+		t.Fatalf("stored plaintext hash = %q, want %q", checksum, hex.EncodeToString(digest[:]))
 	}
 }
 

@@ -675,6 +675,54 @@ func TestSessionDumpHistoryIsAppendOnlyAndAcknowledged(t *testing.T) {
 	}
 }
 
+func TestSessionDumpHasFixedSectionsAndFinalizesAgentContent(t *testing.T) {
+	harness := testharness.NewHarness(t, "project", "fixed-sections")
+	output, err := runFlow(t, harness, "plan", "session-sections", "Preserve dump sections")
+	if err != nil {
+		t.Fatalf("create sections plan: %v\n%s", err, output)
+	}
+	match := regexp.MustCompile(`Created task ([0-9a-f]{8})`).FindStringSubmatch(output)
+	if len(match) != 2 {
+		t.Fatalf("sections plan output = %q, want task UUID", output)
+	}
+	if output, err := runFlow(t, harness, "focus", "task", match[1]); err != nil {
+		t.Fatalf("focus sections task: %v\n%s", err, output)
+	}
+	output, err = runFlow(t, harness, "session", "dump")
+	if err != nil {
+		t.Fatalf("create sections dump: %v\n%s", err, output)
+	}
+	dumpID := regexp.MustCompile(`Session dump draft ([0-9a-f]{8})`).FindStringSubmatch(output)
+	if len(dumpID) != 2 {
+		t.Fatalf("sections dump = %q, want draft UUID", output)
+	}
+	for _, section := range []string{"## Focus", "## References", "## Actions", "## Notes", "**Plan:** `session-sections`", "**Task:** `" + match[1] + "` Preserve dump sections", "jczl-flow focus task " + match[1]} {
+		if !strings.Contains(output, section) {
+			t.Fatalf("sections dump = %q, want %q", output, section)
+		}
+	}
+	if output, err := runFlow(t, harness, "session", "finalize", dumpID[1], "--notes", "Keep the SQLite payload opaque"); err == nil || !strings.Contains(output, "Actions") {
+		t.Fatalf("incomplete finalize = %q, err %v; want mandatory Actions error", output, err)
+	}
+	if output, err := runFlow(t, harness, "session", "finalize", dumpID[1], "--references", "Refs: #27; internal/cli/session.go:223", "--actions", "Run the next command", "--notes", "Keep the SQLite payload opaque"); err != nil {
+		t.Fatalf("finalize sections dump: %v\n%s", err, output)
+	}
+	output, err = runFlow(t, harness, "session", "resume")
+	if err != nil {
+		t.Fatalf("resume sections dump: %v\n%s", err, output)
+	}
+	for _, section := range []string{"Refs: #27", "Run the next command", "Keep the SQLite payload opaque"} {
+		if !strings.Contains(output, section) {
+			t.Fatalf("resumed sections dump = %q, want %q", output, section)
+		}
+	}
+	if strings.Index(output, "## Focus") > strings.Index(output, "## References") ||
+		strings.Index(output, "## References") > strings.Index(output, "## Actions") ||
+		strings.Index(output, "## Actions") > strings.Index(output, "## Notes") {
+		t.Fatalf("resumed sections dump = %q, want fixed section order", output)
+	}
+}
+
 func TestSessionListRendersTableAndHandoffState(t *testing.T) {
 	harness := testharness.NewHarness(t, "project", "current")
 
