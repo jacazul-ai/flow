@@ -474,9 +474,11 @@ func TestMigrationCanonicalLauncherSnapshotPreservesShape(t *testing.T) {
 		t.Fatalf("canonical dry-run created target database: %v", err)
 	}
 
-	output, err = runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--apply")
-	if err != nil {
-		t.Fatalf("canonical apply: %v\n%s", err, output)
+	for attempt := 0; attempt < 2; attempt++ {
+		output, err = runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--apply")
+		if err != nil {
+			t.Fatalf("canonical apply attempt %d: %v\n%s", attempt+1, err, output)
+		}
 	}
 
 	output, err = runFlow(t, harness, "status", "--format", "json", "--force")
