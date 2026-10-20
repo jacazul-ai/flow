@@ -367,6 +367,7 @@ func (i *Importer) DryRun(ctx context.Context, bundle task.ImportBundle) (task.I
 		Dependencies: len(bundle.Dependencies),
 		Annotations:  len(bundle.Annotations),
 		Tags:         tagCount,
+		Issues:       len(bundle.Issues),
 	}, nil
 }
 
@@ -665,6 +666,14 @@ func validateBundle(bundle task.ImportBundle) error {
 	for _, note := range bundle.SessionNotes {
 		if note.ProjectID != bundle.ProjectID || note.SessionID == "" || note.Content == "" || note.UpdatedAt == "" {
 			return fmt.Errorf("session note %q is incomplete or crosses import project boundary", note.SessionID)
+		}
+	}
+	for _, issue := range bundle.Issues {
+		if issue.Severity != "WARNING" && issue.Severity != "ERROR" {
+			return fmt.Errorf("migration issue has invalid severity %q", issue.Severity)
+		}
+		if strings.TrimSpace(issue.Message) == "" {
+			return errors.New("migration issue message cannot be empty")
 		}
 	}
 	return nil

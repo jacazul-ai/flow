@@ -261,6 +261,19 @@ func (s *Store) ApplyImport(ctx context.Context, bundle task.ImportBundle) (task
 		}
 	}
 
+	for _, issue := range bundle.Issues {
+		if issue.Severity == "" || issue.Message == "" {
+			return task.ImportResult{}, errors.New("migration issue requires severity and message")
+		}
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO migration_issues (project_id, severity, message, created_at)
+			VALUES (?, ?, ?, ?)
+		`, bundle.ProjectID, issue.Severity, issue.Message, timestamp()); err != nil {
+			return task.ImportResult{}, fmt.Errorf("persist migration issue: %w", err)
+		}
+		result.Issues++
+	}
+
 	if _, err := tx.ExecContext(ctx, `DELETE FROM cache_entries WHERE project_id = ?`, bundle.ProjectID); err != nil {
 		return task.ImportResult{}, fmt.Errorf("clear imported project cache: %w", err)
 	}
@@ -296,6 +309,14 @@ func validateImportProject(bundle task.ImportBundle) error {
 	for _, dependency := range bundle.Dependencies {
 		if dependency.TaskID == dependency.DependsOnID {
 			return fmt.Errorf("task %s depends on itself", dependency.TaskID)
+		}
+	}
+	for _, issue := range bundle.Issues {
+		if issue.Severity != "WARNING" && issue.Severity != "ERROR" {
+			return fmt.Errorf("migration issue %q has invalid severity %q", issue.Message, issue.Severity)
+		}
+		if strings.TrimSpace(issue.Message) == "" {
+			return errors.New("migration issue message cannot be empty")
 		}
 	}
 	for _, event := range bundle.History {

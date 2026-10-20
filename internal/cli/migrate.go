@@ -31,6 +31,7 @@ type TaskwarriorMigrationCommand struct {
 	LegacyDataDir string `long:"legacy-data-dir" description:"Optional legacy focus/session directory"`
 	Apply         bool   `long:"apply" description:"Write the migration to native SQLite"`
 	DryRun        bool   `long:"dry-run" description:"Validate without writing (default)"`
+	Issues        bool   `long:"issues" description:"List issues persisted by the last apply"`
 	appOpts       *config.AppOptions
 }
 
@@ -43,6 +44,12 @@ func (cmd *TaskwarriorMigrationCommand) SetAppOptions(opts *config.AppOptions) {
 func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 	if len(args) != 0 {
 		return fmt.Errorf("migrate taskwarrior accepts flags only")
+	}
+	if cmd.Issues {
+		if cmd.Apply || cmd.DryRun || strings.TrimSpace(cmd.Source) != "" || strings.TrimSpace(cmd.LegacyDataDir) != "" {
+			return fmt.Errorf("--issues cannot be combined with migration input or write flags")
+		}
+		return cmd.listIssues()
 	}
 	if strings.TrimSpace(cmd.Source) == "" {
 		return fmt.Errorf("migration source is required\nACTION: Run 'jczl-flow migrate taskwarrior --source <export.json>'.")
@@ -62,7 +69,9 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	hasErrors := printMigrationIssues(cmd.appOpts.Out(), warnings)
+	issues := migrationIssues(warnings)
+	bundle.Issues = issues
+	hasErrors := printMigrationIssues(cmd.appOpts.Out(), issues)
 	if !cmd.Apply {
 		result, err := migration.NewImporter(nil).DryRun(cmd.appOpts.Context(), bundle)
 		if err != nil {
@@ -100,15 +109,27 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 	return nil
 }
 
-func printMigrationIssues(out io.Writer, issues []string) bool {
+func migrationIssues(warnings []string) []task.MigrationIssue {
+	issues := make([]task.MigrationIssue, 0, len(warnings))
+	for _, warning := range warnings {
+		severity := "WARNING"
+		message := warning
+		if strings.HasPrefix(warning, "ERROR:") {
+			severity = "ERROR"
+			message = strings.TrimSpace(strings.TrimPrefix(warning, "ERROR:"))
+		}
+		issues = append(issues, task.MigrationIssue{Severity: severity, Message: message})
+	}
+	return issues
+}
+
+func printMigrationIssues(out io.Writer, issues []task.MigrationIssue) bool {
 	hasErrors := false
 	for _, issue := range issues {
-		if strings.HasPrefix(issue, "ERROR:") {
-			fmt.Fprintln(out, issue)
+		fmt.Fprintf(out, "%s: %s\n", issue.Severity, issue.Message)
+		if issue.Severity == "ERROR" {
 			hasErrors = true
-			continue
 		}
-		fmt.Fprintf(out, "WARNING: %s\n", issue)
 	}
 	return hasErrors
 }
@@ -118,6 +139,26 @@ func migrationRecordErrors() error {
 }
 
 func printMigrationResult(out io.Writer, result task.ImportResult) {
-	fmt.Fprintf(out, "Records: created=%d updated=%d unchanged=%d dependencies=%d annotations=%d tags=%d history=%d\n",
-		result.Created, result.Updated, result.Unchanged, result.Dependencies, result.Annotations, result.Tags, result.History)
+	fmt.Fprintf(out, "Records: created=%d updated=%d unchanged=%d dependencies=%d annotations=%d tags=%d history=%d issues=%d\n",
+		result.Created, result.Updated, result.Unchanged, result.Dependencies, result.Annotations, result.Tags, result.History, result.Issues)
+}
+
+func (cmd *TaskwarriorMigrationCommand) listIssues() error {
+	store, err := openStore(cmd.appOpts)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+	issues, err := store.ListMigrationIssues(cmd.appOpts.Context(), cmd.appOpts.ProjectID)
+	if err != nil {
+		return err
+	}
+	if len(issues) == 0 {
+		fmt.Fprintln(cmd.appOpts.Out(), "No migration issues.")
+		return nil
+	}
+	for _, issue := range issues {
+		fmt.Fprintf(cmd.appOpts.Out(), "[%s] #%d %s\n", issue.Severity, issue.ID, issue.Message)
+	}
+	return nil
 }

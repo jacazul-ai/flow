@@ -69,17 +69,22 @@ independent task classification. `trash` does not set
 `disposition=discarded`; that disposition remains reserved for explicit
 discard evidence or the native discard operation.
 
-### Identity and idempotency
+### Cutoff identity and retry
 
 - Preserve every source task UUID when importing.
 - Derive or persist a stable native initiative UUID for the final initiative
   name within the selected target project. This is an internal identity rule;
   it does not change the initiative name.
-- A repeated dry-run must not write anything.
-- A repeated apply must create no duplicate tasks, initiatives, dependencies,
-  annotations, tags, history records, focus records, or session notes.
-- A changed source snapshot may update mutable imported fields, but must not
-  silently overwrite native-only edits without an explicit conflict policy.
+- One captured source snapshot is the migration boundary. Record its checksum
+  with the cutoff report.
+- A dry-run is read-only and only renders its report.
+- Apply is one atomic cutover into a clean target. It may persist a simple
+  `migration_issues` audit for that cutoff, but it does not create a lineage
+  of parent runs or an incremental synchronization queue.
+- A retry is allowed only after rollback or against a clean target. It must
+  preserve source UUID identity and must not duplicate records.
+- Changed snapshots, stale-source reconciliation, and ongoing synchronization
+  are outside this migration.
 
 ### Error policy
 
@@ -241,8 +246,8 @@ jczl-flow \
 ```
 
 Dry-run is the default and must not create or mutate the target database. It
-must validate the same bundle and produce the same warnings/errors that apply
-would produce.
+only renders the report and exit status. It must validate the same bundle and
+produce the same warnings/errors that apply would produce.
 
 After reviewing the report, apply the exact same snapshot and target:
 
@@ -259,7 +264,20 @@ jczl-flow \
 
 Apply is one project-scoped transaction. Create a backup/checkpoint before
 mutating an existing database and retain the source checksum, target path,
-backup path, importer version, and final report together.
+backup path, importer version, and final report together. Apply-time warnings
+and errors are persisted as a simple cutoff audit and can be inspected without
+re-running the migration:
+
+```bash
+jczl-flow \
+  --project "$PROJECT_ID" \
+  --database-path "$TARGET_DB" \
+  migrate taskwarrior \
+  --issues
+```
+
+`--issues` is observational; it does not run a new migration or create a
+parent/child run chain.
 
 ## 5. Mapping checklist
 
@@ -319,8 +337,9 @@ The canonical contract must prove at least:
 - tree and chain projections omit non-active bucket tasks without phantom nodes;
 - warnings do not stop migration and return exit `0`;
 - errors do not stop record processing and return exit `1`;
-- dry-run is side-effect free;
-- apply is atomic and idempotent;
+- dry-run is read-only and renders the complete report;
+- apply is atomic and a rollback retry does not duplicate records;
+- apply issues are persisted as one cutoff audit, without parent-run lineage;
 - project isolation is preserved;
 - unsupported metadata is visible in the report;
 - mixed `foo`/`foo:_archive` bucket coexistence is covered before release.
@@ -335,10 +354,11 @@ jczl-flow --project "$PROJECT_ID" --database-path "$TARGET_DB" plans --all
 jczl-flow --project "$PROJECT_ID" --database-path "$TARGET_DB" status
 ```
 
-Then apply the same snapshot a second time and verify that no duplicate
-records appear. Compare normalized source and native state for task UUIDs,
-final initiative names, initiative status, task lifecycle, dependencies,
-annotations, tags, focus, sessions, and dates.
+Verify the committed target once and compare normalized source and native
+state for task UUIDs, final initiative names, initiative status, task
+lifecycle, dependencies, annotations, tags, focus, sessions, and dates. If
+apply fails, restore the target or use a clean target before retrying; do not
+layer a new migration onto a partially migrated target.
 
 Rollback is explicit and operator-controlled:
 
@@ -364,6 +384,8 @@ apply, idempotency, differential behavior, and rollback checks pass.
 - Do not run migration tests against the operator's real database.
 - Do not use stale handoff counts as canonical fixtures; recapture and checksum
   the launcher export first.
+- Do not layer a new migration onto an existing target; cutoff retries require
+  rollback or a clean target.
 - Do not close the design task until mixed `foo`/`foo:_archive` bucket
   coexistence is recorded and tested.
 

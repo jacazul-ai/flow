@@ -4,12 +4,22 @@ package task
 type ImportBundle struct {
 	ProjectID    string
 	Initiatives  []ImportedInitiative
+	Issues       []MigrationIssue
 	Tasks        []ImportedTask
 	Dependencies []ImportedDependency
 	Annotations  []ImportedAnnotation
 	History      []HistoryEvent
 	Sessions     []ImportedSession
 	SessionNotes []ImportedSessionNote
+}
+
+// MigrationIssue is a warning or error produced while building or applying a snapshot.
+type MigrationIssue struct {
+	ID        int64
+	ProjectID string
+	Severity  string
+	Message   string
+	CreatedAt string
 }
 
 // ImportedInitiative is an initiative record with source timestamps.
@@ -102,4 +112,5 @@ type ImportResult struct {
 	Annotations  int
 	Tags         int
 	History      int
+	Issues       int
 }

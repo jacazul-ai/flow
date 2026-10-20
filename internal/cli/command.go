@@ -768,22 +768,25 @@ var helpEntries = []helpEntry{
 		topic:     topicRuntime,
 		canonical: "migrate",
 		summary:   "Import legacy workflow state",
-		usage:     "jczl-flow migrate taskwarrior --source <export.json> [--legacy-data-dir <dir>] [--apply]",
+		usage:     "jczl-flow migrate taskwarrior --source <export.json> [--legacy-data-dir <dir>] [--apply] | --issues",
 		role:      "Use this explicit boundary to move isolated Taskwarrior state into native flow.",
 		preconditions: []string{
 			"Provide an explicit export snapshot; dry-run is the default.",
 			"Use --apply only after reviewing the migration report.",
+			"Use --issues after apply to inspect the persisted cutoff audit.",
 		},
 		effects: []string{
 			"Maps initiatives, UUIDs, dependencies, metadata, annotations, focus, and sessions.",
+			"Persists apply-time migration issues for later inspection.",
 			"Never imports derived caches or calls a ticket broker.",
 		},
 		examples: []string{
 			"jczl-flow migrate taskwarrior --source /tmp/tasks.json",
 			"jczl-flow migrate taskwarrior --source /tmp/tasks.json --legacy-data-dir /tmp/legacy-state --dry-run",
 			"jczl-flow migrate taskwarrior --source /tmp/tasks.json --legacy-data-dir /tmp/legacy-state --apply",
+			"jczl-flow migrate taskwarrior --issues",
 		},
-		next: "Run the dry-run first and review retained-data warnings before applying.",
+		next: "Run the dry-run first, review the report, then use --issues after apply to inspect the cutoff audit.",
 	},
 	{
 		name:      "cache",

@@ -185,8 +185,8 @@ func TestGooseAdoptsLegacyV1Schema(t *testing.T) {
 	).Scan(&version); err != nil {
 		t.Fatalf("read adopted Goose version: %v", err)
 	}
-	if version != 13 {
-		t.Fatalf("adopted Goose version = %d, want 13", version)
+	if version != 14 {
+		t.Fatalf("adopted Goose version = %d, want 14", version)
 	}
 	for _, column := range []string{"started_at", "completed_at", "disposition", "priority", "urgency", "wait_until", "position", "bucket"} {
 		var count int
@@ -238,8 +238,17 @@ func TestOpenAppliesAllGooseMigrations(t *testing.T) {
 	).Scan(&version); err != nil {
 		t.Fatalf("read goose version: %v", err)
 	}
-	if version != 13 {
-		t.Fatalf("goose version = %d, want 13", version)
+	if version != 14 {
+		t.Fatalf("goose version = %d, want 14", version)
+	}
+	var migrationIssues int
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'migration_issues'",
+	).Scan(&migrationIssues); err != nil {
+		t.Fatalf("check migration issues table: %v", err)
+	}
+	if migrationIssues != 1 {
+		t.Fatal("migration_issues table was not created")
 	}
 	var sessionNotes int
 	if err := db.QueryRow(

@@ -331,6 +331,31 @@ func TestMigrationBucketApplyIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestMigrationApplyPersistsIssuesForInspection(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	source := harness.WriteFile(t, "issues-source.json", []byte(`[
+  {
+    "uuid": "12121212-1212-4121-8121-121212121212",
+    "project": "foo",
+    "description": "Issue task",
+    "status": "legacy-status",
+    "due": "not-a-date"
+  }
+]`))
+
+	code, stdout, stderr := run(t, context.Background(), flowEnv(harness), "migrate", "taskwarrior", "--source", source, "--apply")
+	if code != 1 || !strings.Contains(stdout+stderr, "ERROR") {
+		t.Fatalf("issue migration = code %d, stdout=%q, stderr=%q; want exit 1", code, stdout, stderr)
+	}
+	code, stdout, stderr = run(t, context.Background(), flowEnv(harness), "migrate", "taskwarrior", "--issues")
+	if code != 0 {
+		t.Fatalf("issue report = code %d, stdout=%q, stderr=%q; want report", code, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "WARNING") || !strings.Contains(stdout, "ERROR") {
+		t.Fatalf("issue report = %q, want WARNING and ERROR entries", stdout)
+	}
+}
+
 func TestMigrationWarningsDoNotFailTheRun(t *testing.T) {
 	harness := testharness.NewHarness(t, "project-alpha", "session")
 	source := harness.WriteFile(t, "source.json", []byte(`[
