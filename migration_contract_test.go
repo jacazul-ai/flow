@@ -289,3 +289,104 @@ func TestMigrationRejectsConflictingModes(t *testing.T) {
 		t.Fatalf("conflicting migration flags = %q, err %v; want actionable error", output, err)
 	}
 }
+
+func TestMigrationMapsTaskBucketsAndProjectsInactiveTasksOutOfTree(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	source := harness.WriteFile(t, "source.json", []byte(`[
+  {
+    "uuid": "11111111-1111-4111-8111-111111111111",
+    "project": "foo",
+    "description": "First",
+    "status": "pending"
+  },
+  {
+    "uuid": "22222222-2222-4222-8222-222222222222",
+    "project": "foo:_archive",
+    "description": "Archived",
+    "status": "pending",
+    "depends": ["11111111-1111-4111-8111-111111111111"]
+  },
+  {
+    "uuid": "33333333-3333-4333-8333-333333333333",
+    "project": "foo",
+    "description": "Third",
+    "status": "pending",
+    "depends": ["22222222-2222-4222-8222-222222222222"]
+  },
+  {
+    "uuid": "44444444-4444-4444-8444-444444444444",
+    "project": "foo",
+    "description": "Fourth",
+    "status": "pending",
+    "depends": ["33333333-3333-4333-8333-333333333333"]
+  },
+  {
+    "uuid": "55555555-5555-4555-8555-555555555555",
+    "project": "foo:_trash",
+    "description": "Trash",
+    "status": "pending"
+  }
+]`))
+
+	if output, err := runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--apply"); err != nil {
+		t.Fatalf("apply bucket migration: %v\n%s", err, output)
+	}
+
+	output, err := runFlow(t, harness, "status", "foo", "--format", "json", "--force")
+	if err != nil {
+		t.Fatalf("read bucket migration: %v\n%s", err, output)
+	}
+	var report struct {
+		Records []struct {
+			ID         string `json:"id"`
+			Initiative string `json:"initiative"`
+			Status     string `json:"status"`
+			Bucket     string `json:"bucket"`
+		} `json:"records"`
+	}
+	if err := json.Unmarshal([]byte(output), &report); err != nil {
+		t.Fatalf("decode bucket report: %v\n%s", err, output)
+	}
+	if len(report.Records) != 5 {
+		t.Fatalf("bucket records = %d, want 5\n%s", len(report.Records), output)
+	}
+	wantBuckets := map[string]string{
+		"11111111-1111-4111-8111-111111111111": "active",
+		"22222222-2222-4222-8222-222222222222": "archive",
+		"33333333-3333-4333-8333-333333333333": "active",
+		"44444444-4444-4444-8444-444444444444": "active",
+		"55555555-5555-4555-8555-555555555555": "trash",
+	}
+	for _, record := range report.Records {
+		if record.Initiative != "foo" {
+			t.Fatalf("task %s initiative = %q, want foo", record.ID, record.Initiative)
+		}
+		if record.Bucket != wantBuckets[record.ID] {
+			t.Fatalf("task %s bucket = %q, want %q", record.ID, record.Bucket, wantBuckets[record.ID])
+		}
+		if record.Status != "pending" {
+			t.Fatalf("task %s status = %q, want pending", record.ID, record.Status)
+		}
+	}
+
+	tree, err := runFlow(t, harness, "tree", "foo")
+	if err != nil {
+		t.Fatalf("read bucket tree: %v\n%s", err, tree)
+	}
+	visible := make([]string, 0, 3)
+	for _, line := range strings.Split(tree, "\n") {
+		for _, description := range []string{"First", "Third", "Fourth"} {
+			if strings.Contains(line, description) {
+				visible = append(visible, description)
+			}
+		}
+	}
+	if strings.Join(visible, " -> ") != "First -> Third -> Fourth" {
+		t.Fatalf("bucket tree = %q, want First -> Third -> Fourth", tree)
+	}
+	for _, hidden := range []string{"Archived", "Trash", "BLOCKED"} {
+		if strings.Contains(tree, hidden) {
+			t.Fatalf("bucket tree contains inactive marker %q: %q", hidden, tree)
+		}
+	}
+}
