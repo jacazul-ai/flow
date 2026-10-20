@@ -21,8 +21,10 @@ gives its syntax, prerequisites, effects, examples, and next action.
 At bootstrap, and whenever the operator asks for onboarding, run exactly
 `jacazul flow onboard`. It is deterministic and observational: it shows the
 pending session handoff, the focus and its context, then the focused status
-or the project ponder view. It never starts a task. Present a short summary
-and wait for the operator's direction.
+or the project ponder view. Native dump delivery is recorded separately from
+acknowledgement; run `jacazul flow session ack` explicitly before creating the
+next dump. It never starts a task. Present a short summary and wait for the
+operator's direction.
 
 ## Orient
 

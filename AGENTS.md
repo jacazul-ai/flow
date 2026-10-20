@@ -239,6 +239,24 @@ Adopt the following composition style for `flow`:
   changes. If `goimports` is unavailable, use `gofmt` and report the skipped
   import-organization pass.
 
+### Documentation and Skill Synchronization
+
+- Any user-facing command, workflow, lifecycle, output, or error contract
+  change MUST update the relevant `README.md` and `docs/` documentation before
+  the change is considered complete. `docs/cli.md` is the detailed CLI source
+  of truth when the command surface is affected.
+- The `flow-expert` skill is a user-facing contract, not a generated afterthought.
+  Update its source templates under `internal/cli/templates/flow-expert/` and
+  the command registry metadata in `internal/cli/command.go` when behavior or
+  help changes; never fix only a rendered artifact.
+- Run the skill contract tests and verify `jczl-flow skill` renders the updated
+  hub and references. Keep `docs/flow-expert-skill.md` synchronized with
+  generator guarantees and decisions; generated skill output must not teach a
+  lifecycle different from the implementation.
+- Add or update a contract test when the documentation or skill must preserve
+  an observable command rule. A passing code build without synchronized docs,
+  skill source, and coverage is not feature completion.
+
 ## Error as Prompt and Prompt as Ad
 
 Import the workflow contract from `jacazul-ai-cli`:

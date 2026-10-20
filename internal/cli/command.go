@@ -149,7 +149,7 @@ var helpEntries = []helpEntry{
 		effects: []string{
 			"Renders the pending session handoff before focus and workflow context.",
 			"Uses focused status when an anchor exists and the project dashboard otherwise.",
-			"Acknowledges an unacknowledged handoff only after the complete briefing renders successfully.",
+			"Records native dump delivery after the complete briefing renders; explicit session ack remains required.",
 		},
 		examples: []string{"jczl-flow onboard"},
 		next:     "Continue with the focused task, or use the lower-level focus, status, ponder, and session commands for diagnostics.",

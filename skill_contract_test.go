@@ -82,6 +82,16 @@ func TestSkillOutWritesLinkedTree(t *testing.T) {
 	if tree["SKILL.md"] != hub {
 		t.Fatalf("written SKILL.md differs from the hub printed to stdout")
 	}
+	for _, expected := range []string{
+		"Native dump delivery is recorded after the whole briefing renders",
+		"session finalize <dump-id> --actions <steps>",
+		"session dumps --all",
+		"session purge --hard --confirm",
+	} {
+		if !strings.Contains(tree["references/sessions.md"], expected) {
+			t.Fatalf("sessions skill missing %q:\n%s", expected, tree["references/sessions.md"])
+		}
+	}
 
 	linked := map[string]bool{}
 	for _, match := range skillLink.FindAllStringSubmatch(tree["SKILL.md"], -1) {

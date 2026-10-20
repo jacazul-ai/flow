@@ -109,8 +109,9 @@ diff.
    prerequisites, effects, and examples.
 2. Onboarding is deterministic: `jacazul flow onboard` renders the pending
    session handoff, focus, context, and status or ponder, records native dump
-   delivery without acknowledging it, and never starts work. Explicit
-   `session ack` releases the next dump.
+   delivery without acknowledging it, and never starts work. Native dumps use
+   fixed Focus, References, Actions, and Notes sections; explicit `session ack`
+   releases the next dump.
 3. After `done`, agents re-anchor only to a ready task in the same initiative,
    or clear the focus (see [focus-advance-i-d.md](focus-advance-i-d.md)).
 4. The skill is honest about unimplemented behavior. Gaps are tracked as
