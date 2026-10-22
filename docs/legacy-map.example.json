@@ -1,0 +1,15 @@
+{
+  "annotations": {
+    "SPEC": "DECISION",
+    "ARCHITECTURE": "DECISION",
+    "VERIFY": "RESEARCH",
+    "DONE": null,
+    "TODO": null,
+    "ISSUE": null
+  },
+  "modes": {
+    "PLAN": "DESIGN",
+    "DOCS": "REFINE",
+    "RESEARCH": "INVESTIGATE"
+  }
+}

@@ -20,8 +20,9 @@ not read; `migrate` imports legacy state explicitly. The default migration
 path checks for `task` and invokes it directly with the resolved Taskwarrior
 data directory. Launchers may provide the resolved executable through
 `--task-binary` or the embedding `flow.Env.TaskBinary`. An explicit `--source`
-snapshot is the offline alternative; normal flow commands never invoke
-Taskwarrior.
+snapshot is the offline alternative. `--legacy-map` applies only explicit,
+validated historical annotation and mode mappings; normal flow commands never
+invoke Taskwarrior.
 
 `info` shows the resolved values and where each one came from, without
 opening storage.

@@ -207,6 +207,29 @@ prints an `ACTION:` explaining how to make the executable available. An
 already captured JSON snapshot remains available as an explicit offline
 alternative with `--source`; that mode does not invoke Taskwarrior.
 
+An optional compatibility map can recover reviewed legacy semantics without
+changing the default fallback:
+
+```json
+{
+  "annotations": {
+    "SPEC": "DECISION",
+    "DONE": "OUTCOME",
+    "TODO": null
+  },
+  "modes": {
+    "PLAN": "DESIGN",
+    "DOCS": "REFINE"
+  }
+}
+```
+
+See `docs/legacy-map.example.json` for a conservative starting point. Pass it
+with `--legacy-map /path/to/legacy-map.json`. Missing entries and
+`null` values keep the current behavior; an invalid or missing explicit map is
+a fatal error before the target database is opened. Mapped annotation bodies
+retain their original legacy prefix.
+
 To verify archive pairs in an already captured offline snapshot before
 changing fixtures:
 

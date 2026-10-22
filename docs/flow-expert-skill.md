@@ -126,7 +126,8 @@ diff.
    `jacazul-hatch`.
 7. Taskwarrior is a migration-time compatibility source only: the default
    migration preflights and invokes `task` directly, accepts an explicit binary
-   from the launcher, and keeps normal flow commands native.
+   and optional legacy prefix map from the launcher, and keeps normal flow
+   commands native.
 
 ## Known gaps
 
