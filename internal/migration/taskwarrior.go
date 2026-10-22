@@ -45,7 +45,7 @@ func ExportTaskwarrior(ctx context.Context, dataDir string) ([]LegacyTask, error
 func DecodeTaskwarriorExport(data []byte) ([]LegacyTask, error) {
 	var tasks []LegacyTask
 	if err := json.Unmarshal(data, &tasks); err != nil {
-		return nil, fmt.Errorf("decode Taskwarrior export: %w", err)
+		return nil, fmt.Errorf("decode Taskwarrior export: %w\nACTION: Verify the Taskwarrior export output and rerun the migration", err)
 	}
 	return tasks, nil
 }

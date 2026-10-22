@@ -92,6 +92,43 @@ func TestMigrationFailsWhenTaskExecutableIsMissing(t *testing.T) {
 	}
 }
 
+func TestMigrationReportsTaskSubprocessFailure(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	harness.FakeCommand(t, "task", `#!/bin/sh
+printf '%s\\n' "Taskwarrior data is unreadable" >&2
+exit 7
+`)
+
+	code, stdout, stderr := run(t, context.Background(), flowEnv(harness), "migrate", "taskwarrior")
+	if code != 1 {
+		t.Fatalf("migration exit = %d, stdout=%q, stderr=%q; want failure", code, stdout, stderr)
+	}
+	if !strings.Contains(stderr, "Taskwarrior export failed") || !strings.Contains(stderr, "Taskwarrior data is unreadable") || !strings.Contains(stderr, "ACTION:") {
+		t.Fatalf("subprocess failure = %q, want command diagnostic and ACTION", stderr)
+	}
+	if _, err := os.Stat(harness.DatabasePath); !os.IsNotExist(err) {
+		t.Fatalf("failed task export touched database: %v", err)
+	}
+}
+
+func TestMigrationRejectsInvalidTaskExport(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	harness.FakeCommand(t, "task", `#!/bin/sh
+printf '%s\\n' "not-json"
+`)
+
+	code, stdout, stderr := run(t, context.Background(), flowEnv(harness), "migrate", "taskwarrior")
+	if code != 1 {
+		t.Fatalf("migration exit = %d, stdout=%q, stderr=%q; want failure", code, stdout, stderr)
+	}
+	if !strings.Contains(stderr, "decode Taskwarrior export") || !strings.Contains(stderr, "ACTION:") {
+		t.Fatalf("invalid export = %q, want decode diagnosis and ACTION", stderr)
+	}
+	if _, err := os.Stat(harness.DatabasePath); !os.IsNotExist(err) {
+		t.Fatalf("invalid task export touched database: %v", err)
+	}
+}
+
 func TestMigrationApplyIsRepeatableAndPreservesNativeState(t *testing.T) {
 	harness := testharness.NewHarness(t, "project-alpha", "session")
 	source := harness.WriteFile(t, "source.json", []byte(`[
