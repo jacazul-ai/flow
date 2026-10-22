@@ -36,6 +36,62 @@ func TestMigrationDryRunDoesNotCreateTargetDatabase(t *testing.T) {
 	}
 }
 
+func TestMigrationExportsThroughTaskSubprocess(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	export := harness.WriteFile(t, "task-export.json", []byte(`[
+  {
+    "uuid": "11111111-1111-4111-8111-111111111111",
+    "project": "parity",
+    "description": "Subprocess import",
+    "status": "pending"
+  }
+]`))
+	argsFile := harness.WriteFile(t, "task-args.txt", nil)
+	taskData := filepath.Join(harness.Root, "legacy-taskdata")
+	if err := os.MkdirAll(taskData, 0o700); err != nil {
+		t.Fatalf("create taskdata directory: %v", err)
+	}
+	harness.FakeCommand(t, "task", `#!/bin/sh
+set -eu
+printf '%s\\n' "$@" > "$TASK_ARGS_FILE"
+cat "$TASK_EXPORT_FILE"
+`)
+	t.Setenv("TASK_ARGS_FILE", argsFile)
+	t.Setenv("TASK_EXPORT_FILE", export)
+
+	code, stdout, stderr := run(t, context.Background(), flowEnv(harness), "--taskdata", taskData, "migrate", "taskwarrior")
+	if code != 0 {
+		t.Fatalf("migration exit = %d, stdout=%q, stderr=%q", code, stdout, stderr)
+	}
+	args, err := os.ReadFile(argsFile)
+	if err != nil {
+		t.Fatalf("read task arguments: %v", err)
+	}
+	if !strings.Contains(string(args), "rc.data.location="+taskData) || !strings.Contains(string(args), "export") {
+		t.Fatalf("task arguments = %q, want explicit data location and export", args)
+	}
+	if !strings.Contains(stdout, "Records: created=1") {
+		t.Fatalf("stdout = %q, want one imported record", stdout)
+	}
+}
+
+func TestMigrationFailsWhenTaskExecutableIsMissing(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	t.Setenv("PATH", harness.BinDir)
+
+	code, stdout, stderr := run(t, context.Background(), flowEnv(harness), "migrate", "taskwarrior")
+	if code != 1 {
+		t.Fatalf("migration exit = %d, stdout=%q, stderr=%q; want failure", code, stdout, stderr)
+	}
+	combined := stdout + stderr
+	if !strings.Contains(combined, "Taskwarrior executable") || !strings.Contains(combined, "ACTION:") {
+		t.Fatalf("missing-task error = %q, want executable diagnosis and ACTION", combined)
+	}
+	if _, err := os.Stat(harness.DatabasePath); !os.IsNotExist(err) {
+		t.Fatalf("missing-task migration touched database: %v", err)
+	}
+}
+
 func TestMigrationApplyIsRepeatableAndPreservesNativeState(t *testing.T) {
 	harness := testharness.NewHarness(t, "project-alpha", "session")
 	source := harness.WriteFile(t, "source.json", []byte(`[

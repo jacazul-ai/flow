@@ -333,11 +333,7 @@ func LoadTaskwarriorExport(path string) ([]LegacyTask, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read source export: %w", err)
 	}
-	var tasks []LegacyTask
-	if err := json.Unmarshal(data, &tasks); err != nil {
-		return nil, fmt.Errorf("decode source export: %w", err)
-	}
-	return tasks, nil
+	return DecodeTaskwarriorExport(data)
 }
 
 // Importer applies validated migration bundles to a native project store.

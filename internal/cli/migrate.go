@@ -25,9 +25,9 @@ func (cmd *MigrateCommand) Execute(args []string) error {
 	return fmt.Errorf("migrate requires a subcommand\nACTION: Run 'jczl-flow help migrate'.")
 }
 
-// TaskwarriorMigrationCommand imports one explicit Taskwarrior snapshot.
+// TaskwarriorMigrationCommand imports Taskwarrior state into native flow.
 type TaskwarriorMigrationCommand struct {
-	Source        string `long:"source" description:"Taskwarrior export JSON path"`
+	Source        string `long:"source" description:"Use an explicit Taskwarrior export JSON snapshot"`
 	LegacyDataDir string `long:"legacy-data-dir" description:"Optional legacy focus/session directory"`
 	Apply         bool   `long:"apply" description:"Write the migration to native SQLite"`
 	DryRun        bool   `long:"dry-run" description:"Validate without writing (default)"`
@@ -51,13 +51,16 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 		}
 		return cmd.listIssues()
 	}
-	if strings.TrimSpace(cmd.Source) == "" {
-		return fmt.Errorf("migration source is required\nACTION: Run 'jczl-flow migrate taskwarrior --source <export.json>'.")
-	}
 	if cmd.Apply && cmd.DryRun {
 		return fmt.Errorf("--apply and --dry-run cannot be combined\nACTION: Choose --apply or omit it for the default dry-run.")
 	}
-	source, err := migration.LoadTaskwarriorExport(cmd.Source)
+	var source []migration.LegacyTask
+	var err error
+	if strings.TrimSpace(cmd.Source) != "" {
+		source, err = migration.LoadTaskwarriorExport(cmd.Source)
+	} else {
+		source, err = migration.ExportTaskwarrior(cmd.appOpts.Context(), cmd.appOpts.TaskData)
+	}
 	if err != nil {
 		return err
 	}
