@@ -510,6 +510,66 @@ func TestMigrationRejectsInvalidLegacyMapBeforeWriting(t *testing.T) {
 	}
 }
 
+func TestMigrationRejectsMissingLegacyMap(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	source := harness.WriteFile(t, "source.json", []byte("[]"))
+	missing := filepath.Join(harness.Root, "missing-map.json")
+
+	code, stdout, stderr := run(t, context.Background(), flowEnv(harness), "migrate", "taskwarrior", "--source", source, "--legacy-map", missing)
+	if code != 1 || !strings.Contains(stderr, "read legacy map") || !strings.Contains(stderr, "ACTION:") {
+		t.Fatalf("missing map = code %d, stdout=%q, stderr=%q; want actionable failure", code, stdout, stderr)
+	}
+	if _, err := os.Stat(harness.DatabasePath); !os.IsNotExist(err) {
+		t.Fatalf("missing map created target database: %v", err)
+	}
+}
+
+func TestMigrationRejectsInvalidLegacyModeMap(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	source := harness.WriteFile(t, "source.json", []byte("[]"))
+	legacyMap := harness.WriteFile(t, "legacy-map.json", []byte(`{"modes":{"PLAN":"NOT_A_MODE"}}`))
+
+	code, stdout, stderr := run(t, context.Background(), flowEnv(harness), "migrate", "taskwarrior", "--source", source, "--legacy-map", legacyMap)
+	if code != 1 || !strings.Contains(stderr, "unsupported mode") || !strings.Contains(stderr, "ACTION:") {
+		t.Fatalf("invalid mode map = code %d, stdout=%q, stderr=%q; want actionable failure", code, stdout, stderr)
+	}
+	if _, err := os.Stat(harness.DatabasePath); !os.IsNotExist(err) {
+		t.Fatalf("invalid mode map created target database: %v", err)
+	}
+}
+
+func TestMigrationLegacyMapIsProjectScoped(t *testing.T) {
+	first := testharness.NewHarness(t, "project-alpha", "session")
+	second := testharness.NewHarness(t, "project-beta", "session")
+	sourceJSON := []byte(`[
+  {
+    "uuid": "33333333-3333-4333-8333-333333333333",
+    "project": "parity",
+    "description": "Scoped map task",
+    "status": "pending",
+    "annotations": [{"description": "DONE: scoped"}]
+  }
+]`)
+	firstSource := first.WriteFile(t, "source.json", sourceJSON)
+	secondSource := second.WriteFile(t, "source.json", sourceJSON)
+	legacyMap := first.WriteFile(t, "legacy-map.json", []byte(`{"annotations":{"DONE":"OUTCOME"}}`))
+
+	if output, err := runFlow(t, first, "migrate", "taskwarrior", "--source", firstSource, "--legacy-map", legacyMap, "--apply"); err != nil {
+		t.Fatalf("mapped first migration: %v\n%s", err, output)
+	}
+	if output, err := runFlow(t, second, "migrate", "taskwarrior", "--source", secondSource, "--apply"); err != nil {
+		t.Fatalf("unmapped second migration: %v\n%s", err, output)
+	}
+	firstNotes, err := runFlow(t, first, "notes", "33333333-3333-4333-8333-333333333333")
+	if err != nil || !strings.Contains(firstNotes, "OUTCOME: [LEGACY:DONE] scoped") {
+		t.Fatalf("first notes = %q, err %v; want mapped outcome", firstNotes, err)
+	}
+	secondNotes, err := runFlow(t, second, "notes", "33333333-3333-4333-8333-333333333333")
+	if err != nil || !strings.Contains(secondNotes, "NOTE: [LEGACY:DONE] scoped") {
+		t.Fatalf("second notes = %q, err %v; want default NOTE", secondNotes, err)
+	}
+}
+
 func TestMigrationRejectsConflictingModes(t *testing.T) {
 	harness := testharness.NewHarness(t, "project-alpha", "session")
 	source := harness.WriteFile(t, "source.json", []byte("[]"))
