@@ -173,26 +173,42 @@ archived lifecycle state.
 
 ## 3. Capture and inspect the source safely
 
-Never manually export `TASKDATA`, and never use a raw `task` command for this
-workflow. Use the project-aware wrapper with the exact launcher data location.
-The source is read-only input.
+The normal migration path invokes the `task` executable directly as a
+subprocess. It preflights the executable, passes the explicit data directory
+with `rc.data.location`, captures JSON from stdout, and reports stderr as an
+actionable migration error. The source is read-only input; the native flow
+database is the only write target.
 
 ```bash
 set -eu
 
-SOURCE_DATA="$HOME/.jacazul-ai/.task/jacazul-ai_launcher"
-WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/flow-migration.XXXXXX")"
-TASK_EXPORT="$WORK_DIR/tasks.json"
+PROJECT_ID="<target-project>"
+TASK_DATA="$HOME/.jacazul-ai/.task/$PROJECT_ID"
+TARGET_HOME="$(mktemp -d "${TMPDIR:-/tmp}/flow-home.XXXXXX")"
+TARGET_DB="$TARGET_HOME/flow/$PROJECT_ID/flow.sqlite3"
+LEGACY_STATE="$(mktemp -d "${TMPDIR:-/tmp}/flow-legacy.XXXXXX")"
 
-# Read only the canonical launcher silo.
-taskp "rc.data.location=$SOURCE_DATA" export > "$TASK_EXPORT"
-sha256sum "$TASK_EXPORT" > "$TASK_EXPORT.sha256"
+jczl-flow \
+  --home "$TARGET_HOME" \
+  --project "$PROJECT_ID" \
+  --database-path "$TARGET_DB" \
+  --taskdata "$TASK_DATA" \
+  migrate taskwarrior \
+  --legacy-data-dir "$LEGACY_STATE" \
+  --dry-run
 ```
 
-To verify archive pairs before changing fixtures:
+If `task` is absent, the command fails before opening the native database and
+prints an `ACTION:` explaining how to make the executable available. An
+already captured JSON snapshot remains available as an explicit offline
+alternative with `--source`; that mode does not invoke Taskwarrior.
+
+To verify archive pairs in an already captured offline snapshot before
+changing fixtures:
 
 ```bash
-python3 - "$TASK_EXPORT" <<'PY'
+TASK_EXPORT="/path/to/tasks.json"
+python3 - "$TASK_EXPORT" <<'PY
 import json
 import sys
 
@@ -239,8 +255,8 @@ jczl-flow \
   --home "$TARGET_HOME" \
   --project "$PROJECT_ID" \
   --database-path "$TARGET_DB" \
+  --taskdata "$TASK_DATA" \
   migrate taskwarrior \
-  --source "$TASK_EXPORT" \
   --legacy-data-dir "$LEGACY_STATE" \
   --dry-run
 ```
@@ -256,8 +272,8 @@ jczl-flow \
   --home "$TARGET_HOME" \
   --project "$PROJECT_ID" \
   --database-path "$TARGET_DB" \
+  --taskdata "$TASK_DATA" \
   migrate taskwarrior \
-  --source "$TASK_EXPORT" \
   --legacy-data-dir "$LEGACY_STATE" \
   --apply
 ```
@@ -380,7 +396,7 @@ apply, idempotency, differential behavior, and rollback checks pass.
 - Do not force archive-bucket tasks into an archived task state.
 - Do not silently drop incompatible metadata.
 - Do not abort the whole migration for a record-level metadata ERROR.
-- Do not manually set `TASKDATA` or bypass `taskp`/the explicit importer.
+- Do not run raw `task` manually for the cutover; invoke `jczl-flow migrate taskwarrior`, which owns executable discovery, explicit data-directory selection, and error handling.
 - Do not run migration tests against the operator's real database.
 - Do not use stale handoff counts as canonical fixtures; recapture and checksum
   the launcher export first.

@@ -51,7 +51,7 @@ focus → execute → note → outcome → done → re-anchor
 
 ## Rules
 
-- Never call raw `task` or `taskp`; flow is the only workflow interface.
+- Never call raw `task` or `taskp` from the agent; flow is the only workflow interface. The migration command may invoke `task` internally through its controlled subprocess boundary.
 - Use short UUIDs to refer to tasks, never positions.
 - Treat an `ACTION:` line in an error as the next valid move.
 - Project and session are isolation boundaries; never cross them.

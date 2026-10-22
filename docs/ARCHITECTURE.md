@@ -264,11 +264,13 @@ Required cross-backend invariants include:
 ## Taskwarrior Compatibility
 
 Taskwarrior compatibility is limited to the import boundary in
-`internal/migration`. It reads an explicit Taskwarrior export snapshot and
-optional legacy focus and session files, and writes native records through the
-store. It must never become the normal local backend, a server dependency, or
-the source of truth for workflow state, and normal operation never invokes the
-Taskwarrior binary. The procedure is documented in [migration.md](migration.md).
+`internal/migration`. By default, that boundary preflights and invokes the
+Taskwarrior executable directly with an explicit data directory, or accepts an
+explicit export snapshot for offline runs. It reads optional legacy focus and
+session files and writes native records through the store. It must never become
+the normal local backend, a server dependency, or the source of truth for
+workflow state, and normal operation never invokes the Taskwarrior binary. The
+procedure is documented in [migration.md](migration.md).
 
 ## Team Orchestration
 

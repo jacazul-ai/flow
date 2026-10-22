@@ -262,7 +262,7 @@ The root help exposes canonical commands once in this fixed order:
 
 ### Migrate legacy state
 
-- `migrate`: import an explicit Taskwarrior snapshot into native flow.
+- `migrate`: import Taskwarrior state into native flow; by default it runs `task` directly, while `--source` accepts an explicit offline snapshot.
 
 ## Compatibility aliases
 
