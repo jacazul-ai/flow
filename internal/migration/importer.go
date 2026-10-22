@@ -64,6 +64,12 @@ type LegacyAnnotation struct {
 
 // BuildBundle validates and maps a Taskwarrior export to native records.
 func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []string, error) {
+	return BuildBundleWithMap(projectID, source, LegacyMap{})
+}
+
+// BuildBundleWithMap applies explicit legacy prefix mappings while building
+// native records.
+func BuildBundleWithMap(projectID string, source []LegacyTask, legacyMap LegacyMap) (task.ImportBundle, []string, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
 		return task.ImportBundle{}, nil, errors.New("project ID is required")
@@ -120,7 +126,7 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 			updatedAt = createdAt
 		}
 
-		description, mode, modeWarning, metadataDescription := migrateDescription(current.Description)
+		description, mode, modeWarning, metadataDescription := migrateDescription(current.Description, legacyMap)
 		if modeWarning != "" {
 			warnings = append(warnings, fmt.Sprintf("task %s: %s", current.UUID, modeWarning))
 		}
@@ -173,7 +179,7 @@ func BuildBundle(projectID string, source []LegacyTask) (task.ImportBundle, []st
 		}
 		outcome := strings.TrimSpace(current.Outcome)
 		for _, annotation := range current.Annotations {
-			kind, body, warning := migrateAnnotation(annotation.Description)
+			kind, body, warning := migrateAnnotation(annotation.Description, legacyMap)
 			if warning != "" {
 				warnings = append(warnings, fmt.Sprintf("task %s: %s", current.UUID, warning))
 			}
@@ -380,36 +386,52 @@ func (i *Importer) Apply(ctx context.Context, bundle task.ImportBundle) (task.Im
 
 var modePrefix = regexp.MustCompile(`^\[([A-Z-]+)\]\s*(.*)$`)
 
-func migrateDescription(description string) (string, task.TaskMode, string, string) {
+func migrateDescription(description string, legacyMap LegacyMap) (string, task.TaskMode, string, string) {
 	cleaned := strings.TrimSpace(description)
 	mode := task.ModeUnspecified
+	modeWarning := ""
 	matches := modePrefix.FindStringSubmatch(cleaned)
 	if len(matches) != 0 {
-		parsed, err := task.ParseTaskMode(matches[1])
-		if err != nil || parsed == task.ModeUnspecified {
-			return cleaned, task.ModeUnspecified, fmt.Sprintf("unknown mode prefix [%s] retained in description", matches[1]), ""
+		prefix := strings.TrimSpace(matches[1])
+		parsed, err := task.ParseTaskMode(prefix)
+		if err == nil && parsed != task.ModeUnspecified {
+			mode = parsed
+			cleaned = strings.TrimSpace(matches[2])
+		} else if mapped, ok := legacyMap.mode(prefix); ok {
+			mode = mapped
+			cleaned = strings.TrimSpace(matches[2])
+			modeWarning = fmt.Sprintf("mapped legacy mode prefix [%s] to %s", prefix, mapped.String())
+		} else {
+			return cleaned, task.ModeUnspecified, fmt.Sprintf("unknown mode prefix [%s] retained in description", prefix), ""
 		}
-		mode = parsed
-		cleaned = strings.TrimSpace(matches[2])
 	}
 	if utf8.RuneCountInString(cleaned) <= task.TitleMaxLength {
-		return cleaned, mode, "", ""
+		return cleaned, mode, modeWarning, ""
 	}
 	prefix := []rune(cleaned)[:50]
 	title := string(prefix) + " FIXME: <truncated:50>"
-	return title, mode, fmt.Sprintf("title exceeded %d characters; full text preserved in description", task.TitleMaxLength), cleaned
+	if modeWarning != "" {
+		modeWarning += "; "
+	}
+	modeWarning += fmt.Sprintf("title exceeded %d characters; full text preserved in description", task.TitleMaxLength)
+	return title, mode, modeWarning, cleaned
 }
 
-func migrateAnnotation(description string) (string, string, string) {
+func migrateAnnotation(description string, legacyMap LegacyMap) (string, string, string) {
 	kind := "NOTE"
 	body := strings.TrimSpace(description)
 	if prefix, remainder, ok := strings.Cut(body, ":"); ok {
+		prefix = strings.TrimSpace(prefix)
+		if mapped, known := legacyMap.annotation(prefix); known {
+			body = fmt.Sprintf("[LEGACY:%s] %s", prefix, strings.TrimSpace(remainder))
+			return mapped, body, fmt.Sprintf("mapped legacy annotation kind %q to %s", prefix, mapped)
+		}
 		if canonical, known := task.NormalizeAnnotationKind(prefix); known {
 			kind = canonical
 			body = strings.TrimSpace(remainder)
-		} else if strings.TrimSpace(prefix) != "" {
-			body = fmt.Sprintf("[LEGACY:%s] %s", strings.TrimSpace(prefix), strings.TrimSpace(remainder))
-			return kind, body, fmt.Sprintf("unknown annotation kind %q retained as NOTE", strings.TrimSpace(prefix))
+		} else if prefix != "" {
+			body = fmt.Sprintf("[LEGACY:%s] %s", prefix, strings.TrimSpace(remainder))
+			return kind, body, fmt.Sprintf("unknown annotation kind %q retained as NOTE", prefix)
 		}
 	}
 	if body == "" {

@@ -97,7 +97,13 @@ func LoadLegacyState(dataDir string) ([]LegacySession, error) {
 
 // BuildBundleWithState adds legacy focus and session state to a task bundle.
 func BuildBundleWithState(projectID string, source []LegacyTask, sessions []LegacySession) (task.ImportBundle, []string, error) {
-	bundle, warnings, err := BuildBundle(projectID, source)
+	return BuildBundleWithStateAndMap(projectID, source, sessions, LegacyMap{})
+}
+
+// BuildBundleWithStateAndMap applies explicit legacy prefix mappings while
+// adding legacy focus and session state to a task bundle.
+func BuildBundleWithStateAndMap(projectID string, source []LegacyTask, sessions []LegacySession, legacyMap LegacyMap) (task.ImportBundle, []string, error) {
+	bundle, warnings, err := BuildBundleWithMap(projectID, source, legacyMap)
 	if err != nil {
 		return task.ImportBundle{}, warnings, err
 	}

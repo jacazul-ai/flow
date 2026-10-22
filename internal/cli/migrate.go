@@ -28,6 +28,7 @@ func (cmd *MigrateCommand) Execute(args []string) error {
 // TaskwarriorMigrationCommand imports Taskwarrior state into native flow.
 type TaskwarriorMigrationCommand struct {
 	Source        string `long:"source" description:"Use an explicit Taskwarrior export JSON snapshot"`
+	LegacyMap     string `long:"legacy-map" description:"Optional legacy annotation and mode mapping JSON"`
 	LegacyDataDir string `long:"legacy-data-dir" description:"Optional legacy focus/session directory"`
 	Apply         bool   `long:"apply" description:"Write the migration to native SQLite"`
 	DryRun        bool   `long:"dry-run" description:"Validate without writing (default)"`
@@ -46,7 +47,7 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 		return fmt.Errorf("migrate taskwarrior accepts flags only")
 	}
 	if cmd.Issues {
-		if cmd.Apply || cmd.DryRun || strings.TrimSpace(cmd.Source) != "" || strings.TrimSpace(cmd.LegacyDataDir) != "" {
+		if cmd.Apply || cmd.DryRun || strings.TrimSpace(cmd.Source) != "" || strings.TrimSpace(cmd.LegacyMap) != "" || strings.TrimSpace(cmd.LegacyDataDir) != "" {
 			return fmt.Errorf("--issues cannot be combined with migration input or write flags")
 		}
 		return cmd.listIssues()
@@ -54,8 +55,11 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 	if cmd.Apply && cmd.DryRun {
 		return fmt.Errorf("--apply and --dry-run cannot be combined\nACTION: Choose --apply or omit it for the default dry-run.")
 	}
+	legacyMap, err := migration.LoadLegacyMap(cmd.LegacyMap)
+	if err != nil {
+		return err
+	}
 	var source []migration.LegacyTask
-	var err error
 	if strings.TrimSpace(cmd.Source) != "" {
 		source, err = migration.LoadTaskwarriorExport(cmd.Source)
 	} else {
@@ -68,7 +72,7 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	bundle, warnings, err := migration.BuildBundleWithState(cmd.appOpts.ProjectID, source, legacyState)
+	bundle, warnings, err := migration.BuildBundleWithStateAndMap(cmd.appOpts.ProjectID, source, legacyState, legacyMap)
 	if err != nil {
 		return err
 	}

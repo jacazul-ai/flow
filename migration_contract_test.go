@@ -437,6 +437,79 @@ func TestMigrationSessionStateIsolatedByProject(t *testing.T) {
 	}
 }
 
+func TestMigrationAppliesExplicitLegacyMap(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	source := harness.WriteFile(t, "source.json", []byte(`[
+  {
+    "uuid": "11111111-1111-4111-8111-111111111111",
+    "project": "parity",
+    "description": "[PLAN] Mapped task",
+    "status": "pending",
+    "annotations": [{"description": "DONE: finished"}]
+  }
+]`))
+	legacyMap := harness.WriteFile(t, "legacy-map.json", []byte(`{
+  "annotations": {"done": "outcome"},
+  "modes": {"plan": "design"}
+}`))
+
+	output, err := runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--legacy-map", legacyMap, "--apply")
+	if err != nil || !strings.Contains(output, "mapped legacy annotation") || !strings.Contains(output, "mapped legacy mode") {
+		t.Fatalf("mapped migration = %q, err %v; want mapping diagnostics", output, err)
+	}
+	status, err := runFlow(t, harness, "status", "parity", "--format", "json", "--force")
+	if err != nil {
+		t.Fatalf("mapped status: %v\n%s", err, status)
+	}
+	if !strings.Contains(status, `"mode":"DESIGN"`) {
+		t.Fatalf("mapped status = %q, want DESIGN mode", status)
+	}
+	notes, err := runFlow(t, harness, "notes", "11111111-1111-4111-8111-111111111111")
+	if err != nil || !strings.Contains(notes, "OUTCOME: [LEGACY:DONE] finished") {
+		t.Fatalf("mapped notes = %q, err %v; want preserved legacy prefix", notes, err)
+	}
+}
+
+func TestMigrationNullLegacyMapKeepsFallback(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	source := harness.WriteFile(t, "source.json", []byte(`[
+  {
+    "uuid": "22222222-2222-4222-8222-222222222222",
+    "project": "parity",
+    "description": "[PLAN] Null mapping",
+    "status": "pending",
+    "annotations": [{"description": "DONE: unchanged"}]
+  }
+]`))
+	legacyMap := harness.WriteFile(t, "legacy-map.json", []byte(`{
+  "annotations": {"DONE": null},
+  "modes": {"PLAN": null}
+}`))
+
+	output, err := runFlow(t, harness, "migrate", "taskwarrior", "--source", source, "--legacy-map", legacyMap, "--apply")
+	if err != nil || !strings.Contains(output, "unknown annotation kind") || !strings.Contains(output, "unknown mode prefix") {
+		t.Fatalf("null mapping = %q, err %v; want existing warnings", output, err)
+	}
+	notes, err := runFlow(t, harness, "notes", "22222222-2222-4222-8222-222222222222")
+	if err != nil || !strings.Contains(notes, "NOTE: [LEGACY:DONE] unchanged") {
+		t.Fatalf("null mapping notes = %q, err %v; want NOTE fallback", notes, err)
+	}
+}
+
+func TestMigrationRejectsInvalidLegacyMapBeforeWriting(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	source := harness.WriteFile(t, "source.json", []byte("[]"))
+	legacyMap := harness.WriteFile(t, "legacy-map.json", []byte(`{"annotations":{"DONE":"NOT_A_KIND"}}`))
+
+	code, stdout, stderr := run(t, context.Background(), flowEnv(harness), "migrate", "taskwarrior", "--source", source, "--legacy-map", legacyMap)
+	if code != 1 || !strings.Contains(stderr, "unsupported kind") || !strings.Contains(stderr, "ACTION:") {
+		t.Fatalf("invalid map = code %d, stdout=%q, stderr=%q; want actionable failure", code, stdout, stderr)
+	}
+	if _, err := os.Stat(harness.DatabasePath); !os.IsNotExist(err) {
+		t.Fatalf("invalid map created target database: %v", err)
+	}
+}
+
 func TestMigrationRejectsConflictingModes(t *testing.T) {
 	harness := testharness.NewHarness(t, "project-alpha", "session")
 	source := harness.WriteFile(t, "source.json", []byte("[]"))
