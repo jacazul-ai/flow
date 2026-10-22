@@ -125,8 +125,8 @@ diff.
 6. The command stays named `skill` so it is not confused with the launcher's
    `jacazul-hatch`.
 7. Taskwarrior is a migration-time compatibility source only: the default
-   migration preflights and invokes `task` directly, while normal flow commands
-   remain native and do not invoke Taskwarrior.
+   migration preflights and invokes `task` directly, accepts an explicit binary
+   from the launcher, and keeps normal flow commands native.
 
 ## Known gaps
 

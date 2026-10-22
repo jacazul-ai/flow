@@ -52,6 +52,7 @@ func TestInfoFlagsOverrideRuntimeAndRenderJSON(t *testing.T) {
 	flagHome := filepath.Join(t.TempDir(), "flag")
 	flagDatabase := filepath.Join(t.TempDir(), "flag.sqlite3")
 	flagTaskData := filepath.Join(t.TempDir(), "taskdata")
+	flagTaskBinary := filepath.Join(t.TempDir(), "task")
 	env := flow.Env{
 		ProjectID:    "runtime-project",
 		SessionID:    "runtime-session",
@@ -68,6 +69,7 @@ func TestInfoFlagsOverrideRuntimeAndRenderJSON(t *testing.T) {
 		"--home", flagHome,
 		"--database-path", flagDatabase,
 		"--taskdata", flagTaskData,
+		"--task-binary", flagTaskBinary,
 		"info", "--format", "json",
 	)
 	if code != 0 {
@@ -82,6 +84,7 @@ func TestInfoFlagsOverrideRuntimeAndRenderJSON(t *testing.T) {
 		`"home_source":"flag"`,
 		`"taskdata":"` + flagTaskData + `"`,
 		`"taskdata_source":"flag"`,
+		`"task_binary":"` + flagTaskBinary + `"`,
 		`"database_path":"` + flagDatabase + `"`,
 		`"database_source":"flag"`,
 	} {

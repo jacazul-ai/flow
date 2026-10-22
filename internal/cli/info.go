@@ -59,6 +59,7 @@ func runtimeInfoRecord(opts *config.AppOptions, workingDirectory string) record 
 		{"home_exists", pathExists(opts.Home)},
 		{"taskdata", opts.TaskData},
 		{"taskdata_source", sourceOrDefault(opts.Runtime.TaskDataSource)},
+		{"task_binary", opts.TaskBinary},
 		{"taskdata_exists", pathExists(opts.TaskData)},
 		{"database_path", opts.DatabasePath},
 		{"database_source", sourceOrDefault(opts.Runtime.DatabaseSource)},

@@ -265,8 +265,9 @@ Required cross-backend invariants include:
 
 Taskwarrior compatibility is limited to the import boundary in
 `internal/migration`. By default, that boundary preflights and invokes the
-Taskwarrior executable directly with an explicit data directory, or accepts an
-explicit export snapshot for offline runs. It reads optional legacy focus and
+Taskwarrior executable directly with an explicit data directory; an embedding
+launcher can provide the resolved executable path explicitly. It also accepts
+an explicit export snapshot for offline runs. It reads optional legacy focus and
 session files and writes native records through the store. It must never become
 the normal local backend, a server dependency, or the source of truth for
 workflow state, and normal operation never invokes the Taskwarrior binary. The

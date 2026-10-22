@@ -41,6 +41,7 @@ type AppOptions struct {
 	Version      bool   `short:"V" long:"version" description:"Show version"`
 	ProjectID    string `long:"project" description:"Project identity"`
 	TaskData     string `long:"taskdata" description:"Legacy Taskwarrior data directory"`
+	TaskBinary   string `long:"task-binary" description:"Explicit Taskwarrior executable for migrations"`
 	DatabasePath string `long:"database-path" description:"Project SQLite database path"`
 	SessionID    string `long:"session" description:"Workflow session identity"`
 	Home         string `long:"home" description:"Runtime home directory"`
@@ -66,6 +67,7 @@ type Runtime struct {
 	ProjectID    string
 	SessionID    string
 	DatabasePath string
+	TaskBinary   string
 	Home         string
 	// Format is the default output format for report commands. A report
 	// command's --format flag wins over it.
@@ -113,6 +115,9 @@ func WithAppOptions(opts *AppOptions, fns ...AppOptionsFunc) func(
 
 // Resolve fills project-scoped options from flags first, then the runtime context.
 func Resolve(opts *AppOptions) error {
+	if opts.TaskBinary == "" {
+		opts.TaskBinary = opts.Runtime.TaskBinary
+	}
 	if opts.Stdout == nil {
 		opts.Stdout = io.Discard
 	}

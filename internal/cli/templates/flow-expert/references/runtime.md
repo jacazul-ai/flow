@@ -16,8 +16,10 @@ The launcher owns these values: never export or override them by hand, and
 never point flow at another project's state. Legacy Taskwarrior variables are
 not read; `migrate` imports legacy state explicitly. The default migration
 path checks for `task` and invokes it directly with the resolved Taskwarrior
-data directory. An explicit `--source` snapshot is the offline alternative;
-normal flow commands never invoke Taskwarrior.
+data directory. Launchers may provide the resolved executable through
+`--task-binary` or the embedding `flow.Env.TaskBinary`. An explicit `--source`
+snapshot is the offline alternative; normal flow commands never invoke
+Taskwarrior.
 
 `info` shows the resolved values and where each one came from, without
 opening storage.

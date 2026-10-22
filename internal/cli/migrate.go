@@ -12,7 +12,7 @@ import (
 
 // MigrateCommand groups explicit legacy migration commands.
 type MigrateCommand struct {
-	Taskwarrior TaskwarriorMigrationCommand `command:"taskwarrior" description:"Import a Taskwarrior export snapshot"`
+	Taskwarrior TaskwarriorMigrationCommand `command:"taskwarrior" description:"Import legacy Taskwarrior state"`
 }
 
 // SetAppOptions supplies project-scoped options to migration commands.
@@ -40,7 +40,7 @@ func (cmd *TaskwarriorMigrationCommand) SetAppOptions(opts *config.AppOptions) {
 	cmd.appOpts = opts
 }
 
-// Execute validates and optionally applies one migration snapshot.
+// Execute validates and optionally applies one Taskwarrior migration.
 func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 	if len(args) != 0 {
 		return fmt.Errorf("migrate taskwarrior accepts flags only")
@@ -59,7 +59,7 @@ func (cmd *TaskwarriorMigrationCommand) Execute(args []string) error {
 	if strings.TrimSpace(cmd.Source) != "" {
 		source, err = migration.LoadTaskwarriorExport(cmd.Source)
 	} else {
-		source, err = migration.ExportTaskwarrior(cmd.appOpts.Context(), cmd.appOpts.TaskData)
+		source, err = migration.ExportTaskwarrior(cmd.appOpts.Context(), cmd.appOpts.TaskData, cmd.appOpts.TaskBinary)
 	}
 	if err != nil {
 		return err

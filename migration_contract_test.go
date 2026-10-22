@@ -92,6 +92,68 @@ func TestMigrationFailsWhenTaskExecutableIsMissing(t *testing.T) {
 	}
 }
 
+func TestMigrationUsesExplicitTaskBinaryBeforePath(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	harness.FakeCommand(t, "task", `#!/bin/sh
+printf '%s\\n' "decoy task selected" >&2
+exit 9
+`)
+	explicit := harness.FakeCommand(t, "real-task", `#!/bin/sh
+cat <<'JSON'
+[{"uuid":"11111111-1111-4111-8111-111111111111","project":"parity","description":"Explicit binary","status":"pending"}]
+JSON
+`)
+
+	code, stdout, stderr := run(t, context.Background(), flowEnv(harness), "--task-binary", explicit, "migrate", "taskwarrior")
+	if code != 0 {
+		t.Fatalf("migration exit = %d, stdout=%q, stderr=%q; want explicit binary", code, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "Records: created=1") {
+		t.Fatalf("stdout = %q, want one imported record", stdout)
+	}
+	if strings.Contains(stderr, "decoy task selected") {
+		t.Fatalf("stderr = %q, explicit binary fell back to PATH", stderr)
+	}
+}
+
+func TestMigrationRejectsMissingExplicitTaskBinary(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	harness.FakeCommand(t, "task", `#!/bin/sh
+printf '%s\\n' "decoy task selected" >&2
+exit 9
+`)
+	missing := filepath.Join(harness.Root, "missing-task")
+
+	code, stdout, stderr := run(t, context.Background(), flowEnv(harness), "--task-binary", missing, "migrate", "taskwarrior")
+	if code != 1 {
+		t.Fatalf("migration exit = %d, stdout=%q, stderr=%q; want failure", code, stdout, stderr)
+	}
+	if !strings.Contains(stderr, "is unavailable") || !strings.Contains(stderr, "--task-binary") || strings.Contains(stderr, "decoy task selected") {
+		t.Fatalf("missing explicit binary = %q, want explicit-path error without PATH fallback", stderr)
+	}
+}
+
+func TestMigrationUsesExplicitTaskBinaryFromEnv(t *testing.T) {
+	harness := testharness.NewHarness(t, "project-alpha", "session")
+	harness.FakeCommand(t, "task", `#!/bin/sh
+echo "decoy task selected" >&2
+exit 9
+`)
+	explicit := harness.FakeCommand(t, "real-task", `#!/bin/sh
+echo '[]'
+`)
+	env := flowEnv(harness)
+	env.TaskBinary = explicit
+
+	code, stdout, stderr := run(t, context.Background(), env, "migrate", "taskwarrior")
+	if code != 0 {
+		t.Fatalf("migration exit = %d, stdout=%q, stderr=%q; want Env binary", code, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "Records: created=0") || strings.Contains(stderr, "decoy task selected") {
+		t.Fatalf("migration output = stdout %q, stderr %q; want explicit Env binary", stdout, stderr)
+	}
+}
+
 func TestMigrationReportsTaskSubprocessFailure(t *testing.T) {
 	harness := testharness.NewHarness(t, "project-alpha", "session")
 	harness.FakeCommand(t, "task", `#!/bin/sh

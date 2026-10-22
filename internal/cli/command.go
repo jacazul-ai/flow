@@ -773,10 +773,10 @@ var helpEntries = []helpEntry{
 		topic:     topicRuntime,
 		canonical: "migrate",
 		summary:   "Import legacy workflow state",
-		usage:     "jczl-flow [--taskdata <dir>] migrate taskwarrior [--source <export.json>] [--legacy-data-dir <dir>] [--apply] | --issues",
+		usage:     "jczl-flow [--taskdata <dir>] [--task-binary <path>] migrate taskwarrior [--source <export.json>] [--legacy-data-dir <dir>] [--apply] | --issues",
 		role:      "Use this explicit boundary to move isolated Taskwarrior state into native flow.",
 		preconditions: []string{
-			"By default, Taskwarrior must be available as the task executable; --source is an explicit offline snapshot alternative.",
+			"By default, Taskwarrior must be available as the task executable; --task-binary selects an explicit executable and --source is an offline snapshot alternative.",
 			"Dry-run is the default and does not write the native database.",
 			"Use --apply only after reviewing the migration report.",
 			"Use --issues after apply to inspect the persisted cutoff audit.",
@@ -788,7 +788,7 @@ var helpEntries = []helpEntry{
 			"Never imports derived caches or calls a ticket broker.",
 		},
 		examples: []string{
-			"jczl-flow --taskdata /path/to/taskdata migrate taskwarrior",
+			"jczl-flow --taskdata /path/to/taskdata --task-binary /usr/bin/task migrate taskwarrior",
 			"jczl-flow --taskdata /path/to/taskdata migrate taskwarrior --legacy-data-dir /tmp/legacy-state --dry-run",
 			"jczl-flow --taskdata /path/to/taskdata migrate taskwarrior --legacy-data-dir /tmp/legacy-state --apply",
 			"jczl-flow migrate taskwarrior --source /tmp/tasks.json",

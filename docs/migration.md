@@ -176,8 +176,10 @@ archived lifecycle state.
 The normal migration path invokes the `task` executable directly as a
 subprocess. It preflights the executable, passes the explicit data directory
 with `rc.data.location`, captures JSON from stdout, and reports stderr as an
-actionable migration error. The source is read-only input; the native flow
-database is the only write target.
+actionable migration error. A launcher that already resolved the real binary
+must pass `--task-binary` (or set `flow.Env.TaskBinary` when embedding the
+engine); standalone invocations without it use `task` from `PATH`. The source
+is read-only input; the native flow database is the only write target.
 
 ```bash
 set -eu
@@ -187,12 +189,14 @@ TASK_DATA="$HOME/.jacazul-ai/.task/$PROJECT_ID"
 TARGET_HOME="$(mktemp -d "${TMPDIR:-/tmp}/flow-home.XXXXXX")"
 TARGET_DB="$TARGET_HOME/flow/$PROJECT_ID/flow.sqlite3"
 LEGACY_STATE="$(mktemp -d "${TMPDIR:-/tmp}/flow-legacy.XXXXXX")"
+TASK_BINARY="/path/to/task"
 
 jczl-flow \
   --home "$TARGET_HOME" \
   --project "$PROJECT_ID" \
   --database-path "$TARGET_DB" \
   --taskdata "$TASK_DATA" \
+  --task-binary "$TASK_BINARY" \
   migrate taskwarrior \
   --legacy-data-dir "$LEGACY_STATE" \
   --dry-run
@@ -256,6 +260,7 @@ jczl-flow \
   --project "$PROJECT_ID" \
   --database-path "$TARGET_DB" \
   --taskdata "$TASK_DATA" \
+  --task-binary "$TASK_BINARY" \
   migrate taskwarrior \
   --legacy-data-dir "$LEGACY_STATE" \
   --dry-run

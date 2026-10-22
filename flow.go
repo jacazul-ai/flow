@@ -30,6 +30,9 @@ type Env struct {
 	SessionID string
 	// DatabasePath overrides the default project database location.
 	DatabasePath string
+	// TaskBinary is the explicit Taskwarrior executable for migrations. When
+	// empty, standalone execution resolves task through PATH.
+	TaskBinary string
 	// Home is the runtime root used to derive default paths.
 	Home string
 	// Format is the default format for report commands: text, json,
@@ -124,6 +127,7 @@ func Run(ctx context.Context, args []string, env Env, streams Streams) int {
 			ProjectID:      env.ProjectID,
 			SessionID:      env.SessionID,
 			DatabasePath:   env.DatabasePath,
+			TaskBinary:     env.TaskBinary,
 			Home:           env.Home,
 			Format:         env.Format,
 			ProjectSource:  env.Sources.ProjectID,
