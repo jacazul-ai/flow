@@ -84,7 +84,7 @@ The migration scope includes:
 - UUID-first task references
 - output caching for repeated status/dashboard calls
 
-Long-term, `flow` should implement the Taskwarrior-like behavior needed by Jacazul workflows directly in Go. Taskwarrior compatibility is a design constraint, not the final architecture. The one-time migration boundary may invoke the `task` executable directly to read legacy data; launchers can pass its resolved path through `--task-binary` or `flow.Env.TaskBinary`, and operators can provide an explicit `--legacy-map` for reviewed historical prefixes, while normal `jczl-flow` runtime never depends on Taskwarrior.
+Long-term, `flow` should implement the Taskwarrior-like behavior needed by Jacazul workflows directly in Go. Taskwarrior compatibility is a design constraint, not the final architecture. The one-time migration boundary may invoke the `task` executable directly to read legacy data from an existing `tw-flow` workflow; launchers can pass its resolved path through `--task-binary` or `flow.Env.TaskBinary`, and operators can provide an explicit `--legacy-map` for reviewed historical prefixes. Green-field projects start directly with native `flow`; normal `jczl-flow` runtime never depends on Taskwarrior.
 
 The local engine should also be designed so it can connect to a centralized server in the future. That server would orchestrate tasks, context, session state, and agent workflow coordination across machines or agents when needed.
 

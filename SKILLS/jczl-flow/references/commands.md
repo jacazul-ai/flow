@@ -78,4 +78,4 @@ examples of any command.
 | `help` | Show the agent workflow briefing |
 | `skill` | Render the canonical flow-expert agent skill |
 | `info` | Show resolved runtime defaults |
-| `migrate` | Import legacy workflow state |
+| `migrate` | Migrate legacy tw-flow workflow state |

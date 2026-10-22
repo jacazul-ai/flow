@@ -772,10 +772,11 @@ var helpEntries = []helpEntry{
 		group:     groupMigrateLegacy,
 		topic:     topicRuntime,
 		canonical: "migrate",
-		summary:   "Import legacy workflow state",
+		summary:   "Migrate legacy tw-flow workflow state",
 		usage:     "jczl-flow [--taskdata <dir>] [--task-binary <path>] migrate taskwarrior [--source <export.json>] [--legacy-map <path>] [--legacy-data-dir <dir>] [--apply] | --issues",
-		role:      "Use this explicit boundary to move isolated Taskwarrior state into native flow.",
+		role:      "Use only to migrate an existing tw-flow/Taskwarrior workflow; green-field projects should use native flow commands.",
 		preconditions: []string{
+			"This boundary is for existing tw-flow/Taskwarrior state, not green-field setup.",
 			"By default, Taskwarrior must be available as the task executable; --task-binary selects an explicit executable and --source is an offline snapshot alternative.",
 			"--legacy-map is optional; omitted entries and null values preserve the current fallback behavior.",
 			"Dry-run is the default and does not write the native database.",
@@ -783,6 +784,7 @@ var helpEntries = []helpEntry{
 			"Use --issues after apply to inspect the persisted cutoff audit.",
 		},
 		effects: []string{
+			"Bridges an existing tw-flow/Taskwarrior workflow into native flow without making Taskwarrior a runtime dependency.",
 			"Preflights task, invokes it without a shell, and passes the explicit Taskwarrior data directory.",
 			"Applies only explicitly configured legacy annotation and mode mappings.",
 			"Maps initiatives, UUIDs, dependencies, metadata, annotations, focus, and sessions.",

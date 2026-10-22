@@ -124,10 +124,10 @@ diff.
    non-rendered Pongo2 comment blocks marked `TODO(#26)`.
 6. The command stays named `skill` so it is not confused with the launcher's
    `jacazul-hatch`.
-7. Taskwarrior is a migration-time compatibility source only: the default
-   migration preflights and invokes `task` directly, accepts an explicit binary
-   and optional legacy prefix map from the launcher, and keeps normal flow
-   commands native.
+7. Taskwarrior is a migration-time compatibility source only for existing
+   `tw-flow` projects: the default migration preflights and invokes `task`
+   directly, accepts an explicit binary and optional legacy prefix map from the
+   launcher, and keeps green-field flow commands native.
 
 ## Known gaps
 

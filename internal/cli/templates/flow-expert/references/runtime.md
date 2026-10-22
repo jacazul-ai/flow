@@ -14,9 +14,10 @@ is the same project.
 
 The launcher owns these values: never export or override them by hand, and
 never point flow at another project's state. Legacy Taskwarrior variables are
-not read; `migrate` imports legacy state explicitly. The default migration
-path checks for `task` and invokes it directly with the resolved Taskwarrior
-data directory. Launchers may provide the resolved executable through
+not read; `migrate` imports legacy state explicitly. It is only for existing
+`tw-flow`/Taskwarrior projects; green-field projects start with native flow
+commands. The default migration path checks for `task` and invokes it directly
+with the resolved Taskwarrior data directory. Launchers may provide the resolved executable through
 `--task-binary` or the embedding `flow.Env.TaskBinary`. An explicit `--source`
 snapshot is the offline alternative. `--legacy-map` applies only explicit,
 validated historical annotation and mode mappings; normal flow commands never

@@ -3,7 +3,9 @@
 This is the operational source of truth for the Taskwarrior-to-`flow`
 migration. Read it before changing the importer, writing canonical fixtures, or
 running a cutover. The native SQLite database is the destination; Taskwarrior
-is a read-only compatibility source.
+is a read-only compatibility source. This playbook is only for projects
+migrating an existing `tw-flow` workflow; green-field projects should start
+with native `flow` commands and do not need Taskwarrior.
 
 ## 1. Contract first
 

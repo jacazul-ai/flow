@@ -262,7 +262,7 @@ The root help exposes canonical commands once in this fixed order:
 
 ### Migrate legacy state
 
-- `migrate`: import Taskwarrior state into native flow; by default it runs `task` directly, `--task-binary` selects the executable, `--legacy-map` applies explicit prefix mappings, and `--source` accepts an offline snapshot.
+- `migrate`: migrate an existing `tw-flow`/Taskwarrior workflow into native flow; green-field projects should not run it. By default it runs `task` directly, `--task-binary` selects the executable, `--legacy-map` applies explicit prefix mappings, and `--source` accepts an offline snapshot.
 
 ## Compatibility aliases
 
