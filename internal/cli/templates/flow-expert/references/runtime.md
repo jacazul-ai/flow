@@ -30,6 +30,16 @@ opening storage.
 jacazul flow info
 ```
 
+`init` creates or upgrades the project database on demand and writes no
+workflow state. It reports a created or upgraded database and stays quiet when
+the database is current; `--verbose` also reports the current state. `init`
+never reads Taskwarrior data: a project with an unmigrated `tw-flow` silo must
+migrate it first, because an empty database blocks that migration.
+
+```bash
+jacazul flow init --verbose
+```
+
 ## Schema upgrades
 
 Commands that open SQLite check the embedded Goose schema before running.

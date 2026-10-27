@@ -96,6 +96,9 @@ func TestSkillOutWritesLinkedTree(t *testing.T) {
 		"## Schema upgrades",
 		"embedded Goose schema",
 		"newer than the binary",
+		"jacazul flow init --verbose",
+		"never reads Taskwarrior data: a project with an unmigrated `tw-flow` silo must",
+		"| `init` | Create or upgrade the project database |",
 	} {
 		if !strings.Contains(tree["references/runtime.md"], expected) {
 			t.Fatalf("runtime skill missing %q:\n%s", expected, tree["references/runtime.md"])

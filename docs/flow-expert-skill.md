@@ -117,7 +117,8 @@ diff.
 3. Schema lifecycle is deterministic: commands opening SQLite check the
    embedded Goose version, announce and apply pending upgrades for existing
    databases, stay silent for fresh/current databases, and reject newer schemas
-   with actionable guidance.
+   with actionable guidance. `runtime.md` teaches `init` as the explicit way to
+   settle the database, and warns that it never reads Taskwarrior data.
 4. After `done`, agents re-anchor only to a ready task in the same initiative,
    or clear the focus (see [focus-advance-i-d.md](focus-advance-i-d.md)).
 5. The skill is honest about unimplemented behavior. Gaps are tracked as
