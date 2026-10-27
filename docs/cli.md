@@ -96,6 +96,36 @@ Sources are reported as `flag`, `environment`, `runtime`, `default`, or
 `derived`. This command does not run Taskwarrior export, migrate legacy state,
 read focus files, or create missing directories.
 
+### Project database init
+
+`jczl-flow init` settles the project database ahead of the first workflow
+command. Any command that opens SQLite still creates the database lazily; `init`
+only makes that step explicit and observable. It accepts no arguments and reads
+the global `--verbose` flag, so `jczl-flow init --verbose` and
+`jczl-flow -v init` are equivalent.
+
+```bash
+jczl-flow init
+jczl-flow init --verbose
+jczl-flow --database-path /tmp/flow.sqlite3 init
+```
+
+| Database state | stdout | stderr | Exit |
+|---|---|---|---|
+| Missing | `Created project database at <path> (schema vN)` | — | 0 |
+| Older schema | `Upgraded project database at <path> (vA -> vB)` | `Schema upgrade required: vA -> vB; applying embedded migrations.` | 0 |
+| Left at the previous release's path | `Moved legacy database to <path>`, then the line for the moved database | — | 0 |
+| Current | nothing; with `--verbose`, `Project database is current at <path> (schema vN)` | — | 0 |
+| Newer than the binary, or both database paths present | — | the existing error with `ACTION:` | 1 |
+
+`init` writes no initiatives, tasks, sessions, focus, or cache entries, and it
+never reads Taskwarrior data. That last rule is a trap for direct callers: a
+project that still has an unmigrated `tw-flow`/Taskwarrior silo must run
+`jczl-flow migrate taskwarrior` before the first `init`, because an empty
+native database blocks that migration. The `jacazul` launcher checks the silo
+and migrates it before running any engine command that opens storage,
+including `init`, so the trap only applies when the engine is called directly.
+
 ### Schema upgrades
 
 Commands that open the native SQLite database check the embedded Goose schema
@@ -206,6 +236,7 @@ The root help exposes canonical commands once in this fixed order:
 
 ### Start and organize work
 
+- `init`: create or upgrade the project database;
 - `plan`: create an initiative and chained tasks;
 - `organize`: reorder pending tasks within an initiative;
 - `roadmap`: manage strategic phases;
