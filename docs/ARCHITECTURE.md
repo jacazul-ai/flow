@@ -71,6 +71,19 @@ type Streams struct {
 
 // EnvFromOS builds Env from process environment for standalone executables.
 func EnvFromOS() Env
+
+// Init settles the project database and returns what changed, printing nothing.
+func Init(ctx context.Context, env Env) (InitResult, error)
+
+// InitResult describes what Init changed in the project database.
+type InitResult struct {
+	Path, LegacyPath         string
+	Moved, Created, Upgraded bool
+	From, To                 int64
+}
+
+// Error classes for errors.Is; the messages carry the ACTION.
+var ErrSchemaNewer, ErrDatabaseConflict error
 ```
 
 Rules:
@@ -84,6 +97,10 @@ Rules:
 - `go-flags`, `internal/cli`, storage types, and domain types do not cross the
   boundary. Data-returning entry points such as a structured onboard snapshot
   are added as separate, narrow functions only when a real consumer needs them.
+  `Init` is the first: jacazul settles storage from the `Env` it resolved,
+  before the operator's command and its flags reach `Run`, and renders the
+  typed result in its own voice. `Init` and the `init` command share one
+  implementation, so their behavior cannot drift.
 - The boundary is a concrete function, not a Go interface. There is one
   implementation. A consumer that needs a test seam defines it in its own
   package, for example a function type whose production value is `flow.Run`.

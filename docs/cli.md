@@ -24,6 +24,13 @@ primary help presentation. Root help includes these global options:
 - `--home`: select the runtime home directory;
 - `-h`, `--help`: show the root briefing.
 
+The `jacazul` launcher settles storage from its own resolved runtime before
+the engine parses the operator's flags, so it rejects the six value-taking
+global options (`--project`, `--session`, `--home`, `--database-path`,
+`--taskdata`, `--task-binary`) in its own argv. A contract test in
+`internal/config` pins that list: adding, renaming, or removing a value-taking
+global option fails it, and the change must be announced to the launcher.
+
 Compatibility aliases remain routable and are documented with
 `jczl-flow help <alias>` without appearing as duplicate canonical commands in the
 root taxonomy. Legacy runtime flags are different: `--project-id` and
@@ -125,6 +132,15 @@ project that still has an unmigrated `tw-flow`/Taskwarrior silo must run
 native database blocks that migration. The `jacazul` launcher checks the silo
 and migrates it before running any engine command that opens storage,
 including `init`, so the trap only applies when the engine is called directly.
+
+Embedding callers use `flow.Init(ctx, Env)` instead of running `init` through
+`flow.Run`. It shares the command's implementation, prints nothing, and returns
+an `InitResult` with `Path`, `LegacyPath` (set only when `Moved`), `Moved`,
+`Created`, `Upgraded`, and the schema versions `From` and `To`; the database is
+current when neither `Created` nor `Upgraded` is set. A newer schema and a
+legacy/current database conflict match `flow.ErrSchemaNewer` and
+`flow.ErrDatabaseConflict` with `errors.Is`, and their messages keep the same
+`ACTION:` the command prints.
 
 ### Schema upgrades
 
