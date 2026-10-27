@@ -1,9 +1,10 @@
 // Package flow runs the local project workflow engine.
 //
-// Run is the only entry point. Callers resolve the runtime context and the
-// standard streams and pass them explicitly: Run never reads the process
-// environment or arguments, never writes to the process streams on its own,
-// and never exits the process.
+// Run is the command entry point and Init the library call that settles
+// storage before a command. Callers resolve the runtime context and the
+// standard streams and pass them explicitly: neither reads the process
+// environment or arguments, writes to the process streams on its own, or
+// exits the process.
 package flow
 
 import (
@@ -17,6 +18,7 @@ import (
 
 	"github.com/jacazul-ai/flow/internal/cli"
 	"github.com/jacazul-ai/flow/internal/config"
+	"github.com/jacazul-ai/flow/internal/storage/sqlite"
 	"github.com/jessevdk/go-flags"
 )
 
@@ -121,25 +123,7 @@ func Run(ctx context.Context, args []string, env Env, streams Streams) int {
 		args = []string{"help"}
 	}
 
-	opts := config.AppOptions{
-		Ctx: ctx,
-		Runtime: config.Runtime{
-			ProjectID:      env.ProjectID,
-			SessionID:      env.SessionID,
-			DatabasePath:   env.DatabasePath,
-			TaskBinary:     env.TaskBinary,
-			Home:           env.Home,
-			Format:         env.Format,
-			ProjectSource:  env.Sources.ProjectID,
-			SessionSource:  env.Sources.SessionID,
-			DatabaseSource: env.Sources.DatabasePath,
-			HomeSource:     env.Sources.Home,
-			FormatSource:   env.Sources.Format,
-			Version:        version(),
-		},
-		Stdout: stdout,
-		Stderr: stderr,
-	}
+	opts := appOptions(ctx, env, stdout, stderr)
 	parser := flags.NewParser(&opts, flags.Default&^flags.PrintErrors)
 	parser.Usage = "[Options] command"
 	parser.CommandHandler = config.WithAppOptions(&opts)
@@ -175,6 +159,86 @@ func Run(ctx context.Context, args []string, env Env, streams Streams) int {
 	fmt.Fprintln(stderr, "ACTION: Review the command syntax or run 'jczl-flow help'.")
 	parser.WriteHelp(stderr)
 	return 1
+}
+
+// ErrSchemaNewer classifies an Init or command failure caused by a database
+// whose schema a newer release wrote. The error message carries the ACTION.
+var ErrSchemaNewer = sqlite.ErrSchemaNewer
+
+// ErrDatabaseConflict classifies an Init or command failure caused by a
+// database at both the legacy and the current path. The error message carries
+// the ACTION.
+var ErrDatabaseConflict = sqlite.ErrDatabaseConflict
+
+// InitResult describes what Init changed in the project database.
+//
+// A database is current when neither Created nor Upgraded is set; From and To
+// are then equal. Moved can combine with Upgraded, and LegacyPath is set only
+// when Moved is.
+type InitResult struct {
+	// Path is the project database Init settled.
+	Path string
+	// LegacyPath is where the database was before Init moved it.
+	LegacyPath string
+	// Moved reports that the database was relocated from LegacyPath.
+	Moved bool
+	// Created reports that the database did not exist before Init.
+	Created bool
+	// Upgraded reports that Init applied pending schema migrations.
+	Upgraded bool
+	// From is the schema version found, and To the version left in place.
+	From, To int64
+}
+
+// Init settles the project database the way the init command does: it moves a
+// database left at the legacy path, creates a missing one, or applies pending
+// schema migrations. It writes no initiatives, tasks, sessions, focus, or cache
+// state and prints nothing; the caller renders the result. Env resolves the
+// database path exactly as it does for Run.
+func Init(ctx context.Context, env Env) (InitResult, error) {
+	if err := ctx.Err(); err != nil {
+		return InitResult{}, err
+	}
+	opts := appOptions(ctx, env, nil, nil)
+	if err := config.Resolve(&opts); err != nil {
+		return InitResult{}, err
+	}
+	result, err := cli.InitStorage(&opts)
+	if err != nil {
+		return InitResult{}, err
+	}
+	return InitResult{
+		Path:       result.Path,
+		LegacyPath: result.LegacyPath,
+		Moved:      result.Moved,
+		Created:    result.Created,
+		Upgraded:   result.Upgraded,
+		From:       result.From,
+		To:         result.To,
+	}, nil
+}
+
+// appOptions builds the options every entry point resolves from Env.
+func appOptions(ctx context.Context, env Env, stdout io.Writer, stderr io.Writer) config.AppOptions {
+	return config.AppOptions{
+		Ctx: ctx,
+		Runtime: config.Runtime{
+			ProjectID:      env.ProjectID,
+			SessionID:      env.SessionID,
+			DatabasePath:   env.DatabasePath,
+			TaskBinary:     env.TaskBinary,
+			Home:           env.Home,
+			Format:         env.Format,
+			ProjectSource:  env.Sources.ProjectID,
+			SessionSource:  env.Sources.SessionID,
+			DatabaseSource: env.Sources.DatabasePath,
+			HomeSource:     env.Sources.Home,
+			FormatSource:   env.Sources.Format,
+			Version:        version(),
+		},
+		Stdout: stdout,
+		Stderr: stderr,
+	}
 }
 
 func writerOrDiscard(writer io.Writer) io.Writer {

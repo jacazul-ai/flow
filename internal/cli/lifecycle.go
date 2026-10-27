@@ -191,9 +191,16 @@ func (cmd *DiscardCommand) Execute(args []string) error {
 }
 
 func openStore(opts *config.AppOptions) (*sqlite.Store, error) {
+	store, _, err := settleStore(opts)
+	return store, err
+}
+
+// settleStore opens the project database after moving one left at the legacy
+// path, and reports whether that move happened.
+func settleStore(opts *config.AppOptions) (*sqlite.Store, bool, error) {
 	moved, err := sqlite.MoveLegacyDatabase(opts.LegacyDatabasePath, opts.DatabasePath)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if moved {
 		fmt.Fprintf(opts.Stdout, "Moved legacy database to %s\n", opts.DatabasePath)
@@ -204,9 +211,9 @@ func openStore(opts *config.AppOptions) (*sqlite.Store, error) {
 		return err
 	})
 	if err != nil {
-		return nil, fmt.Errorf("open project database: %w", err)
+		return nil, moved, fmt.Errorf("open project database: %w", err)
 	}
-	return store, nil
+	return store, moved, nil
 }
 
 func oneTaskID(command string, args []string) (string, error) {
