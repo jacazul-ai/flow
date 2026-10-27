@@ -441,11 +441,11 @@ func checkSchemaVersion(ctx context.Context, provider *goose.Provider) (int64, i
 		return 0, 0, fmt.Errorf("read database schema version: %w", err)
 	}
 	if applied > supported {
-		return 0, 0, fmt.Errorf(
+		return 0, 0, classified{class: ErrSchemaNewer, err: fmt.Errorf(
 			"database schema version %d is newer than the %d this binary supports\n"+
 				"ACTION: Upgrade jacazul to the release that wrote this database, "+
 				"or point --database-path at a database this release understands.",
-			applied, supported)
+			applied, supported)}
 	}
 	return applied, supported, nil
 }

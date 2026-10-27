@@ -45,10 +45,10 @@ func MoveLegacyDatabase(legacyPath string, currentPath string) (bool, error) {
 		return false, fmt.Errorf("inspect project database: %w", err)
 	}
 	if currentExists {
-		return false, fmt.Errorf(
+		return false, classified{class: ErrDatabaseConflict, err: fmt.Errorf(
 			"legacy database %s and project database %s both exist\n"+
 				"ACTION: Keep the authoritative database, archive or remove the other, then run the command again.",
-			legacyPath, currentPath)
+			legacyPath, currentPath)}
 	}
 
 	if err := checkpointLegacyDatabase(legacyPath); err != nil {
