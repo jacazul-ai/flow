@@ -139,6 +139,29 @@ var helpEntries = []helpEntry{
 		next: "Run 'jczl-flow focus' only after confirming the resolved database and project paths.",
 	},
 	{
+		name:      "init",
+		group:     groupStartAndOrganize,
+		topic:     topicRuntime,
+		canonical: "init",
+		summary:   "Create or upgrade the project database",
+		usage:     "jczl-flow [--database-path <path>] init [--verbose]",
+		role:      "Use this to create the project database ahead of the first workflow command, or to apply pending schema upgrades on demand.",
+		preconditions: []string{
+			"Runtime values resolve the project database path from flags, launcher environment, or safe defaults.",
+			"init does not read or migrate Taskwarrior data; migrate an existing tw-flow/Taskwarrior silo with 'jczl-flow migrate taskwarrior' before the first init, or the empty database blocks that migration.",
+		},
+		effects: []string{
+			"Moves a database left at the previous release's path, creates a missing database, or applies pending schema migrations.",
+			"Reports a created or upgraded database on stdout and stays quiet when the database is current; --verbose also reports the current state.",
+			"Does not create initiatives, tasks, sessions, focus, or cache entries.",
+		},
+		examples: []string{
+			"jczl-flow init",
+			"jczl-flow init --verbose",
+		},
+		next: "Run 'jczl-flow plan <name> ...' or 'jczl-flow onboard' to start using the database.",
+	},
+	{
 		name:      "onboard",
 		group:     groupExamineState,
 		topic:     topicSessions,

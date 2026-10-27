@@ -46,6 +46,7 @@ var commandFactories = map[string]func() flags.Commander{
 	"help":     func() flags.Commander { return NewHelpCommand() },
 	"skill":    func() flags.Commander { return &SkillCommand{} },
 	"info":     func() flags.Commander { return &InfoCommand{} },
+	"init":     func() flags.Commander { return &InitCommand{} },
 	"onboard":  func() flags.Commander { return &OnboardCommand{} },
 	"plan":     func() flags.Commander { return &PlanCommand{} },
 	"goal":     func() flags.Commander { return &GoalCommand{} },

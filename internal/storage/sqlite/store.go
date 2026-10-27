@@ -29,6 +29,8 @@ type MigrationInfo struct {
 	PreviousVersion int64
 	CurrentVersion  int64
 	UpgradeRequired bool
+	// Created reports that the database file did not exist before Open.
+	Created bool
 }
 
 // MigrationNotice receives a pending schema upgrade before it is applied.
@@ -416,6 +418,7 @@ func (s *Store) migrate(ctx context.Context, databaseExists bool, notice Migrati
 		PreviousVersion: applied,
 		CurrentVersion:  supported,
 		UpgradeRequired: databaseExists && applied < supported,
+		Created:         !databaseExists,
 	}
 	if info.UpgradeRequired && notice != nil {
 		if err := notice(info); err != nil {
