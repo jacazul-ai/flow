@@ -80,10 +80,34 @@ type InitResult struct {
 	Path, LegacyPath         string
 	Moved, Created, Upgraded bool
 	From, To                 int64
+	Origin                   *MigrationOrigin // nil unless migrated
+}
+
+// MigrationOrigin is the legacy source a database was migrated from.
+type MigrationOrigin struct {
+	Path       string
+	MigratedAt time.Time
+}
+
+// MigrateTaskwarrior migrates an export into a new database, printing nothing.
+func MigrateTaskwarrior(ctx context.Context, env Env, options MigrateOptions) (MigrateResult, error)
+
+// MigrateOptions selects the export and the origin to record with it.
+type MigrateOptions struct {
+	Source, Origin string
+	Apply          bool
+}
+
+// MigrateResult describes what a migration validated or wrote.
+type MigrateResult struct {
+	Applied bool
+	Records MigrateCounts  // Created, Updated, Unchanged, Dependencies, ...
+	Issues  []MigrateIssue // Severity, Message
 }
 
 // Error classes for errors.Is; the messages carry the ACTION.
 var ErrSchemaNewer, ErrDatabaseConflict error
+var ErrDatabaseExists, ErrMigrationRecordErrors error
 ```
 
 Rules:
@@ -100,7 +124,11 @@ Rules:
   `Init` is the first: jacazul settles storage from the `Env` it resolved,
   before the operator's command and its flags reach `Run`, and renders the
   typed result in its own voice. `Init` and the `init` command share one
-  implementation, so their behavior cannot drift.
+  implementation, so their behavior cannot drift. `MigrateTaskwarrior` is the
+  second: it covers only migrating a silo into a new database, and records the
+  caller's declared origin so a later `Init` tells the launcher whether the
+  database came from that silo. The playbook in
+  [migration.md](migration.md) has the launcher's four storage cases.
 - The boundary is a concrete function, not a Go interface. There is one
   implementation. A consumer that needs a test seam defines it in its own
   package, for example a function type whose production value is `flow.Run`.

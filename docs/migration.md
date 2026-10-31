@@ -325,6 +325,37 @@ jczl-flow \
 `--issues` is observational; it does not run a new migration or create a
 parent/child run chain.
 
+### Library migration for embedding launchers
+
+An embedding launcher migrates through `flow.MigrateTaskwarrior(ctx, Env,
+MigrateOptions)` instead of running the command. It covers only the cutoff
+case: a legacy silo exists and the project has no flow database yet.
+
+| Legacy silo | Flow database | Launcher action |
+|---|---|---|
+| yes | no | `MigrateTaskwarrior` dry-run, then apply when it is clean |
+| no | no | `Init` creates an empty database |
+| no | yes | `Init` opens the database |
+| yes | yes | `Init`; stay quiet when `InitResult.Origin.Path` is that silo, warn otherwise |
+
+- `MigrateOptions.Source` is the export file and `Origin` is the silo it came
+  from. The launcher exports a temporary copy, so the engine records the
+  declared `Origin` verbatim instead of the export path; the caller compares it
+  with the same canonical value.
+- A dry-run creates nothing. Apply builds the database at a staging path,
+  writes the records and the `migration_origins` mark in one transaction, and
+  links the database into place only after the commit, so a failed or canceled
+  apply leaves no database behind.
+- A database at the current or the legacy flow path returns
+  `flow.ErrDatabaseExists` and nothing is written. ERROR issues fill the
+  `MigrateResult` and return `flow.ErrMigrationRecordErrors`.
+- The silo is never read or written by the engine; the operator moves it away
+  when the warning should stop. The legacy map, legacy state directory,
+  `--issues`, and backups are command-only.
+
+The `migrate taskwarrior` command keeps its behavior: it backs up and re-applies
+onto an existing database and records no origin mark.
+
 ## 5. Mapping checklist
 
 The importer must cover these source values without losing identity:

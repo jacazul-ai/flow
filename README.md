@@ -13,7 +13,7 @@ The engine answers to four names, one per layer:
 | Name | Layer |
 |---|---|
 | `github.com/jacazul-ai/flow` | Go module |
-| `flow` | public Go package: `flow.Run` runs commands, `flow.Init` settles storage |
+| `flow` | public Go package: `flow.Run` runs commands; `flow.Init` and `flow.MigrateTaskwarrior` settle storage |
 | `jczl-flow` | standalone binary, built from `cmd/jczl-flow` |
 | `jacazul flow` | what an operator types |
 

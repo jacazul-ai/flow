@@ -140,14 +140,17 @@ an `InitResult` with `Path`, `LegacyPath` (set only when `Moved`), `Moved`,
 current when neither `Created` nor `Upgraded` is set. A newer schema and a
 legacy/current database conflict match `flow.ErrSchemaNewer` and
 `flow.ErrDatabaseConflict` with `errors.Is`, and their messages keep the same
-`ACTION:` the command prints.
+`ACTION:` the command prints. `InitResult.Origin` is set when the database was
+created by `flow.MigrateTaskwarrior`, carrying the origin the caller declared
+and the migration time; see the library migration section of
+[migration.md](migration.md).
 
 ### Schema upgrades
 
 Commands that open the native SQLite database check the embedded Goose schema
 before running. Fresh databases and databases already at the supported version
 stay silent. An existing older database reports the transition, for example
-`Schema upgrade required: v14 -> v15`, then applies the pending migrations
+`Schema upgrade required: v15 -> v16`, then applies the pending migrations
 automatically. A database newer than the binary is rejected with an `ACTION:`
 to upgrade the engine. There is no separate schema `migrate up` command.
 
