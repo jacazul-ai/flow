@@ -1,10 +1,10 @@
 // Package flow runs the local project workflow engine.
 //
-// Run is the command entry point and Init the library call that settles
-// storage before a command. Callers resolve the runtime context and the
-// standard streams and pass them explicitly: neither reads the process
-// environment or arguments, writes to the process streams on its own, or
-// exits the process.
+// Run is the command entry point. Init and MigrateTaskwarrior are the library
+// calls that settle storage before a command. Callers resolve the runtime
+// context and the standard streams and pass them explicitly: no entry point
+// reads the process environment or arguments, writes to the process streams on
+// its own, or exits the process.
 package flow
 
 import (
@@ -15,9 +15,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"time"
 
 	"github.com/jacazul-ai/flow/internal/cli"
 	"github.com/jacazul-ai/flow/internal/config"
+	"github.com/jacazul-ai/flow/internal/migration"
 	"github.com/jacazul-ai/flow/internal/storage/sqlite"
 	"github.com/jessevdk/go-flags"
 )
@@ -188,6 +190,18 @@ type InitResult struct {
 	Upgraded bool
 	// From is the schema version found, and To the version left in place.
 	From, To int64
+	// Origin is the legacy source the database was migrated from by
+	// MigrateTaskwarrior, or nil when it did not come from such a migration.
+	Origin *MigrationOrigin
+}
+
+// MigrationOrigin is the origin mark MigrateTaskwarrior records with the
+// imported records.
+type MigrationOrigin struct {
+	// Path is the Origin the caller declared, recorded verbatim.
+	Path string
+	// MigratedAt is when the migration committed, in UTC.
+	MigratedAt time.Time
 }
 
 // Init settles the project database the way the init command does: it moves a
@@ -207,7 +221,7 @@ func Init(ctx context.Context, env Env) (InitResult, error) {
 	if err != nil {
 		return InitResult{}, err
 	}
-	return InitResult{
+	initResult := InitResult{
 		Path:       result.Path,
 		LegacyPath: result.LegacyPath,
 		Moved:      result.Moved,
@@ -215,7 +229,96 @@ func Init(ctx context.Context, env Env) (InitResult, error) {
 		Upgraded:   result.Upgraded,
 		From:       result.From,
 		To:         result.To,
-	}, nil
+	}
+	if result.Origin != nil {
+		migratedAt, err := time.Parse(time.RFC3339Nano, result.Origin.MigratedAt)
+		if err != nil {
+			return InitResult{}, fmt.Errorf("read migration origin time %q: %w", result.Origin.MigratedAt, err)
+		}
+		initResult.Origin = &MigrationOrigin{Path: result.Origin.Path, MigratedAt: migratedAt}
+	}
+	return initResult, nil
+}
+
+// ErrDatabaseExists classifies a MigrateTaskwarrior call refused because the
+// project already has a database, at the current or the legacy path. Nothing
+// is written. The error message carries the ACTION.
+var ErrDatabaseExists = migration.ErrDatabaseExists
+
+// ErrMigrationRecordErrors classifies a MigrateTaskwarrior call that finished
+// with ERROR issues; its MigrateResult is filled. The error message carries
+// the ACTION.
+var ErrMigrationRecordErrors = migration.ErrRecordErrors
+
+// MigrateOptions selects the export a MigrateTaskwarrior call reads.
+type MigrateOptions struct {
+	// Source is the path of a Taskwarrior export JSON file.
+	Source string
+	// Origin is the legacy source the export came from. It is recorded
+	// verbatim with the imported records and returned by Init, so the caller
+	// compares it with the same canonical value it declared.
+	Origin string
+	// Apply writes the migration; false validates it as a dry-run.
+	Apply bool
+}
+
+// MigrateCounts counts the records a migration validated or wrote.
+type MigrateCounts struct {
+	Created, Updated, Unchanged     int
+	Dependencies, Annotations, Tags int
+	History, Issues                 int
+}
+
+// MigrateIssue is one WARNING or ERROR found while building the migration.
+type MigrateIssue struct {
+	Severity string
+	Message  string
+}
+
+// MigrateResult describes what MigrateTaskwarrior validated or wrote.
+type MigrateResult struct {
+	// Applied reports that the records and the origin mark were written.
+	Applied bool
+	Records MigrateCounts
+	Issues  []MigrateIssue
+}
+
+// MigrateTaskwarrior migrates a Taskwarrior export into a new project
+// database. A dry-run creates nothing. Apply creates the database and writes
+// the records and the origin mark in one transaction, and leaves no database
+// behind when it fails. It never writes to an existing database and prints
+// nothing; the caller renders the result. Env resolves the database path
+// exactly as it does for Run.
+func MigrateTaskwarrior(ctx context.Context, env Env, options MigrateOptions) (MigrateResult, error) {
+	if err := ctx.Err(); err != nil {
+		return MigrateResult{}, err
+	}
+	opts := appOptions(ctx, env, nil, nil)
+	if err := config.Resolve(&opts); err != nil {
+		return MigrateResult{}, err
+	}
+	outcome, err := cli.MigrateTaskwarrior(&opts, cli.MigrationRequest{
+		Source: options.Source,
+		Origin: options.Origin,
+		Apply:  options.Apply,
+	})
+	result := MigrateResult{
+		Applied: outcome.Applied,
+		Records: MigrateCounts{
+			Created:      outcome.Records.Created,
+			Updated:      outcome.Records.Updated,
+			Unchanged:    outcome.Records.Unchanged,
+			Dependencies: outcome.Records.Dependencies,
+			Annotations:  outcome.Records.Annotations,
+			Tags:         outcome.Records.Tags,
+			History:      outcome.Records.History,
+			Issues:       outcome.Records.Issues,
+		},
+	}
+	for _, issue := range outcome.Issues {
+		result.Issues = append(result.Issues, MigrateIssue{Severity: issue.Severity, Message: issue.Message})
+	}
+	return result, err
 }
 
 // appOptions builds the options every entry point resolves from Env.

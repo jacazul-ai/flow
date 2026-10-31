@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jacazul-ai/flow/internal/config"
+	"github.com/jacazul-ai/flow/internal/task"
 )
 
 // InitResult describes what settling the project database changed.
@@ -15,6 +16,8 @@ type InitResult struct {
 	Upgraded   bool
 	From       int64
 	To         int64
+	// Origin is nil when the database did not come from a migration.
+	Origin *task.MigrationOrigin
 }
 
 // InitStorage moves, creates, or upgrades the project database and closes it
@@ -38,6 +41,14 @@ func InitStorage(opts *config.AppOptions) (InitResult, error) {
 	}
 	if moved {
 		result.LegacyPath = opts.LegacyDatabasePath
+	}
+	origin, found, err := store.MigrationOrigin(opts.Context(), opts.ProjectID)
+	if err != nil {
+		store.Close()
+		return InitResult{}, err
+	}
+	if found {
+		result.Origin = &origin
 	}
 	return result, store.Close()
 }

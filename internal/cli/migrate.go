@@ -1,12 +1,18 @@
 package cli
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/jacazul-ai/flow/internal/config"
 	"github.com/jacazul-ai/flow/internal/migration"
+	"github.com/jacazul-ai/flow/internal/storage/sqlite"
 	"github.com/jacazul-ai/flow/internal/task"
 )
 
@@ -142,7 +148,122 @@ func printMigrationIssues(out io.Writer, issues []task.MigrationIssue) bool {
 }
 
 func migrationRecordErrors() error {
-	return fmt.Errorf("migration completed with record errors\nACTION: Review the ERROR entries and correct the source snapshot before rerunning")
+	return fmt.Errorf("%w\nACTION: Review the ERROR entries and correct the source snapshot before rerunning", migration.ErrRecordErrors)
+}
+
+// MigrationRequest is one library migration from a Taskwarrior export.
+type MigrationRequest struct {
+	Source string
+	Origin string
+	Apply  bool
+}
+
+// MigrationOutcome is what a library migration validated or wrote.
+type MigrationOutcome struct {
+	Applied bool
+	Records task.ImportResult
+	Issues  []task.MigrationIssue
+}
+
+// MigrateTaskwarrior validates a Taskwarrior export and, on Apply, writes it
+// into a new project database together with its origin mark. It never writes
+// to an existing database and prints nothing. ERROR issues fill the outcome and
+// also return migration.ErrRecordErrors.
+func MigrateTaskwarrior(opts *config.AppOptions, request MigrationRequest) (MigrationOutcome, error) {
+	ctx := opts.Context()
+	if err := ctx.Err(); err != nil {
+		return MigrationOutcome{}, err
+	}
+	if strings.TrimSpace(request.Source) == "" || strings.TrimSpace(request.Origin) == "" {
+		return MigrationOutcome{}, fmt.Errorf("migration requires a source export and its origin\nACTION: Pass the Taskwarrior export path as Source and the silo it came from as Origin.")
+	}
+	if err := refuseExistingDatabase(opts); err != nil {
+		return MigrationOutcome{}, err
+	}
+	source, err := migration.LoadTaskwarriorExport(request.Source)
+	if err != nil {
+		return MigrationOutcome{}, err
+	}
+	bundle, warnings, err := migration.BuildBundleWithStateAndMap(opts.ProjectID, source, nil, migration.LegacyMap{})
+	if err != nil {
+		return MigrationOutcome{}, err
+	}
+	outcome := MigrationOutcome{Applied: request.Apply, Issues: migrationIssues(warnings)}
+	bundle.Issues = outcome.Issues
+	bundle.OriginPath = request.Origin
+
+	if request.Apply {
+		outcome.Records, err = applyToNewDatabase(ctx, opts.DatabasePath, bundle)
+	} else {
+		outcome.Records, err = migration.NewImporter(nil).DryRun(ctx, bundle)
+	}
+	if err != nil {
+		return MigrationOutcome{}, err
+	}
+	if hasRecordErrors(outcome.Issues) {
+		return outcome, migrationRecordErrors()
+	}
+	return outcome, nil
+}
+
+func refuseExistingDatabase(opts *config.AppOptions) error {
+	for _, path := range []string{opts.DatabasePath, opts.LegacyDatabasePath} {
+		if path == "" {
+			continue
+		}
+		if _, err := os.Stat(path); err == nil {
+			return fmt.Errorf("%w: %s\nACTION: Use the existing database, or move it away before migrating again.", migration.ErrDatabaseExists, path)
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("inspect project database %s: %w", path, err)
+		}
+	}
+	return nil
+}
+
+// applyToNewDatabase builds the database at a staging path and links it into
+// place only after the import committed, so a failed or interrupted apply
+// never leaves a database behind that would block the next migration.
+func applyToNewDatabase(ctx context.Context, path string, bundle task.ImportBundle) (task.ImportResult, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return task.ImportResult{}, fmt.Errorf("create project database directory: %w", err)
+	}
+	staging := path + ".migrating"
+	removeDatabaseFiles(staging)
+	defer removeDatabaseFiles(staging)
+
+	store, err := sqlite.Open(ctx, staging)
+	if err != nil {
+		return task.ImportResult{}, fmt.Errorf("create project database: %w", err)
+	}
+	result, err := migration.NewImporter(store).Apply(ctx, bundle)
+	if closeErr := store.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return task.ImportResult{}, err
+	}
+	if err := os.Link(staging, path); err != nil {
+		if errors.Is(err, fs.ErrExist) {
+			return task.ImportResult{}, fmt.Errorf("%w: %s\nACTION: Use the existing database, or move it away before migrating again.", migration.ErrDatabaseExists, path)
+		}
+		return task.ImportResult{}, fmt.Errorf("place project database %s: %w", path, err)
+	}
+	return result, nil
+}
+
+func removeDatabaseFiles(path string) {
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		os.Remove(path + suffix)
+	}
+}
+
+func hasRecordErrors(issues []task.MigrationIssue) bool {
+	for _, issue := range issues {
+		if issue.Severity == "ERROR" {
+			return true
+		}
+	}
+	return false
 }
 
 func printMigrationResult(out io.Writer, result task.ImportResult) {
