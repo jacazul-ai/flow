@@ -2,10 +2,33 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/jacazul-ai/flow/internal/task"
 )
+
+// MigrationOrigin returns the legacy source the project was migrated from,
+// and false when the project database did not come from a migration.
+func (s *Store) MigrationOrigin(ctx context.Context, projectID string) (task.MigrationOrigin, bool, error) {
+	if projectID == "" {
+		return task.MigrationOrigin{}, false, fmt.Errorf("project ID is required")
+	}
+	var origin task.MigrationOrigin
+	err := s.db.QueryRowContext(ctx, `
+		SELECT origin_path, migrated_at
+		FROM migration_origins
+		WHERE project_id = ?
+	`, projectID).Scan(&origin.Path, &origin.MigratedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return task.MigrationOrigin{}, false, nil
+	}
+	if err != nil {
+		return task.MigrationOrigin{}, false, fmt.Errorf("read migration origin: %w", err)
+	}
+	return origin, true, nil
+}
 
 // ListMigrationIssues returns the persisted issues for one project cutoff.
 func (s *Store) ListMigrationIssues(ctx context.Context, projectID string) ([]task.MigrationIssue, error) {

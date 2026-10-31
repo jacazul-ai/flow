@@ -274,6 +274,18 @@ func (s *Store) ApplyImport(ctx context.Context, bundle task.ImportBundle) (task
 		result.Issues++
 	}
 
+	if bundle.OriginPath != "" {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO migration_origins (project_id, origin_path, migrated_at)
+			VALUES (?, ?, ?)
+			ON CONFLICT (project_id) DO UPDATE SET
+				origin_path = excluded.origin_path,
+				migrated_at = excluded.migrated_at
+		`, bundle.ProjectID, bundle.OriginPath, timestamp()); err != nil {
+			return task.ImportResult{}, fmt.Errorf("record migration origin: %w", err)
+		}
+	}
+
 	if _, err := tx.ExecContext(ctx, `DELETE FROM cache_entries WHERE project_id = ?`, bundle.ProjectID); err != nil {
 		return task.ImportResult{}, fmt.Errorf("clear imported project cache: %w", err)
 	}

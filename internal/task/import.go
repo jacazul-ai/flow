@@ -11,6 +11,14 @@ type ImportBundle struct {
 	History      []HistoryEvent
 	Sessions     []ImportedSession
 	SessionNotes []ImportedSessionNote
+	// OriginPath, when set, records the legacy source the bundle came from.
+	OriginPath string
+}
+
+// MigrationOrigin is the legacy source a project database was migrated from.
+type MigrationOrigin struct {
+	Path       string
+	MigratedAt string
 }
 
 // MigrationIssue is a warning or error produced while building or applying a snapshot.

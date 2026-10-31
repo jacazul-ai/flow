@@ -640,7 +640,7 @@ func TestSchemaUpgradeAnnouncementCoversFreshOlderAndNewerDatabases(t *testing.T
 	if code := flow.Run(context.Background(), []string{"status"}, flowEnv(older), flow.Streams{Stdout: &olderStdout, Stderr: &olderStderr}); code != 0 {
 		t.Fatalf("older schema status = %d\nstdout=%s\nstderr=%s", code, olderStdout.String(), olderStderr.String())
 	}
-	if !strings.Contains(olderStderr.String(), "Schema upgrade required: v14 -> v15") {
+	if !strings.Contains(olderStderr.String(), "Schema upgrade required: v14 -> v16") {
 		t.Fatalf("older schema stderr = %q, want upgrade notice", olderStderr.String())
 	}
 
@@ -667,6 +667,8 @@ func downgradeSchemaForTest(t *testing.T, path string) {
 	}
 	defer db.Close()
 	for _, statement := range []string{
+		"DROP TABLE migration_origins",
+		"DELETE FROM goose_db_version WHERE version_id = 16",
 		"DROP TABLE session_dumps",
 		"ALTER TABLE sessions DROP COLUMN purged_at",
 		"ALTER TABLE sessions DROP COLUMN state",
