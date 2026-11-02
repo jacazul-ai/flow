@@ -92,10 +92,11 @@ type MigrationOrigin struct {
 // MigrateTaskwarrior migrates an export into a new database, printing nothing.
 func MigrateTaskwarrior(ctx context.Context, env Env, options MigrateOptions) (MigrateResult, error)
 
-// MigrateOptions selects the export and the origin to record with it.
+// MigrateOptions selects the export, the origin to record with it, and the
+// optional legacy focus and session directory.
 type MigrateOptions struct {
-	Source, Origin string
-	Apply          bool
+	Source, Origin, LegacyDataDir string
+	Apply                         bool
 }
 
 // MigrateResult describes what a migration validated or wrote.
