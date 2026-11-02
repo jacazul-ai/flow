@@ -258,6 +258,11 @@ type MigrateOptions struct {
 	// verbatim with the imported records and returned by Init, so the caller
 	// compares it with the same canonical value it declared.
 	Origin string
+	// LegacyDataDir is an optional, read-only directory holding the legacy
+	// focus.json, focus-<session>.json, and session notes, imported as native
+	// focus, sessions, and handoff notes. Empty imports no focus or sessions;
+	// it behaves like the command's --legacy-data-dir.
+	LegacyDataDir string
 	// Apply writes the migration; false validates it as a dry-run.
 	Apply bool
 }
@@ -298,9 +303,10 @@ func MigrateTaskwarrior(ctx context.Context, env Env, options MigrateOptions) (M
 		return MigrateResult{}, err
 	}
 	outcome, err := cli.MigrateTaskwarrior(&opts, cli.MigrationRequest{
-		Source: options.Source,
-		Origin: options.Origin,
-		Apply:  options.Apply,
+		Source:        options.Source,
+		Origin:        options.Origin,
+		LegacyDataDir: options.LegacyDataDir,
+		Apply:         options.Apply,
 	})
 	result := MigrateResult{
 		Applied: outcome.Applied,

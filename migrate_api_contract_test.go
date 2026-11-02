@@ -264,6 +264,62 @@ func TestMigrateAPIFailedApplyLeavesNoDatabase(t *testing.T) {
 	assertNoDatabaseFiles(t, env.DatabasePath)
 }
 
+func TestMigrateAPIImportsLegacyFocusAndSessionNotes(t *testing.T) {
+	env := initEnv(t, "migrate-project")
+	env.SessionID = "global"
+	legacyDir := filepath.Join(t.TempDir(), "legacy")
+	if err := os.MkdirAll(legacyDir, 0o700); err != nil {
+		t.Fatalf("create legacy state directory: %v", err)
+	}
+	focus := []byte(`{
+  "focused_plan": "parity",
+  "focused_task_uuid": "11111111-1111-4111-8111-111111111111",
+  "task_track": [{"uuid": "11111111-1111-4111-8111-111111111111", "plan": "parity"}],
+  "plans_of_interest": ["parity"]
+}`)
+	note := []byte("Resume imported task.\n")
+	if err := os.WriteFile(filepath.Join(legacyDir, "focus.json"), focus, 0o600); err != nil {
+		t.Fatalf("write legacy focus: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(legacyDir, "session-note-global.md"), note, 0o600); err != nil {
+		t.Fatalf("write legacy session note: %v", err)
+	}
+	options := migrateOptions(t, migrateExport, true)
+	options.LegacyDataDir = legacyDir
+
+	if _, err := flow.MigrateTaskwarrior(context.Background(), env, options); err != nil {
+		t.Fatalf("apply with legacy state: %v", err)
+	}
+
+	code, stdout, stderr := run(t, context.Background(), env, "focus")
+	if code != 0 || !strings.Contains(stdout, "Initiative: parity") || !strings.Contains(stdout, "Task: 11111111") {
+		t.Fatalf("migrated focus = %d, %q, %q; want the parity anchor", code, stdout, stderr)
+	}
+	code, stdout, stderr = run(t, context.Background(), env, "session", "resume")
+	if code != 0 || !strings.Contains(stdout, "Resume imported task.") {
+		t.Fatalf("migrated note = %d, %q, %q; want the handoff note", code, stdout, stderr)
+	}
+	for name, want := range map[string][]byte{"focus.json": focus, "session-note-global.md": note} {
+		got, err := os.ReadFile(filepath.Join(legacyDir, name))
+		if err != nil || string(got) != string(want) {
+			t.Fatalf("legacy %s after migration = %q, %v; want it untouched", name, got, err)
+		}
+	}
+}
+
+func TestMigrateAPIWithoutLegacyDataDirImportsNoSessions(t *testing.T) {
+	env := initEnv(t, "migrate-project")
+	env.SessionID = "global"
+
+	if _, err := flow.MigrateTaskwarrior(context.Background(), env, migrateOptions(t, migrateExport, true)); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	code, stdout, _ := run(t, context.Background(), env, "focus")
+	if code != 0 || strings.Contains(stdout, "Initiative: parity") {
+		t.Fatalf("focus without legacy state = %d, %q; want no imported anchor", code, stdout)
+	}
+}
+
 func TestMigrateAPIKeepsProjectsIsolated(t *testing.T) {
 	home := t.TempDir()
 	alpha := flow.Env{ProjectID: "project-alpha", SessionID: "migrate-session", Home: home}

@@ -153,9 +153,10 @@ func migrationRecordErrors() error {
 
 // MigrationRequest is one library migration from a Taskwarrior export.
 type MigrationRequest struct {
-	Source string
-	Origin string
-	Apply  bool
+	Source        string
+	Origin        string
+	LegacyDataDir string
+	Apply         bool
 }
 
 // MigrationOutcome is what a library migration validated or wrote.
@@ -184,7 +185,11 @@ func MigrateTaskwarrior(opts *config.AppOptions, request MigrationRequest) (Migr
 	if err != nil {
 		return MigrationOutcome{}, err
 	}
-	bundle, warnings, err := migration.BuildBundleWithStateAndMap(opts.ProjectID, source, nil, migration.LegacyMap{})
+	legacyState, err := migration.LoadLegacyState(request.LegacyDataDir)
+	if err != nil {
+		return MigrationOutcome{}, err
+	}
+	bundle, warnings, err := migration.BuildBundleWithStateAndMap(opts.ProjectID, source, legacyState, migration.LegacyMap{})
 	if err != nil {
 		return MigrationOutcome{}, err
 	}
