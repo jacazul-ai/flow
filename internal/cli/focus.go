@@ -407,7 +407,7 @@ func (cmd *FocusBackCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	if err := store.DeleteSession(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
+	if err := store.ExitSession(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
 		return err
 	}
 	fmt.Fprintln(cmd.appOpts.Out(), "Switched back to global focus")

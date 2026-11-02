@@ -144,7 +144,6 @@ func (s *Store) HardDeletePurgedSession(ctx context.Context, projectID string, s
 	}
 	for _, statement := range []string{
 		"DELETE FROM session_dumps WHERE project_id = ? AND session_id = ?",
-		"DELETE FROM session_notes WHERE project_id = ? AND session_id = ?",
 		"DELETE FROM cache_entries WHERE project_id = ? AND session_id = ?",
 		"DELETE FROM sessions WHERE project_id = ? AND session_id = ?",
 	} {
@@ -158,30 +157,32 @@ func (s *Store) HardDeletePurgedSession(ctx context.Context, projectID string, s
 	return nil
 }
 
-// DeleteSession removes one non-global session and its derived state.
-func (s *Store) DeleteSession(ctx context.Context, projectID string, sessionID string) error {
+// ExitSession drops one non-global session's independent focus and its derived
+// cache, so the session falls back to the global focus. Like removing the
+// legacy focus file, it keeps the session's handoff notes and dumps; only
+// session purge --hard deletes history.
+func (s *Store) ExitSession(ctx context.Context, projectID string, sessionID string) error {
 	if projectID == "" || sessionID == "" {
 		return errors.New("project ID and session ID are required")
 	}
 	if sessionID == "global" {
-		return errors.New("global session cannot be deleted")
+		return errors.New("global session cannot be exited")
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin session deletion: %w", err)
+		return fmt.Errorf("begin session exit: %w", err)
 	}
 	defer tx.Rollback()
 	for _, statement := range []string{
-		"DELETE FROM session_notes WHERE project_id = ? AND session_id = ?",
 		"DELETE FROM cache_entries WHERE project_id = ? AND session_id = ?",
 		"DELETE FROM sessions WHERE project_id = ? AND session_id = ?",
 	} {
 		if _, err := tx.ExecContext(ctx, statement, projectID, sessionID); err != nil {
-			return fmt.Errorf("delete session state: %w", err)
+			return fmt.Errorf("exit session state: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit session deletion: %w", err)
+		return fmt.Errorf("commit session exit: %w", err)
 	}
 	return nil
 }
