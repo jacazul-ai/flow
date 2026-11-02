@@ -179,6 +179,15 @@ Structured formats preserve the existing session identity fields and add
 jczl-flow session list --format json
 ```
 
+### Leaving an independent focus
+
+`jczl-flow focus back` drops the current session's independent focus and its
+cached output, so the session falls back to the global focus and no longer
+appears in `session list` until it anchors again. Like removing the legacy
+`focus-<session>.json` file, it keeps the session's handoff notes and dumps:
+`session resume` still delivers a pending handoff. Only
+`session purge --hard --confirm` deletes session history.
+
 ### Session dump history
 
 `session dumps` lists the current session's dump sequence without loading

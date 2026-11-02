@@ -93,6 +93,14 @@ func TestSkillOutWritesLinkedTree(t *testing.T) {
 		}
 	}
 	for _, expected := range []string{
+		"handoff notes and dumps stay readable",
+		"`session purge --hard --confirm` deletes session history",
+	} {
+		if !strings.Contains(tree["references/focus.md"], expected) {
+			t.Fatalf("focus skill missing %q:\n%s", expected, tree["references/focus.md"])
+		}
+	}
+	for _, expected := range []string{
 		"## Schema upgrades",
 		"embedded Goose schema",
 		"newer than the binary",

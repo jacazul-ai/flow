@@ -26,7 +26,9 @@ jacazul flow focus show
 
 `focus ind plan <initiative>` or `focus ind task <uuid>` anchors an
 independent focus for this session, apart from the global one; `focus back`
-returns to the global focus.
+returns to the global focus. It drops only the session's independent focus and
+cached output: handoff notes and dumps stay readable, and only
+`session purge --hard --confirm` deletes session history.
 
 ```bash
 jacazul flow plan parity 'Define schema'
