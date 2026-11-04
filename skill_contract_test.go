@@ -92,6 +92,9 @@ func TestSkillOutWritesLinkedTree(t *testing.T) {
 			t.Fatalf("sessions skill missing %q:\n%s", expected, tree["references/sessions.md"])
 		}
 	}
+	if !strings.Contains(tree["references/tasks.md"], "Outputs show the mode beside the task: `[DESIGN] Close the contract`") {
+		t.Fatalf("tasks skill missing the task title format:\n%s", tree["references/tasks.md"])
+	}
 	for _, expected := range []string{
 		"only plans with open tasks, the 15 most urgent open tasks",
 		"3 most recently closed plans",

@@ -47,6 +47,9 @@ maps to native `disposition=discarded` instead of becoming a native tag.
 Without a mode, do not assume `EXECUTE`: infer from the request and ask
 before direct edits.
 
+Outputs show the mode beside the task: `[DESIGN] Close the contract`. Read
+it from there instead of asking for the mode of a listed task.
+
 ## Readiness
 
 A pending task is not necessarily ready: an unfinished dependency or a wait

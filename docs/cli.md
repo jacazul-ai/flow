@@ -526,3 +526,21 @@ JACAZUL_FLOW_FORMAT=xml jczl-flow plans
 
 Use full UUIDs as identity and short UUIDs for display. The root help is a
 navigation map; command-specific help is the detailed operational contract.
+
+### Task titles
+
+Every text output that shows a task renders it like the reference `tw-flow`,
+with the interaction mode beside the description: `plan`, `status` and its
+views, `next`, `tree`, `focus`, the ready task after `done`, `onboard`,
+`context` with its inherited context, and the session dump.
+
+```text
+Created task 580c3657: [DESIGN] Close the parity contract
+- [d92b07a5] [EXECUTE] Render the dashboard
+```
+
+A task without a stored mode keeps its description as written, including a
+legacy prefix the importer did not recognize, such as `[PLAN]`. The ponder
+readout keeps the reference dashboard shape: a MODE column and the bare
+description. Structured formats keep `mode` and `description` as separate
+fields.

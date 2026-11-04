@@ -212,6 +212,14 @@ Adopt the following composition style for `flow`:
 - Use the shared output contract: successful state changes go to stdout;
   failures go to stderr and explain the next valid action with an `ACTION:`
   prompt; healthy no-op checks stay quiet unless the command is a report.
+- Every text output that shows a task renders its title in the reference
+  `tw-flow` format, with the interaction mode beside the description:
+  `[DESIGN] Close the contract`. Use the `taskTitle` helper in
+  `internal/cli/task_title.go`; never print `Description` directly. A task
+  without a stored mode keeps its description as written. The ponder
+  readout is the one exception, with a MODE column and the bare description,
+  as the reference dashboard; structured formats keep `mode` and
+  `description` as separate fields.
 - Keep CLI responsibilities narrow: parse and validate input, call focused
   workflow/domain components, and render user-facing results. Persistence,
   Taskwarrior compatibility, cache policy, session state, and future transport
