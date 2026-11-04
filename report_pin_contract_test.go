@@ -76,32 +76,29 @@ INITIATIVES:
 		{
 			args: []string{"ponder", "--force"},
 			want: `PROJECT: project
-INITIATIVES:
-- [ACTIVE] alpha pending:3 active:0 completed:1 blocked:2
-- [ACTIVE] beta pending:2 active:0 completed:1 blocked:1
-- [ACTIVE] gamma pending:2 active:1 completed:0 blocked:2
+
 SESSION CONTEXT:
   Focus: None | Task: None
 
 [PULSE SUMMARY]
   Focused: None | Plans: 3 | Done Today: 2
   Health | Pending: 8 | Active: 1 | Overdue: 0
-  Registry | Initiatives: 3
+  Global | Pending: 8 | Active: 1 | Registry: 0 Arch / 0 Trash
 
 [TASK LANDSCAPE]
-  alpha | Active: 0 | Ready: 1 | Total: 4
-  beta | Active: 0 | Ready: 1 | Total: 3
+  alpha | Active: 0 | Ready: 1 | Total: 3
+  beta | Active: 0 | Ready: 1 | Total: 2
   gamma | Active: 1 | Ready: 0 | Total: 3
 
 [TACTICAL READOUT]
-- [ACTIVE] <G1> | UNSPECIFIED | gamma |  | G1 | [16.9]
-- [PENDING] <A2> | UNSPECIFIED | alpha |  | A2 | [12.9]
-- [PENDING] <B2> | UNSPECIFIED | beta |  | B2 | [12.9]
-- [PENDING] <G2> | UNSPECIFIED | gamma |  | G2 | [7.9]
-- [PENDING] <A3> | UNSPECIFIED | alpha |  | A3 | [7.9]
-- [PENDING] <B3> | UNSPECIFIED | beta |  | B3 | [-0.1]
-- [PENDING] <G3> | UNSPECIFIED | gamma |  | G3 | [-0.1]
-- [PENDING] <A4> | UNSPECIFIED | alpha |  | A4 | [-0.1]
+- [ACTIVE] <G1> | -------- | gamma |  | G1 | [16.9]
+- [PENDING] <A2> | -------- | alpha |  | A2 | [12.9]
+- [PENDING] <B2> | -------- | beta |  | B2 | [12.9]
+- [PENDING] <G2> | -------- | gamma |  | G2 | [7.9]
+- [PENDING] <A3> | -------- | alpha |  | A3 | [7.9]
+- [PENDING] <B3> | -------- | beta |  | B3 | [-0.1]
+- [PENDING] <G3> | -------- | gamma |  | G3 | [-0.1]
+- [PENDING] <A4> | -------- | alpha |  | A4 | [-0.1]
 
 `,
 		},

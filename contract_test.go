@@ -413,8 +413,8 @@ func TestDashboardShowsBlockedWorkAndBacklogLifecycle(t *testing.T) {
 		t.Fatalf("create dashboard plan: %v\n%s", err, output)
 	}
 	output, err = runFlow(t, harness, "ponder")
-	if err != nil || !strings.Contains(output, "dashboard") || !strings.Contains(output, "blocked:1") {
-		t.Fatalf("ponder = %q, err %v; want blocked dashboard count", output, err)
+	if err != nil || !strings.Contains(output, "dashboard | Active: 0 | Ready: 1 | Total: 2") {
+		t.Fatalf("ponder = %q, err %v; want the blocked task outside the ready count", output, err)
 	}
 	output, err = runFlow(t, harness, "tree", "dashboard")
 	if err != nil || !strings.Contains(output, "READY") || !strings.Contains(output, "BLOCKED") {

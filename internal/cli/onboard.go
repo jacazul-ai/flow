@@ -220,7 +220,7 @@ func renderOnboard(
 	if err != nil {
 		return "", err
 	}
-	dashboard, err := renderDashboard(ctx, store, opts, summaries, tasks, focus, false, false)
+	dashboard, err := renderDashboard(ctx, store, opts, summaries, tasks, focus, false, false, false)
 	if err != nil {
 		return "", err
 	}

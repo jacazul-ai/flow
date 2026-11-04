@@ -1,9 +1,7 @@
 package cli
 
 import (
-	"context"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -349,7 +347,7 @@ func renderPonder(store *sqlite.Store, opts *config.AppOptions, all bool, withBa
 	if err != nil {
 		return err
 	}
-	output, err := renderDashboard(ctx, store, opts, summaries, tasks, focus, all, table)
+	output, err := renderDashboard(ctx, store, opts, summaries, tasks, focus, all, table, true)
 	if err != nil {
 		return err
 	}
@@ -389,203 +387,6 @@ func visibleSummaries(summaries []task.InitiativeSummary, focus task.FocusState,
 		visible = append(visible, summary)
 	}
 	return visible, focusedName
-}
-
-func renderDashboard(ctx context.Context, store *sqlite.Store, opts *config.AppOptions, summaries []task.InitiativeSummary, tasks []task.Task, focus task.FocusState, showAll bool, table bool) (string, error) {
-	visibleSummaries, focusedName := visibleSummaries(summaries, focus, showAll)
-	visibleNames := make(map[string]struct{}, len(visibleSummaries))
-	for _, summary := range visibleSummaries {
-		visibleNames[summary.Initiative.Name] = struct{}{}
-	}
-
-	visibleTasks := make([]task.Task, 0, len(tasks))
-	for _, current := range tasks {
-		if _, ok := visibleNames[current.InitiativeName]; ok {
-			visibleTasks = append(visibleTasks, current)
-		}
-	}
-
-	var output strings.Builder
-	output.WriteString(renderInitiatives(opts.ProjectID, visibleSummaries))
-	appendSessionContext(&output, focus, focusedName)
-	appendPulseSummary(&output, visibleTasks, summaries, focusedName)
-	appendTaskLandscape(&output, visibleSummaries, tasks)
-	appendTacticalReadout(&output, visibleTasks, table)
-	if err := appendRecentlyClosed(ctx, store, &output, summaries, tasks); err != nil {
-		return "", err
-	}
-	return output.String(), nil
-}
-
-func renderInitiatives(projectID string, summaries []task.InitiativeSummary) string {
-	var output strings.Builder
-	fmt.Fprintf(&output, "PROJECT: %s\n", projectID)
-	currentCount := 0
-	for _, summary := range summaries {
-		if summary.Initiative.Status != task.InitiativeCompleted {
-			currentCount++
-		}
-	}
-	if currentCount == 0 {
-		output.WriteString("No initiatives found.\n")
-		return output.String()
-	}
-	output.WriteString("INITIATIVES:\n")
-	for _, summary := range summaries {
-		if summary.Initiative.Status == task.InitiativeCompleted {
-			continue
-		}
-		fmt.Fprintf(&output, "- [%s] %s pending:%d active:%d completed:%d blocked:%d\n",
-			strings.ToUpper(string(summary.Initiative.Status)),
-			summary.Initiative.Name,
-			summary.Pending,
-			summary.Active,
-			summary.Completed,
-			summary.Blocked,
-		)
-		if summary.Initiative.Metadata.Goal != "" {
-			fmt.Fprintf(&output, "  Goal: %s\n", summary.Initiative.Metadata.Goal)
-		}
-	}
-	return output.String()
-}
-
-func appendSessionContext(output *strings.Builder, focus task.FocusState, focusedName string) {
-	if focusedName == "" {
-		focusedName = "None"
-	}
-	focusedTask := "None"
-	if focus.FocusedTaskID != "" {
-		focusedTask = shortID(focus.FocusedTaskID)
-	}
-	output.WriteString("SESSION CONTEXT:\n")
-	fmt.Fprintf(output, "  Focus: %s | Task: %s\n", focusedName, focusedTask)
-	if len(focus.TaskStack) > 0 {
-		track := make([]string, 0, len(focus.TaskStack))
-		for _, entry := range focus.TaskStack {
-			track = append(track, shortID(entry.TaskID))
-		}
-		fmt.Fprintf(output, "  Track: %s\n", strings.Join(track, " -> "))
-	}
-	if len(focus.PlansOfInterest) > 0 {
-		fmt.Fprintf(output, "  Interests: %s\n", strings.Join(focus.PlansOfInterest, ", "))
-	}
-	output.WriteString("\n")
-}
-
-func appendPulseSummary(output *strings.Builder, tasks []task.Task, summaries []task.InitiativeSummary, focusedName string) {
-	today := time.Now().UTC().Format("2006-01-02")
-	pending, active, overdue, completedToday := 0, 0, 0, 0
-	plans := make(map[string]struct{})
-	for _, current := range tasks {
-		if current.Status == task.Pending || current.Status == task.Active {
-			pending++
-			plans[current.InitiativeName] = struct{}{}
-		}
-		if current.Status == task.Active {
-			active++
-		}
-		if (current.Status == task.Pending || current.Status == task.Active) && current.DueAt != "" && current.DueAt < today {
-			overdue++
-		}
-		if current.Status == task.Completed && strings.HasPrefix(current.CompletedAt, today) {
-			completedToday++
-		}
-	}
-	if focusedName == "" {
-		focusedName = "None"
-	}
-	output.WriteString("[PULSE SUMMARY]\n")
-	fmt.Fprintf(output, "  Focused: %s | Plans: %d | Done Today: %d\n", focusedName, len(plans), completedToday)
-	fmt.Fprintf(output, "  Health | Pending: %d | Active: %d | Overdue: %d\n", pending, active, overdue)
-	fmt.Fprintf(output, "  Registry | Initiatives: %d\n\n", len(summaries))
-}
-
-func appendTaskLandscape(output *strings.Builder, summaries []task.InitiativeSummary, tasks []task.Task) {
-	tasksByInitiative := groupTasksByInitiative(tasks)
-	output.WriteString("[TASK LANDSCAPE]\n")
-	for _, summary := range summaries {
-		ready := summary.Pending - summary.Blocked
-		fmt.Fprintf(output, "  %s | Active: %d | Ready: %d | Total: %d\n", summary.Initiative.Name, summary.Active, ready, len(tasksByInitiative[summary.Initiative.ID]))
-	}
-	output.WriteString("\n")
-}
-
-func appendTacticalReadout(output *strings.Builder, tasks []task.Task, table bool) {
-	readout := make([]task.Task, 0, len(tasks))
-	for _, current := range tasks {
-		if current.Status == task.Pending || current.Status == task.Active {
-			readout = append(readout, current)
-		}
-	}
-	sort.SliceStable(readout, func(i, j int) bool {
-		if readout[i].Status != readout[j].Status {
-			return readout[i].Status == task.Active
-		}
-		return readout[i].UrgencyScore > readout[j].UrgencyScore
-	})
-	output.WriteString("[TACTICAL READOUT]\n")
-	if table {
-		output.WriteString("| ST | UUID | MODE | PLAN | TAGS | DESCRIPTION | URG |\n|---|---|---|---|---|---|---|\n")
-		for _, current := range readout {
-			fmt.Fprintf(output, "| %s | `%s` | %s | %s | %s | %s | %.1f |\n", strings.ToUpper(string(current.Status)), shortID(current.ID), current.Mode.String(), current.InitiativeName, formatTaskTags(current.Tags), current.Description, current.UrgencyScore)
-		}
-	} else {
-		for _, current := range readout {
-			fmt.Fprintf(output, "- [%s] %s | %s | %s | %s | %s | [%.1f]\n", strings.ToUpper(string(current.Status)), shortID(current.ID), current.Mode.String(), current.InitiativeName, formatTaskTags(current.Tags), current.Description, current.UrgencyScore)
-		}
-	}
-	output.WriteString("\n")
-}
-
-func appendRecentlyClosed(ctx context.Context, store *sqlite.Store, output *strings.Builder, summaries []task.InitiativeSummary, tasks []task.Task) error {
-	closed := make([]task.InitiativeSummary, 0)
-	for _, summary := range summaries {
-		if summary.Initiative.Status == task.InitiativeCompleted {
-			closed = append(closed, summary)
-		}
-	}
-	if len(closed) == 0 {
-		return nil
-	}
-
-	tasksByInitiative := groupTasksByInitiative(tasks)
-	taskIDs := make([]string, 0)
-	for _, summary := range closed {
-		for _, current := range tasksByInitiative[summary.Initiative.ID] {
-			taskIDs = append(taskIDs, current.ID)
-		}
-	}
-	annotations, err := store.ListAnnotationsForTasks(ctx, taskIDs)
-	if err != nil {
-		return err
-	}
-
-	output.WriteString("[RECENTLY CLOSED]\n")
-	for _, summary := range closed {
-		outcome := latestOutcome(tasksByInitiative[summary.Initiative.ID], annotations)
-		fmt.Fprintf(output, "  ✓ %s completed:%d", summary.Initiative.Name, summary.Completed)
-		if outcome != "" {
-			fmt.Fprintf(output, " — %s", outcome)
-		}
-		output.WriteString("\n")
-	}
-	output.WriteString("\n")
-	return nil
-}
-
-func latestOutcome(tasks []task.Task, annotationsByTask map[string][]task.Annotation) string {
-	latest := ""
-	latestAt := ""
-	for _, current := range tasks {
-		for _, annotation := range annotationsByTask[current.ID] {
-			if annotation.Kind == "OUTCOME" && annotation.CreatedAt >= latestAt {
-				latest = annotation.Body
-				latestAt = annotation.CreatedAt
-			}
-		}
-	}
-	return latest
 }
 
 func groupTasksByInitiative(tasks []task.Task) map[string][]task.Task {
