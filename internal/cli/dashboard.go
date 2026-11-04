@@ -161,7 +161,7 @@ func (cmd *TreeCommand) Execute(args []string) error {
 		if tags != "" {
 			tags += " "
 		}
-		fmt.Fprintf(cmd.appOpts.Out(), "[%s] %s %s%s\n", treeMarker(current, states), shortID(current.ID), tags, current.Description)
+		fmt.Fprintf(cmd.appOpts.Out(), "[%s] %s %s%s\n", treeMarker(current, states), shortID(current.ID), tags, taskTitle(current))
 	}
 	return nil
 }

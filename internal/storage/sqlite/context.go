@@ -171,6 +171,7 @@ func (s *Store) collectInheritedAnnotations(ctx context.Context, taskID string, 
 		inherited = append(inherited, task.ContextEntry{
 			TaskID:          current.ID,
 			TaskDescription: current.Description,
+			TaskMode:        current.Mode,
 			Annotation:      annotation,
 		})
 	}

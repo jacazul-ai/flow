@@ -621,7 +621,7 @@ func renderSessionDump(ctx context.Context, store *sqlite.Store, opts *config.Ap
 		}
 		focusedTask = current
 		output.WriteString(fmt.Sprintf("**Plan:** `%s`\n", current.InitiativeName))
-		output.WriteString(fmt.Sprintf("**Task:** `%s` %s\n", shortID(current.ID), current.Description))
+		output.WriteString(fmt.Sprintf("**Task:** `%s` %s\n", shortID(current.ID), taskTitle(current)))
 	} else if focus.InitiativeID != "" {
 		initiative, err := store.FindInitiativeByID(ctx, opts.ProjectID, focus.InitiativeID)
 		if err != nil {

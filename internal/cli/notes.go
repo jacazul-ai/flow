@@ -164,7 +164,7 @@ func (cmd *ContextCommand) Execute(args []string) error {
 	}
 
 	var output strings.Builder
-	fmt.Fprintf(&output, "CONTEXT FOR TASK %s: %s\n", shortID(current.ID), current.Description)
+	fmt.Fprintf(&output, "CONTEXT FOR TASK %s: %s\n", shortID(current.ID), taskTitle(current))
 	writeDirectContext(&output, direct)
 	writeInheritedContext(&output, inherited)
 	if len(direct) == 0 && len(inherited) == 0 {
@@ -220,7 +220,8 @@ func writeInheritedContext(writer io.Writer, entries []task.ContextEntry) {
 	}
 	fmt.Fprintln(writer, "══ INHERITED CONTEXT ══")
 	for _, entry := range entries {
-		fmt.Fprintf(writer, "Task (%s) [%s]:\n", shortID(entry.TaskID), entry.TaskDescription)
+		title := taskTitle(task.Task{Description: entry.TaskDescription, Mode: entry.TaskMode})
+		fmt.Fprintf(writer, "Task (%s) [%s]:\n", shortID(entry.TaskID), title)
 		fmt.Fprintf(writer, "  - %s: %s\n", entry.Annotation.Kind, entry.Annotation.Body)
 	}
 }

@@ -115,7 +115,7 @@ func (cmd *DoneCommand) Execute(args []string) error {
 		return fmt.Errorf("find next ready tasks: %w", err)
 	}
 	for _, next := range ready {
-		fmt.Fprintf(cmd.appOpts.Out(), "Ready task %s: %s\n", shortID(next.ID), next.Description)
+		fmt.Fprintf(cmd.appOpts.Out(), "Ready task %s: %s\n", shortID(next.ID), taskTitle(next))
 	}
 	return nil
 }

@@ -95,6 +95,7 @@ type Annotation struct {
 type ContextEntry struct {
 	TaskID          string
 	TaskDescription string
+	TaskMode        TaskMode
 	Annotation      Annotation
 }
 

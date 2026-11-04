@@ -58,7 +58,7 @@ func (cmd *NextCommand) Execute(args []string) error {
 		if tags != "" {
 			tags += " "
 		}
-		fmt.Fprintf(cmd.appOpts.Out(), "%s %s%s\n", shortID(current.ID), tags, current.Description)
+		fmt.Fprintf(cmd.appOpts.Out(), "%s %s%s\n", shortID(current.ID), tags, taskTitle(current))
 	}
 	return nil
 }

@@ -306,7 +306,7 @@ func (cmd *FocusPlanCommand) execute(args []string, independent bool) error {
 		fmt.Fprintf(cmd.appOpts.Out(), "Focused initiative %s\n", initiative.Name)
 	}
 	if len(ready) > 0 {
-		fmt.Fprintf(cmd.appOpts.Out(), "Next task %s: %s\n", shortID(ready[0].ID), ready[0].Description)
+		fmt.Fprintf(cmd.appOpts.Out(), "Next task %s: %s\n", shortID(ready[0].ID), taskTitle(ready[0]))
 	}
 	return nil
 }
@@ -360,7 +360,7 @@ func (cmd *FocusTaskCommand) execute(args []string, independent bool) error {
 	if err := clearFocusCaches(store, cmd.appOpts, scope, current); err != nil {
 		return err
 	}
-	fmt.Fprintf(cmd.appOpts.Out(), "Focused task %s: %s\n", shortID(current.ID), current.Description)
+	fmt.Fprintf(cmd.appOpts.Out(), "Focused task %s: %s\n", shortID(current.ID), taskTitle(current))
 	return nil
 }
 

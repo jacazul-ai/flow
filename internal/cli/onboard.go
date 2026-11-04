@@ -268,7 +268,7 @@ func appendOnboardFocusContext(
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(output, "Task: %s %s\n", shortID(current.ID), current.Description)
+	fmt.Fprintf(output, "Task: %s %s\n", shortID(current.ID), taskTitle(current))
 	direct, err := store.ListAnnotations(ctx, current.ID)
 	if err != nil {
 		return err

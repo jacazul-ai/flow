@@ -237,7 +237,7 @@ func formatStatusTask(resolver *ticketResolver, current task.Task) (string, erro
 	if tags := formatTaskTags(current.Tags); tags != "" {
 		line += " " + tags
 	}
-	return fmt.Sprintf("%s %s\n", line, current.Description), nil
+	return fmt.Sprintf("%s %s\n", line, taskTitle(current)), nil
 }
 
 func appendFocusedContext(
