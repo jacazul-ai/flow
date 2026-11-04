@@ -93,6 +93,15 @@ func TestSkillOutWritesLinkedTree(t *testing.T) {
 		}
 	}
 	for _, expected := range []string{
+		"only plans with open tasks, the 15 most urgent open tasks",
+		"3 most recently closed plans",
+		"`plans --closed`",
+	} {
+		if !strings.Contains(strings.Join(strings.Fields(tree["references/reports.md"]), " "), expected) {
+			t.Fatalf("reports skill missing %q:\n%s", expected, tree["references/reports.md"])
+		}
+	}
+	for _, expected := range []string{
 		"handoff notes and dumps stay readable",
 		"`focus ind ...` is the only way out",
 		"`focus back` is the only way back",

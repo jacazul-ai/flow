@@ -7,7 +7,9 @@ Owner of: reading workflow state, output formats, the cache, and errors.
 - `status` is the hands-on view of the focused initiative: use it while
   working.
 - `ponder` is the project landscape across initiatives: use it to orient
-  when nothing is anchored or the operator asks for the whole picture.
+  when nothing is anchored or the operator asks for the whole picture. It is
+  bounded: only plans with open tasks, the 15 most urgent open tasks, and the
+  3 most recently closed plans. Find older closed plans with `plans --closed`.
 - `tree` shows an initiative's dependency chain; `active`, `blocked`, and
   `overdue` filter tasks by state; `history` shows what changed.
 

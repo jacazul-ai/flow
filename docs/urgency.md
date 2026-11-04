@@ -6,8 +6,9 @@ Native `flow` stores imported/observed `urgency` metadata, but selection does
 not treat that value as authoritative. It calculates a fresh
 Taskwarrior-compatible score for modeled attributes, applies dependency
 inheritance, filters ready work, and ranks the candidates deterministically.
-Tags, initiative weight, and other unsupported Taskwarrior inputs remain
-explicit follow-up boundaries.
+Tags count like Taskwarrior's tags term, with the Jacazul taskrc tag
+coefficients `next=10.0` and `critical=5.0`; initiative weight and other
+unsupported Taskwarrior inputs remain explicit follow-up boundaries.
 
 This document defines the compatibility baseline and the native extension
 needed for dependency-driven initiatives. It is an urgency design boundary,
@@ -162,10 +163,12 @@ making the omitted native data-model work visible.
 
 The first implementation can calculate terms represented by the native model:
 priority, active state, due date, wait state, dependency blocking, project
-presence, annotations, age, and the dependency graph. Tags, scheduled/until
-fields, project-specific coefficients, initiative weight, and other
-Taskwarrior terms require an explicit native data-model decision rather than
-silent approximation.
+presence, annotations, tags, age, and the dependency graph. Tags add
+Taskwarrior's `1.0` times the count factor plus the Jacazul taskrc
+coefficients `next=10.0` (replacing Taskwarrior's default `15.0`) and
+`critical=5.0`. Scheduled/until fields, project-specific coefficients,
+initiative weight, and other Taskwarrior terms require an explicit native
+data-model decision rather than silent approximation.
 
 Migration preserves the source fields that determine urgency and must not
 silently turn a computed Taskwarrior score into a mutable native override. A

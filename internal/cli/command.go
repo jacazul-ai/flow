@@ -551,7 +551,8 @@ var helpEntries = []helpEntry{
 		usage:     "jczl-flow ponder [--all] [--with-backlog] [--force]",
 		role:      "Use this as the horizon view for initiative health and blocked work.",
 		effects: []string{
-			"Shows pending, active, completed, and blocked counts per initiative.",
+			"Shows session context, pulse with Global and Registry counts, the plans with open tasks, the 15 most urgent open tasks, and the 3 most recently closed plans.",
+			"Plans without open tasks are left out; use 'jczl-flow plans --closed' to find them.",
 			"Uses a project/session-scoped cache unless --force is supplied.",
 		},
 		examples: []string{"jczl-flow ponder", "jczl-flow ponder --with-backlog --force"},

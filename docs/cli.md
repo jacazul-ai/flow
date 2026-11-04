@@ -64,9 +64,40 @@ replacing the individual commands:
 1. render a pending session handoff first;
 2. render the current session focus and focused task context;
 3. render focused `status` when an anchor exists;
-4. render project-wide `ponder` when no anchor exists;
+4. render the project-wide `ponder` dashboard when no anchor exists, without
+   repeating the session context the briefing already printed;
 5. deliver the handoff after the complete briefing renders successfully;
    native dumps remain pending until `session ack` explicitly acknowledges them.
+
+### Ponder dashboard
+
+`jczl-flow ponder` is bounded agent context with the shape of the reference
+`tw-flow ponder`. Plans with nothing left to do are not listed in it; they are
+found through `plans --closed`. Its sections, in order:
+
+- `SESSION CONTEXT`: focus, task stack, and plans of interest;
+- `[PULSE SUMMARY]`: the focused plan, the plans with open work and the tasks
+  completed today; `Health` counts pending, active and overdue tasks of the
+  plans the session looks at; `Global` counts every open task of the project
+  and the `Registry` of initiatives holding archived and trashed tasks;
+- `[TASK LANDSCAPE]`: only the plans with open tasks, alphabetical, with
+  active, ready and open totals and the initiative goal under its plan;
+- `[TACTICAL READOUT]`: the 15 most urgent open tasks, active ones first. The
+  mode column shows the stored mode, else a legacy `[MODE]` prefix of the
+  description (the prefix is not repeated in the description), else
+  `--------`;
+- `[RECENTLY CLOSED]`: the 3 plans closed most recently, as
+  `✓ <plan> [YYYY-MM-DD] — <OUTCOME, cut at 60 characters>`.
+
+Plans of interest narrow the session-scoped sections; `--all` lifts that
+filter but keeps the limits. Archived and trashed tasks stay out of every
+list and count only in the `Registry`.
+
+```text
+[TASK LANDSCAPE]
+  parity | Active: 1 | Ready: 2 | Total: 4
+    Goal: Ship deterministic workflow parity
+```
 
 `jczl-flow session dump` creates a native draft. Finalize it before delivery:
 
