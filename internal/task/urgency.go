@@ -11,10 +11,18 @@ const (
 	urgencyActive     = 4.0
 	urgencyAge        = 2.0
 	urgencyAnnotation = 1.0
+	urgencyTags       = 1.0
 	urgencyProject    = 1.0
 	urgencyWaiting    = -3.0
 	urgencyBlocked    = -5.0
 )
+
+// userTagUrgency holds the tag coefficients of the Jacazul taskrc, added on
+// top of the generic tags term.
+var userTagUrgency = map[string]float64{
+	"next":     10.0,
+	"critical": 5.0,
+}
 
 // ApplyUrgencyScores calculates derived urgency for every task without
 // changing the stored urgency metadata. Dependency inheritance propagates the
@@ -97,8 +105,9 @@ func baseUrgency(current Task, now time.Time, dependentIDs []string, byID map[st
 		score += urgencyAge
 	}
 	if current.AnnotationCount > 0 {
-		score += annotationFactor(current.AnnotationCount) * urgencyAnnotation
+		score += countFactor(current.AnnotationCount) * urgencyAnnotation
 	}
+	score += tagUrgency(current.Tags)
 	if current.InitiativeName != "" || current.ProjectID != "" {
 		score += urgencyProject
 	}
@@ -161,7 +170,20 @@ func ageFactor(value string, now time.Time) float64 {
 	return float64(age) / 365
 }
 
-func annotationFactor(count int) float64 {
+// tagUrgency is the Taskwarrior tags term plus the user tag coefficients.
+func tagUrgency(tags []string) float64 {
+	if len(tags) == 0 {
+		return 0
+	}
+	score := countFactor(len(tags)) * urgencyTags
+	for _, tag := range tags {
+		score += userTagUrgency[tag]
+	}
+	return score
+}
+
+// countFactor is Taskwarrior's factor for annotation and tag counts.
+func countFactor(count int) float64 {
 	switch {
 	case count == 1:
 		return 0.8
