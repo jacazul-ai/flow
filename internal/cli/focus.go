@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jacazul-ai/flow/internal/config"
+	"github.com/jacazul-ai/flow/internal/storage/sqlite"
 	"github.com/jacazul-ai/flow/internal/task"
 )
 
@@ -52,10 +53,30 @@ func (cmd *FocusCommand) Execute(args []string) error {
 
 // FocusIndependentCommand provides focus operations for an isolated session.
 type FocusIndependentCommand struct {
-	Plan    FocusPlanCommand `command:"plan" description:"Focus an initiative independently"`
-	Task    FocusTaskCommand `command:"task" description:"Focus a task independently"`
-	Args    []string         `positional-args:"yes"`
+	Plan    FocusIndPlanCommand `command:"plan" description:"Focus an initiative independently"`
+	Task    FocusIndTaskCommand `command:"task" description:"Focus a task independently"`
+	Args    []string            `positional-args:"yes"`
 	appOpts *config.AppOptions
+}
+
+// FocusIndPlanCommand focuses an initiative in the session's own scope.
+type FocusIndPlanCommand struct {
+	FocusPlanCommand
+}
+
+// Execute writes the initiative focus to the session's independent scope.
+func (cmd *FocusIndPlanCommand) Execute(args []string) error {
+	return cmd.execute(args, true)
+}
+
+// FocusIndTaskCommand focuses a task in the session's own scope.
+type FocusIndTaskCommand struct {
+	FocusTaskCommand
+}
+
+// Execute writes the task focus to the session's independent scope.
+func (cmd *FocusIndTaskCommand) Execute(args []string) error {
+	return cmd.execute(args, true)
 }
 
 // SetAppOptions supplies project options to independent focus commands.
@@ -105,7 +126,11 @@ func (cmd *FocusInterestCommand) Execute(args []string) error {
 	}
 	defer store.Close()
 	ctx := cmd.appOpts.Context()
-	state, err := store.LoadFocus(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	scope, err := focusScope(store, cmd.appOpts, false)
+	if err != nil {
+		return err
+	}
+	state, err := store.LoadFocus(ctx, cmd.appOpts.ProjectID, scope)
 	if err != nil {
 		return err
 	}
@@ -145,7 +170,7 @@ func (cmd *FocusInterestCommand) Execute(args []string) error {
 	if err := store.SaveFocus(ctx, state); err != nil {
 		return err
 	}
-	if err := store.ClearCache(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID, ""); err != nil {
+	if err := clearFocusScopeCache(store, cmd.appOpts, scope); err != nil {
 		return err
 	}
 	if args[0] == "add" {
@@ -247,7 +272,11 @@ func (cmd *FocusPlanCommand) execute(args []string, independent bool) error {
 	if err != nil {
 		return err
 	}
-	state, err := store.LoadFocus(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	scope, err := focusScope(store, cmd.appOpts, independent)
+	if err != nil {
+		return err
+	}
+	state, err := store.LoadFocus(cmd.appOpts.Context(), cmd.appOpts.ProjectID, scope)
 	if err != nil {
 		return err
 	}
@@ -268,7 +297,7 @@ func (cmd *FocusPlanCommand) execute(args []string, independent bool) error {
 	if err := store.SaveFocus(cmd.appOpts.Context(), state); err != nil {
 		return err
 	}
-	if err := clearTaskCaches(store, cmd.appOpts, task.Task{InitiativeName: initiative.Name}); err != nil {
+	if err := clearFocusCaches(store, cmd.appOpts, scope, task.Task{InitiativeName: initiative.Name}); err != nil {
 		return err
 	}
 	if independent {
@@ -311,7 +340,11 @@ func (cmd *FocusTaskCommand) execute(args []string, independent bool) error {
 	if err != nil {
 		return err
 	}
-	state, err := store.LoadFocus(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	scope, err := focusScope(store, cmd.appOpts, independent)
+	if err != nil {
+		return err
+	}
+	state, err := store.LoadFocus(cmd.appOpts.Context(), cmd.appOpts.ProjectID, scope)
 	if err != nil {
 		return err
 	}
@@ -324,7 +357,7 @@ func (cmd *FocusTaskCommand) execute(args []string, independent bool) error {
 	if err := store.SaveFocus(cmd.appOpts.Context(), state); err != nil {
 		return err
 	}
-	if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
+	if err := clearFocusCaches(store, cmd.appOpts, scope, current); err != nil {
 		return err
 	}
 	fmt.Fprintf(cmd.appOpts.Out(), "Focused task %s: %s\n", shortID(current.ID), current.Description)
@@ -351,7 +384,11 @@ func (cmd *FocusPopCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	state, err := store.LoadFocus(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	scope, err := focusScope(store, cmd.appOpts, false)
+	if err != nil {
+		return err
+	}
+	state, err := store.LoadFocus(cmd.appOpts.Context(), cmd.appOpts.ProjectID, scope)
 	if err != nil {
 		return err
 	}
@@ -368,7 +405,7 @@ func (cmd *FocusPopCommand) Execute(args []string) error {
 		return err
 	}
 	if state.FocusedTaskID == "" {
-		if err := store.ClearCache(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, ""); err != nil {
+		if err := clearFocusScopeCache(store, cmd.appOpts, scope); err != nil {
 			return err
 		}
 	} else {
@@ -376,7 +413,7 @@ func (cmd *FocusPopCommand) Execute(args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := clearTaskCaches(store, cmd.appOpts, current); err != nil {
+		if err := clearFocusCaches(store, cmd.appOpts, scope, current); err != nil {
 			return err
 		}
 	}
@@ -407,6 +444,13 @@ func (cmd *FocusBackCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
+	scope, err := focusScope(store, cmd.appOpts, false)
+	if err != nil {
+		return err
+	}
+	if scope == "global" {
+		return fmt.Errorf("session %s is already in the global focus\nACTION: Run 'jczl-flow focus ind task <uuid>' or 'jczl-flow focus ind plan <name>' to start an independent focus.", cmd.appOpts.SessionID)
+	}
 	if err := store.ExitSession(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
 		return err
 	}
@@ -434,19 +478,49 @@ func (cmd *FocusClearCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
+	scope, err := focusScope(store, cmd.appOpts, false)
+	if err != nil {
+		return err
+	}
 	state := task.FocusState{
 		ProjectID: cmd.appOpts.ProjectID,
-		SessionID: cmd.appOpts.SessionID,
+		SessionID: scope,
 		TaskStack: []task.FocusEntry{},
 	}
 	if err := store.SaveFocus(cmd.appOpts.Context(), state); err != nil {
 		return err
 	}
-	if err := store.ClearCache(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, ""); err != nil {
+	if err := clearFocusScopeCache(store, cmd.appOpts, scope); err != nil {
 		return err
 	}
 	fmt.Fprintln(cmd.appOpts.Out(), "Focus cleared")
 	return nil
+}
+
+// focusScope resolves where a focus write lands: an independent write keeps
+// the session's own scope, any other write follows the session's current scope.
+func focusScope(store *sqlite.Store, opts *config.AppOptions, independent bool) (string, error) {
+	if independent {
+		return opts.SessionID, nil
+	}
+	return store.FocusScope(opts.Context(), opts.ProjectID, opts.SessionID)
+}
+
+// clearFocusCaches drops the caches a task focus change makes stale. A change
+// to the global focus is seen by every session that reads it.
+func clearFocusCaches(store *sqlite.Store, opts *config.AppOptions, scope string, current task.Task) error {
+	if scope == "global" {
+		return store.ClearGlobalScopeCache(opts.Context(), opts.ProjectID)
+	}
+	return clearTaskCaches(store, opts, current)
+}
+
+// clearFocusScopeCache drops every cache entry of the sessions reading scope.
+func clearFocusScopeCache(store *sqlite.Store, opts *config.AppOptions, scope string) error {
+	if scope == "global" {
+		return store.ClearGlobalScopeCache(opts.Context(), opts.ProjectID)
+	}
+	return store.ClearCache(opts.Context(), opts.ProjectID, opts.SessionID, "")
 }
 
 func pushFocus(stack []task.FocusEntry, entry task.FocusEntry) []task.FocusEntry {

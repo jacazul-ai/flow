@@ -142,35 +142,39 @@ func (cmd *SessionResumeCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
+	scope, err := store.FocusScope(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	if err != nil {
+		return err
+	}
 
-	dump, found, err := store.DeliverLatestSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	dump, found, err := store.DeliverLatestSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, scope)
 	if err != nil {
 		return err
 	}
 	if found {
-		fmt.Fprintf(cmd.appOpts.Out(), "📋 SESSION HANDOFF — session %s\n\n%s", cmd.appOpts.SessionID, dump.Content)
+		fmt.Fprintf(cmd.appOpts.Out(), "📋 SESSION HANDOFF — session %s\n\n%s", scope, dump.Content)
 		return nil
 	}
-	latest, found, err := store.GetLatestSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	latest, found, err := store.GetLatestSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, scope)
 	if err != nil {
 		return err
 	}
 	if found && latest.Status == task.SessionDumpRead {
-		fmt.Fprintf(cmd.appOpts.Out(), "Session dump already acknowledged: session %s. Context will not be replayed.\n", cmd.appOpts.SessionID)
+		fmt.Fprintf(cmd.appOpts.Out(), "Session dump already acknowledged: session %s. Context will not be replayed.\n", scope)
 		return nil
 	}
 	if found && latest.Status == task.SessionDumpDraft {
 		return fmt.Errorf("session dump %s is still a draft\nACTION: Finalize it with session finalize before resuming.", shortSessionDumpID(latest.ID))
 	}
-	note, found, err := store.GetSessionNote(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	note, found, err := store.GetSessionNote(cmd.appOpts.Context(), cmd.appOpts.ProjectID, scope)
 	if err != nil || !found {
 		return err
 	}
 	if note.AcknowledgedAt != "" {
-		fmt.Fprintf(cmd.appOpts.Out(), "Session note already acknowledged: session %s. Context will not be replayed.\n", cmd.appOpts.SessionID)
+		fmt.Fprintf(cmd.appOpts.Out(), "Session note already acknowledged: session %s. Context will not be replayed.\n", scope)
 		return nil
 	}
-	fmt.Fprintf(cmd.appOpts.Out(), "📋 SESSION HANDOFF — session %s\n\n%s", cmd.appOpts.SessionID, note.Content)
+	fmt.Fprintf(cmd.appOpts.Out(), "📋 SESSION HANDOFF — session %s\n\n%s", scope, note.Content)
 	return nil
 }
 
@@ -194,21 +198,25 @@ func (cmd *SessionAckCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
+	scope, err := store.FocusScope(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	if err != nil {
+		return err
+	}
 
-	if _, found, err := store.AcknowledgeLatestSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
+	if _, found, err := store.AcknowledgeLatestSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, scope); err != nil {
 		return err
 	} else if found {
 		fmt.Fprintln(cmd.appOpts.Out(), "Session dump acknowledged. Context loaded.")
 		return nil
 	}
-	latest, found, err := store.GetLatestSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	latest, found, err := store.GetLatestSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, scope)
 	if err != nil {
 		return err
 	}
 	if found && latest.Status == task.SessionDumpDraft {
 		return fmt.Errorf("session dump %s is still a draft\nACTION: Finalize it with session finalize before acknowledging.", shortSessionDumpID(latest.ID))
 	}
-	note, found, err := store.GetSessionNote(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	note, found, err := store.GetSessionNote(cmd.appOpts.Context(), cmd.appOpts.ProjectID, scope)
 	if err != nil {
 		return err
 	}
@@ -220,7 +228,7 @@ func (cmd *SessionAckCommand) Execute(args []string) error {
 		fmt.Fprintln(cmd.appOpts.Out(), "Session note already acknowledged.")
 		return nil
 	}
-	if _, _, err := store.AcknowledgeSessionNote(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
+	if _, _, err := store.AcknowledgeSessionNote(cmd.appOpts.Context(), cmd.appOpts.ProjectID, scope); err != nil {
 		return err
 	}
 	fmt.Fprintln(cmd.appOpts.Out(), "Session note acknowledged. Context loaded.")
@@ -247,23 +255,27 @@ func (cmd *SessionDumpCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
+	scope, err := store.FocusScope(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	if err != nil {
+		return err
+	}
 
 	ctx := cmd.appOpts.Context()
-	latest, found, err := store.GetLatestSessionDump(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	latest, found, err := store.GetLatestSessionDump(ctx, cmd.appOpts.ProjectID, scope)
 	if err != nil {
 		return err
 	}
 	if found && latest.Status != task.SessionDumpRead {
-		return fmt.Errorf("session dump already exists for session %s and is not acknowledged\nACTION: Read, finalize, and acknowledge the pending dump before creating another.", cmd.appOpts.SessionID)
+		return fmt.Errorf("session dump already exists for session %s and is not acknowledged\nACTION: Read, finalize, and acknowledge the pending dump before creating another.", scope)
 	}
-	focus, err := store.LoadFocus(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	focus, err := store.LoadFocus(ctx, cmd.appOpts.ProjectID, scope)
 	if err != nil {
 		return err
 	}
 	if err := store.SaveFocus(ctx, focus); err != nil {
 		return err
 	}
-	content, err := renderSessionDump(ctx, store, cmd.appOpts, focus)
+	content, err := renderSessionDump(ctx, store, cmd.appOpts, scope, focus)
 	if err != nil {
 		return err
 	}
@@ -271,11 +283,11 @@ func (cmd *SessionDumpCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	dump, err := store.CreateSessionDumpDraft(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID, focusSummary, content)
+	dump, err := store.CreateSessionDumpDraft(ctx, cmd.appOpts.ProjectID, scope, focusSummary, content)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(cmd.appOpts.Out(), "Session dump draft %s created for session %s.\n\n%s", shortSessionDumpID(dump.ID), cmd.appOpts.SessionID, content)
+	fmt.Fprintf(cmd.appOpts.Out(), "Session dump draft %s created for session %s.\n\n%s", shortSessionDumpID(dump.ID), scope, content)
 	return nil
 }
 
@@ -305,7 +317,11 @@ func (cmd *SessionFinalizeCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	dump, found, err := store.GetSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, args[0])
+	scope, err := store.FocusScope(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	if err != nil {
+		return err
+	}
+	dump, found, err := store.GetSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, scope, args[0])
 	if err != nil {
 		return err
 	}
@@ -313,7 +329,7 @@ func (cmd *SessionFinalizeCommand) Execute(args []string) error {
 		return fmt.Errorf("session dump %q not found", args[0])
 	}
 	content := dumpContent(string(dump.Content), cmd.References, cmd.Actions, cmd.Notes)
-	finalized, err := store.FinalizeSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID, dump.ID, content)
+	finalized, err := store.FinalizeSessionDump(cmd.appOpts.Context(), cmd.appOpts.ProjectID, scope, dump.ID, content)
 	if err != nil {
 		return err
 	}
@@ -342,11 +358,15 @@ func (cmd *SessionDumpsCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
+	scope, err := store.FocusScope(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	if err != nil {
+		return err
+	}
 	var dumps []task.SessionDump
 	if cmd.All {
 		dumps, err = store.ListAllSessionDumps(cmd.appOpts.Context(), cmd.appOpts.ProjectID)
 	} else {
-		dumps, err = store.ListSessionDumps(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+		dumps, err = store.ListSessionDumps(cmd.appOpts.Context(), cmd.appOpts.ProjectID, scope)
 	}
 	if err != nil {
 		return err
@@ -554,11 +574,11 @@ func sectionValue(value string, fallback string) string {
 	return strings.TrimSpace(value)
 }
 
-func renderSessionDump(ctx context.Context, store *sqlite.Store, opts *config.AppOptions, focus task.FocusState) (string, error) {
+func renderSessionDump(ctx context.Context, store *sqlite.Store, opts *config.AppOptions, scope string, focus task.FocusState) (string, error) {
 	var output strings.Builder
 	output.WriteString("# Session Handoff Note\n\n")
 	output.WriteString(fmt.Sprintf("**Date:** %s\n", time.Now().UTC().Format("2006-01-02")))
-	output.WriteString(fmt.Sprintf("**Session:** %s\n\n---\n\n", opts.SessionID))
+	output.WriteString(fmt.Sprintf("**Session:** %s\n\n---\n\n", scope))
 	output.WriteString("## Focus\n\n")
 
 	var focusedTask task.Task

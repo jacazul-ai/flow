@@ -129,6 +129,11 @@ diff.
    `tw-flow` projects: the default migration preflights and invokes `task`
    directly, accepts an explicit binary and optional legacy prefix map from the
    launcher, and keeps green-field flow commands native.
+8. Focus is smart about scope (#35): a session stays where it entered.
+   Without its own focus it shares the project's global focus and handoff;
+   `focus ind` is the only way out and `focus back` the only way back.
+   `focus.md` teaches the rule and `sessions.md` its handoff consequence; the
+   skill contract test pins both.
 
 ## Known gaps
 

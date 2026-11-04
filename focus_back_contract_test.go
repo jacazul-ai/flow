@@ -75,8 +75,10 @@ func TestFocusBackKeepsSessionNotesAndDumps(t *testing.T) {
 	if got := countSessionRows(t, harness.DatabasePath, "cache_entries", "session"); got != 0 {
 		t.Fatalf("session cache rows after focus back = %d, want the derived cache cleared", got)
 	}
+	// Back in the global focus, the session reads the global handoff; its own
+	// dump stays stored under its ID but is no longer its active handoff.
 	output, err = runFlow(t, harness, "session", "resume")
-	if err != nil || !strings.Contains(output, "SESSION HANDOFF") || !strings.Contains(output, "Resume the first task") {
-		t.Fatalf("session resume after focus back = %q, err %v; want the pending dump", output, err)
+	if err != nil || strings.Contains(output, "Resume the first task") {
+		t.Fatalf("session resume after focus back = %q, err %v; want the global scope, not the independent dump", output, err)
 	}
 }

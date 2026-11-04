@@ -186,3 +186,46 @@ func (s *Store) ExitSession(ctx context.Context, projectID string, sessionID str
 	}
 	return nil
 }
+
+// FocusScope resolves the scope a session's focus, handoff and dumps belong
+// to. A session that owns a sessions row is independent and keeps its own
+// scope; every other session shares the project's global scope.
+func (s *Store) FocusScope(ctx context.Context, projectID string, sessionID string) (string, error) {
+	if projectID == "" || sessionID == "" {
+		return "", errors.New("project ID and session ID are required")
+	}
+	if sessionID == "global" {
+		return "global", nil
+	}
+	var found int
+	err := s.db.QueryRowContext(ctx, `
+		SELECT 1 FROM sessions WHERE project_id = ? AND session_id = ?
+	`, projectID, sessionID).Scan(&found)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "global", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("resolve focus scope: %w", err)
+	}
+	return sessionID, nil
+}
+
+// ClearGlobalScopeCache drops the derived cache of every session of one
+// project that reads the global focus: the global scope itself and each
+// session without an independent sessions row.
+func (s *Store) ClearGlobalScopeCache(ctx context.Context, projectID string) error {
+	if projectID == "" {
+		return errors.New("project ID is required")
+	}
+	_, err := s.db.ExecContext(ctx, `
+		DELETE FROM cache_entries
+		WHERE project_id = ? AND session_id NOT IN (
+			SELECT session_id FROM sessions
+			WHERE project_id = ? AND session_id != 'global'
+		)
+	`, projectID, projectID)
+	if err != nil {
+		return fmt.Errorf("clear global scope cache: %w", err)
+	}
+	return nil
+}

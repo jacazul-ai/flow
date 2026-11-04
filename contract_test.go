@@ -396,7 +396,7 @@ func TestSessionListShowsCurrentAnchor(t *testing.T) {
 	if len(match) != 2 {
 		t.Fatalf("plan output = %q, want one task UUID", planOutput)
 	}
-	if output, err := runFlow(t, harness, "focus", "task", match[1]); err != nil {
+	if output, err := runFlow(t, harness, "focus", "ind", "task", match[1]); err != nil {
 		t.Fatalf("focus session task: %v\n%s", err, output)
 	}
 	output, err := runFlow(t, harness, "session", "list")
@@ -814,7 +814,7 @@ func TestSessionDumpsListsCurrentSessionAndAllHistory(t *testing.T) {
 		if len(match) != 2 {
 			t.Fatalf("%s plan output = %q, want task UUID", session.SessionID, output)
 		}
-		if output, err := runFlow(t, session, "focus", "task", match[1]); err != nil {
+		if output, err := runFlow(t, session, "focus", "ind", "task", match[1]); err != nil {
 			t.Fatalf("focus %s task: %v\n%s", session.SessionID, err, output)
 		}
 		createFinalizedSessionDump(t, session)
@@ -853,7 +853,7 @@ func TestSessionPurgePreservesHistoryUntilHardConfirmed(t *testing.T) {
 	if len(match) != 2 {
 		t.Fatalf("old plan output = %q, want task UUID", output)
 	}
-	if output, err := runFlow(t, &other, "focus", "task", match[1]); err != nil {
+	if output, err := runFlow(t, &other, "focus", "ind", "task", match[1]); err != nil {
 		t.Fatalf("focus old task: %v\n%s", err, output)
 	}
 	createFinalizedSessionDump(t, &other)
@@ -916,7 +916,7 @@ func TestSessionListRendersTableAndHandoffState(t *testing.T) {
 	if len(taskID) != 2 {
 		t.Fatalf("session plan output = %q, want task UUID", output)
 	}
-	if output, err := runFlow(t, harness, "focus", "task", taskID[1]); err != nil {
+	if output, err := runFlow(t, harness, "focus", "ind", "task", taskID[1]); err != nil {
 		t.Fatalf("focus session task: %v\n%s", err, output)
 	}
 	output, err = runFlow(t, harness, "session", "dump")
@@ -984,7 +984,7 @@ func TestSessionListKeepsProjectSessionsIsolated(t *testing.T) {
 	if len(firstTask) != 2 {
 		t.Fatalf("alpha plan output = %q, want task UUID", firstOutput)
 	}
-	if output, err := runFlow(t, first, "focus", "task", firstTask[1]); err != nil {
+	if output, err := runFlow(t, first, "focus", "ind", "task", firstTask[1]); err != nil {
 		t.Fatalf("focus alpha task: %v\n%s", err, output)
 	}
 
@@ -996,7 +996,7 @@ func TestSessionListKeepsProjectSessionsIsolated(t *testing.T) {
 	if len(secondTask) != 2 {
 		t.Fatalf("beta plan output = %q, want task UUID", secondOutput)
 	}
-	if output, err := runFlow(t, second, "focus", "task", secondTask[1]); err != nil {
+	if output, err := runFlow(t, second, "focus", "ind", "task", secondTask[1]); err != nil {
 		t.Fatalf("focus beta task: %v\n%s", err, output)
 	}
 

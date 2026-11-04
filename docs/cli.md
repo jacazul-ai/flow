@@ -179,13 +179,40 @@ Structured formats preserve the existing session identity fields and add
 jczl-flow session list --format json
 ```
 
+### Smart focus: global and independent scopes
+
+A session stays in the scope it entered. A session without an independent
+focus is in the project's global focus, shared by every such session:
+
+- `focus <initiative>`, `focus plan`, `focus ini`, `focus task`, `focus pop`,
+  `focus clear` and `focus interest` write the global focus, and every session
+  in the global focus reads the change;
+- `focus ind plan <initiative>`, `focus ind task <uuid>` and
+  `focus ind <initiative>` are the only way out: they create the session's
+  independent focus, and from then on every focus command of that session,
+  with or without `ind`, writes its own focus;
+- `focus back` is the only way back. A session already in the global focus is
+  refused with an `ACTION:` pointing at `focus ind`.
+
+Reads are unchanged: a session reads its own focus when it has one, else the
+global focus. A change to the global focus drops the cached output of every
+session of the project that reads it; independent sessions and other projects
+keep their cache.
+
+Handoffs follow the same scope. In the global focus, `session dump`,
+`session finalize`, `session resume`, `session ack`, `session dumps` and
+`onboard` act on the shared `global` handoff, so any session in the global
+focus receives it; an independent session keeps its own. `session list` and
+`session purge` keep their project-wide view.
+
 ### Leaving an independent focus
 
 `jczl-flow focus back` drops the current session's independent focus and its
 cached output, so the session falls back to the global focus and no longer
-appears in `session list` until it anchors again. Like removing the legacy
-`focus-<session>.json` file, it keeps the session's handoff notes and dumps:
-`session resume` still delivers a pending handoff. Only
+appears in `session list` until it anchors again with `focus ind`. Like
+removing the legacy `focus-<session>.json` file, it keeps the session's handoff
+notes and dumps stored under its ID: they stay listed by `session dumps --all`,
+while `session resume` now reads the global handoff. Only
 `session purge --hard --confirm` deletes session history.
 
 ### Session dump history

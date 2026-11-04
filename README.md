@@ -222,8 +222,10 @@ and the next valid command.
 
 ## Focus and session switching
 
-Focus is stored per project and session. The task stack makes switching work
-safe without losing the initiative anchor:
+Focus is stored per project. Sessions share the project's global focus until
+one anchors an independent focus with `focus ind`; `focus back` returns it to
+the global focus. The task stack makes switching work safe without losing the
+initiative anchor:
 
 ```bash
 jczl-flow focus plan parity
@@ -242,8 +244,10 @@ records native delivery, while `session ack` explicitly releases the next
 sequence. `session purge` preserves history logically; only
 `session purge --hard --confirm` deletes already-purged orphan history.
 
-Use `JACAZUL_SESSION` to isolate one agent session from another while they
-share the same project database.
+Use `JACAZUL_SESSION` with `focus ind` to isolate one agent session from
+another while they share the same project database; without `focus ind`, the
+sessions share one focus and one handoff. See "Smart focus" in
+[docs/cli.md](docs/cli.md).
 
 ## Structured reports
 

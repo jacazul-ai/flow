@@ -2,9 +2,11 @@
 
 Owner of: onboarding, handoffs, and session state.
 
-A session is one agent conversation inside a project. It owns its focus, its
-cache, and its handoff. One session never reads, acknowledges, or changes
-another session's state.
+A session is one agent conversation inside a project. It owns its cache. Its
+focus and handoff belong to its scope: the project's shared global focus by
+default, or its own after `focus ind` (see the focus reference). Sessions in
+the global focus share one handoff; an independent session never reads,
+acknowledges, or changes another session's state.
 
 ## Onboard
 

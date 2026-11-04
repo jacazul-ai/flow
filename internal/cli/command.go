@@ -490,13 +490,16 @@ var helpEntries = []helpEntry{
 		usage:     "jczl-flow focus [<initiative>|show|plan|ini|task|pop|clear|back|ind|interest] [value]",
 		role:      "Use this to move or inspect the agent anchor without losing the initiative chain.",
 		preconditions: []string{
-			"Focus is scoped to the selected project identity and session ID.",
+			"Focus is scoped to the selected project identity; a session without its own independent focus shares the project's global focus.",
 			"focus task accepts a full UUID or an unambiguous short UUID.",
 		},
 		effects: []string{
 			"focus plan anchors the initiative and its next ready task.",
 			"focus task pushes a task onto the session stack; focus pop returns to the previous task.",
 			"focus clear removes the anchor but preserves the session record.",
+			"Without ind, every focus write lands in the session's current scope: the shared global focus, or its own focus after focus ind.",
+			"focus ind creates the session's independent focus; focus back drops it and refuses a session already in the global focus.",
+			"A change to the global focus refreshes the cache of every session that reads it.",
 		},
 		examples: []string{
 			"jczl-flow focus show",
