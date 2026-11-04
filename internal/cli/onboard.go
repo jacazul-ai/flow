@@ -43,17 +43,17 @@ func (cmd *OnboardCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	scope, err := store.FocusScope(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
+	scope, err := activeHandoffScope(store, cmd.appOpts)
 	if err != nil {
 		return err
 	}
-	note, found, native, acknowledge, err := loadOnboardHandoff(ctx, store, cmd.appOpts.ProjectID, scope)
+	note, found, native, acknowledge, err := loadOnboardHandoff(ctx, store, cmd.appOpts, scope)
 	if err != nil {
 		return err
 	}
 
 	if format != formatText {
-		return cmd.report(store, format, scope, focus, note, found, native, cmd.TagFilter())
+		return cmd.report(store, format, focus, note, found, native, cmd.TagFilter())
 	}
 
 	output, err := renderOnboard(ctx, store, cmd.appOpts, focus, note, found, native, cmd.TagFilter())
@@ -64,7 +64,7 @@ func (cmd *OnboardCommand) Execute(args []string) error {
 		return fmt.Errorf("write onboard briefing: %w", err)
 	}
 	if acknowledge {
-		if _, _, err := store.AcknowledgeSessionNote(ctx, cmd.appOpts.ProjectID, scope); err != nil {
+		if _, _, err := store.AcknowledgeSessionNote(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
 			return fmt.Errorf("acknowledge onboard handoff: %w", err)
 		}
 		if _, err := fmt.Fprint(cmd.appOpts.Out(), "HANDOFF ACKNOWLEDGED\n"); err != nil {
@@ -74,20 +74,21 @@ func (cmd *OnboardCommand) Execute(args []string) error {
 	return nil
 }
 
-// loadOnboardHandoff reads the handoff of the session's active focus scope.
-func loadOnboardHandoff(ctx context.Context, store *sqlite.Store, projectID string, scope string) (task.SessionNote, bool, bool, bool, error) {
-	dump, found, err := store.DeliverLatestSessionDump(ctx, projectID, scope)
+// loadOnboardHandoff reads the session's handoff of its active scope, falling
+// back to a legacy session note.
+func loadOnboardHandoff(ctx context.Context, store *sqlite.Store, opts *config.AppOptions, scope string) (task.SessionNote, bool, bool, bool, error) {
+	dump, found, err := store.DeliverLatestSessionDump(ctx, opts.ProjectID, opts.SessionID, scope)
 	if err != nil {
 		return task.SessionNote{}, false, false, false, err
 	}
 	if found {
 		return task.SessionNote{
-			ProjectID: projectID,
-			SessionID: scope,
+			ProjectID: opts.ProjectID,
+			SessionID: opts.SessionID,
 			Content:   string(dump.Content),
 		}, true, true, false, nil
 	}
-	note, found, err := store.GetSessionNote(ctx, projectID, scope)
+	note, found, err := store.GetSessionNote(ctx, opts.ProjectID, opts.SessionID)
 	if err != nil {
 		return task.SessionNote{}, false, false, false, err
 	}
@@ -96,7 +97,7 @@ func loadOnboardHandoff(ctx context.Context, store *sqlite.Store, projectID stri
 
 // report renders the onboard briefing as one record. Native handoffs are
 // delivered without acknowledgement; legacy notes keep their compatibility path.
-func (cmd *OnboardCommand) report(store *sqlite.Store, format string, scope string, focus task.FocusState, note task.SessionNote, noteFound bool, native bool, tagFilter task.TagFilter) error {
+func (cmd *OnboardCommand) report(store *sqlite.Store, format string, focus task.FocusState, note task.SessionNote, noteFound bool, native bool, tagFilter task.TagFilter) error {
 	ctx := cmd.appOpts.Context()
 	handoff := ""
 	if noteFound && (native || note.AcknowledgedAt == "") {
@@ -126,7 +127,7 @@ func (cmd *OnboardCommand) report(store *sqlite.Store, format string, scope stri
 		return err
 	}
 	if noteFound && !native && note.AcknowledgedAt == "" {
-		if _, _, err := store.AcknowledgeSessionNote(ctx, cmd.appOpts.ProjectID, scope); err != nil {
+		if _, _, err := store.AcknowledgeSessionNote(ctx, cmd.appOpts.ProjectID, cmd.appOpts.SessionID); err != nil {
 			return fmt.Errorf("acknowledge onboard handoff: %w", err)
 		}
 	}

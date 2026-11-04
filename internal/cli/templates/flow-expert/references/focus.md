@@ -19,9 +19,10 @@ in an independent focus stays independent.
   that session, with or without `ind`, writes its own focus.
 - `focus back` is the only way back. In a session already in the global focus
   it refuses with an `ACTION:`.
-- Handoffs follow the same scope: in the global focus, `session dump`,
-  `resume`, `ack`, `finalize` and `dumps` act on the shared global handoff,
-  which any global session receives; an independent session keeps its own.
+- `session list` shows every session's current scope (`global` or `ind`).
+- Handoffs are per session and scope: a session has its own global handoff
+  and its own independent handoff, and `session dump`, `resume`, `ack`,
+  `finalize` and `dumps` act on the one of its current scope.
 - Two agents working in parallel on one project share one focus unless one of
   them uses `focus ind`.
 
@@ -46,8 +47,10 @@ jacazul flow focus show
 
 `focus ind plan <initiative>` or `focus ind task <uuid>` anchors an
 independent focus for this session, apart from the global one; `focus back`
-returns to the global focus and its shared handoff. It drops only the session's independent focus and
-cached output: handoff notes and dumps stay readable, and only
+returns to the global focus and the session's global handoff. It drops only
+the session's independent focus and cached output:
+handoff notes and dumps stay readable, the independent handoff returns with
+the next `focus ind`, and only
 `session purge --hard --confirm` deletes session history.
 
 ```bash

@@ -117,6 +117,7 @@ func (s *Store) loadFocusRow(ctx context.Context, projectID string, sessionID st
 		       plans_of_interest_json
 		FROM sessions
 		WHERE project_id = ? AND session_id = ?
+		  AND (scope = 'ind' OR session_id = 'global')
 	`, projectID, sessionID).Scan(&initiativeID, &focusedTaskID, &stackJSON, &interestsJSON)
 	return initiativeID, focusedTaskID, stackJSON, interestsJSON, err
 }
@@ -140,16 +141,17 @@ func (s *Store) SaveFocus(ctx context.Context, state task.FocusState) error {
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO sessions
 			(project_id, session_id, focused_initiative_id, focused_task_id,
-			 task_stack_json, plans_of_interest_json, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+			 task_stack_json, plans_of_interest_json, updated_at, scope)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (project_id, session_id) DO UPDATE SET
 			focused_initiative_id = excluded.focused_initiative_id,
 			focused_task_id = excluded.focused_task_id,
 			task_stack_json = excluded.task_stack_json,
 			plans_of_interest_json = excluded.plans_of_interest_json,
-			updated_at = excluded.updated_at
+			updated_at = excluded.updated_at,
+			scope = excluded.scope
 	`, state.ProjectID, state.SessionID, state.InitiativeID, state.FocusedTaskID,
-		string(stackJSON), string(interestsJSON), timestamp())
+		string(stackJSON), string(interestsJSON), timestamp(), scopeForSession(state.SessionID))
 	if err != nil {
 		return fmt.Errorf("save focus: %w", err)
 	}
@@ -175,20 +177,26 @@ func (s *Store) listSessions(ctx context.Context, projectID string, includePurge
 		purgedFilter = ""
 	}
 	rows, err := s.db.QueryContext(ctx, fmt.Sprintf(`
-		SELECT s.project_id, s.session_id, s.focused_initiative_id,
-		       COALESCE(i.name, ''), s.focused_task_id, s.updated_at,
-		       s.state, s.purged_at,
+		SELECT s.project_id, s.session_id, s.scope,
+		       CASE WHEN s.scope = 'ind' THEN s.focused_initiative_id
+		            ELSE COALESCE(g.focused_initiative_id, '') END,
+		       COALESCE(i.name, ''),
+		       CASE WHEN s.scope = 'ind' THEN s.focused_task_id
+		            ELSE COALESCE(g.focused_task_id, '') END,
+		       s.updated_at, s.state, s.purged_at,
 		       CASE
 		           WHEN EXISTS (
 		               SELECT 1 FROM session_dumps d
 		               WHERE d.project_id = s.project_id
 		                 AND d.session_id = s.session_id
+		                 AND d.scope = s.scope
 		                 AND d.status IN ('draft', 'pending')
 		           ) THEN 'pending'
 		           WHEN EXISTS (
 		               SELECT 1 FROM session_dumps d
 		               WHERE d.project_id = s.project_id
 		                 AND d.session_id = s.session_id
+		                 AND d.scope = s.scope
 		                 AND d.status = 'read'
 		           ) THEN 'acknowledged'
 		           WHEN n.session_id IS NULL THEN ''
@@ -196,9 +204,13 @@ func (s *Store) listSessions(ctx context.Context, projectID string, includePurge
 		           ELSE 'acknowledged'
 		       END
 		FROM sessions s
+		LEFT JOIN sessions g
+		       ON g.project_id = s.project_id
+		      AND g.session_id = 'global'
 		LEFT JOIN initiatives i
 		       ON i.project_id = s.project_id
-		      AND i.id = s.focused_initiative_id
+		      AND i.id = CASE WHEN s.scope = 'ind' THEN s.focused_initiative_id
+		                      ELSE g.focused_initiative_id END
 		LEFT JOIN session_notes n
 		       ON n.project_id = s.project_id
 		      AND n.session_id = s.session_id
@@ -216,6 +228,7 @@ func (s *Store) listSessions(ctx context.Context, projectID string, includePurge
 		if err := rows.Scan(
 			&current.ProjectID,
 			&current.SessionID,
+			&current.Scope,
 			&current.InitiativeID,
 			&current.InitiativeName,
 			&current.FocusedTaskID,

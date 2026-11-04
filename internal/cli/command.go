@@ -500,6 +500,7 @@ var helpEntries = []helpEntry{
 			"Without ind, every focus write lands in the session's current scope: the shared global focus, or its own focus after focus ind.",
 			"focus ind creates the session's independent focus; focus back drops it and refuses a session already in the global focus.",
 			"A change to the global focus refreshes the cache of every session that reads it.",
+			"session list shows the scope of every session; a session writing the global focus is registered in it.",
 		},
 		examples: []string{
 			"jczl-flow focus show",
@@ -522,15 +523,17 @@ var helpEntries = []helpEntry{
 			"session purge is logical by default; only --hard --confirm can delete history.",
 		},
 		effects: []string{
-			"session list renders SESSION, PLAN, TASK, AGE, STATUS, and HANDOFF columns.",
-			"session list marks the current session and hides logically purged sessions.",
+			"session list renders SESSION, SCOPE, PLAN, TASK, AGE, STATUS, and HANDOFF columns for every session of the project.",
+			"session list marks the current session and hides logically purged sessions; --all shows them as purged.",
+			"Handoff commands act on the session's handoff of its current scope, global or ind.",
 			"session resume and session ack expose the handoff lifecycle without replaying acknowledged notes.",
 			"session dump creates a draft; session finalize seals Actions, References, and Notes as a pending handoff.",
 			"session dumps lists the current session by default and includes all project history with --all.",
-			"session purge marks orphan sessions as purged; --hard --confirm permanently deletes already-purged history.",
+			"session purge marks orphan sessions as purged, a state that hides them and refuses their writes; --hard --confirm permanently deletes already-purged history.",
 		},
 		examples: []string{
 			"jczl-flow session list",
+			"jczl-flow session list --all",
 			"jczl-flow session dump",
 			"jczl-flow session finalize 57c3fc80 --actions 'Run the next command'",
 			"jczl-flow session dumps --all",

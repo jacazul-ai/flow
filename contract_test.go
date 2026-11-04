@@ -640,7 +640,7 @@ func TestSchemaUpgradeAnnouncementCoversFreshOlderAndNewerDatabases(t *testing.T
 	if code := flow.Run(context.Background(), []string{"status"}, flowEnv(older), flow.Streams{Stdout: &olderStdout, Stderr: &olderStderr}); code != 0 {
 		t.Fatalf("older schema status = %d\nstdout=%s\nstderr=%s", code, olderStdout.String(), olderStderr.String())
 	}
-	if !strings.Contains(olderStderr.String(), "Schema upgrade required: v14 -> v16") {
+	if !strings.Contains(olderStderr.String(), "Schema upgrade required: v14 -> v17") {
 		t.Fatalf("older schema stderr = %q, want upgrade notice", olderStderr.String())
 	}
 
@@ -667,6 +667,10 @@ func downgradeSchemaForTest(t *testing.T, path string) {
 	}
 	defer db.Close()
 	for _, statement := range []string{
+		"DROP INDEX session_dumps_lookup_idx",
+		"ALTER TABLE session_dumps DROP COLUMN scope",
+		"ALTER TABLE sessions DROP COLUMN scope",
+		"DELETE FROM goose_db_version WHERE version_id = 17",
 		"DROP TABLE migration_origins",
 		"DELETE FROM goose_db_version WHERE version_id = 16",
 		"DROP TABLE session_dumps",
@@ -935,7 +939,7 @@ func TestSessionListRendersTableAndHandoffState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list sessions: %v\n%s", err, output)
 	}
-	if !regexp.MustCompile(`SESSION\s+PLAN\s+TASK\s+AGE\s+STATUS\s+HANDOFF`).MatchString(output) {
+	if !regexp.MustCompile(`SESSION\s+SCOPE\s+PLAN\s+TASK\s+AGE\s+STATUS\s+HANDOFF`).MatchString(output) {
 		t.Fatalf("session list = %q, want session table header", output)
 	}
 	for _, expected := range []string{

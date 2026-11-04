@@ -2,11 +2,10 @@
 
 Owner of: onboarding, handoffs, and session state.
 
-A session is one agent conversation inside a project. It owns its cache. Its
-focus and handoff belong to its scope: the project's shared global focus by
-default, or its own after `focus ind` (see the focus reference). Sessions in
-the global focus share one handoff; an independent session never reads,
-acknowledges, or changes another session's state.
+A session is one agent conversation inside a project. It reads the project's
+shared global focus by default, or its own after `focus ind` (see the focus
+reference). It owns its cache and its handoffs, one per scope: one session
+never reads, acknowledges, or changes another session's handoff.
 
 ## Onboard
 
@@ -37,8 +36,12 @@ Handoffs live at two scopes:
   acknowledging it. `session ack` acknowledges it and releases the next dump.
 - `session dumps` lists the current session's sequence; `session dumps --all`
   includes project history, including logically purged sessions.
-- `session purge` is logical by default. Only `session purge --hard --confirm`
-  physically removes an already-purged orphan session and its history.
+- `session list` shows every session's scope, focus, and handoff state;
+  `session list --all` adds purged sessions.
+- `session purge` is logical by default and changes only the session state:
+  a purged session is hidden and never acts again, but stays visible with
+  `--all`. Only `session purge --hard --confirm` physically removes an
+  already-purged orphan session and its history.
 
 Write a handoff for a cold-start reader: what was done, what is next, and
 what was decided but is not obvious from the code.

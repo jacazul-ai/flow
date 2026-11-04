@@ -244,9 +244,10 @@ records native delivery, while `session ack` explicitly releases the next
 sequence. `session purge` preserves history logically; only
 `session purge --hard --confirm` deletes already-purged orphan history.
 
-Use `JACAZUL_SESSION` with `focus ind` to isolate one agent session from
-another while they share the same project database; without `focus ind`, the
-sessions share one focus and one handoff. See "Smart focus" in
+Use `JACAZUL_SESSION` with `focus ind` to isolate one agent session's focus
+from another while they share the same project database; without `focus ind`,
+the sessions share one focus. Handoffs stay per session and scope, and
+`session list` shows where each session is. See "Smart focus" in
 [docs/cli.md](docs/cli.md).
 
 ## Structured reports

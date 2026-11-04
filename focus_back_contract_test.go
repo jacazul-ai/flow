@@ -69,16 +69,26 @@ func TestFocusBackKeepsSessionNotesAndDumps(t *testing.T) {
 	if got := countSessionRows(t, harness.DatabasePath, "session_dumps", "session"); got != 1 {
 		t.Fatalf("session dumps after focus back = %d, want the dump kept", got)
 	}
-	if got := countSessionRows(t, harness.DatabasePath, "sessions", "session"); got != 0 {
-		t.Fatalf("session focus rows after focus back = %d, want the independent focus gone", got)
+	if got := sessionScope(t, harness, "session"); got != "global" {
+		t.Fatalf("session scope after focus back = %q, want the session tracked in the global focus", got)
+	}
+	if got := focusedTask(t, harness); got != "none" {
+		t.Fatalf("session focus after focus back = %s, want the empty global focus", got)
 	}
 	if got := countSessionRows(t, harness.DatabasePath, "cache_entries", "session"); got != 0 {
 		t.Fatalf("session cache rows after focus back = %d, want the derived cache cleared", got)
 	}
-	// Back in the global focus, the session reads the global handoff; its own
-	// dump stays stored under its ID but is no longer its active handoff.
+	// The dump belongs to the session's independent scope: back in the global
+	// focus it is out of reach, and a new independent focus delivers it again.
 	output, err = runFlow(t, harness, "session", "resume")
 	if err != nil || strings.Contains(output, "Resume the first task") {
-		t.Fatalf("session resume after focus back = %q, err %v; want the global scope, not the independent dump", output, err)
+		t.Fatalf("session resume after focus back = %q, err %v; want the global scope", output, err)
+	}
+	if output, err := runFlow(t, harness, "focus", "ind", "task", taskID[1]); err != nil {
+		t.Fatalf("focus ind task again: %v\n%s", err, output)
+	}
+	output, err = runFlow(t, harness, "session", "resume")
+	if err != nil || !strings.Contains(output, "SESSION HANDOFF") || !strings.Contains(output, "Resume the first task") {
+		t.Fatalf("session resume after focus ind = %q, err %v; want the pending dump", output, err)
 	}
 }

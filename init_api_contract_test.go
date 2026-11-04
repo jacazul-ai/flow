@@ -20,7 +20,7 @@ func TestInitAPICreatesMissingDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Init: %v", err)
 	}
-	want := flow.InitResult{Path: env.DatabasePath, Created: true, From: 0, To: 16}
+	want := flow.InitResult{Path: env.DatabasePath, Created: true, From: 0, To: 17}
 	if result != want {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
@@ -39,7 +39,7 @@ func TestInitAPIReportsCurrentDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second Init: %v", err)
 	}
-	want := flow.InitResult{Path: env.DatabasePath, From: 16, To: 16}
+	want := flow.InitResult{Path: env.DatabasePath, From: 17, To: 17}
 	if result != want {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
@@ -56,7 +56,7 @@ func TestInitAPIUpgradesOlderSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Init: %v", err)
 	}
-	want := flow.InitResult{Path: env.DatabasePath, Upgraded: true, From: 14, To: 16}
+	want := flow.InitResult{Path: env.DatabasePath, Upgraded: true, From: 14, To: 17}
 	if result != want {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
@@ -76,7 +76,7 @@ func TestInitAPIReportsMoveWithLegacyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Init: %v", err)
 	}
-	want := flow.InitResult{Path: current, LegacyPath: legacy, Moved: true, Upgraded: true, From: 14, To: 16}
+	want := flow.InitResult{Path: current, LegacyPath: legacy, Moved: true, Upgraded: true, From: 14, To: 17}
 	if result != want {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}

@@ -24,6 +24,10 @@ func (s *Store) ensureSessionActive(ctx context.Context, projectID string, sessi
 	if state != "purged" {
 		return nil
 	}
+	return purgedSessionError(sessionID)
+}
+
+func purgedSessionError(sessionID string) error {
 	return fmt.Errorf("session %s is purged\nACTION: Use a new session ID; purged sessions cannot be reactivated.", sessionID)
 }
 
@@ -157,10 +161,11 @@ func (s *Store) HardDeletePurgedSession(ctx context.Context, projectID string, s
 	return nil
 }
 
-// ExitSession drops one non-global session's independent focus and its derived
-// cache, so the session falls back to the global focus. Like removing the
-// legacy focus file, it keeps the session's handoff notes and dumps; only
-// session purge --hard deletes history.
+// ExitSession moves one non-global session from its independent focus back to
+// the global focus: the row stays with scope global and an empty focus, and
+// the derived cache is dropped. Like removing the legacy focus file, it keeps
+// the session's handoff notes and dumps; only session purge --hard deletes
+// history.
 func (s *Store) ExitSession(ctx context.Context, projectID string, sessionID string) error {
 	if projectID == "" || sessionID == "" {
 		return errors.New("project ID and session ID are required")
@@ -173,13 +178,18 @@ func (s *Store) ExitSession(ctx context.Context, projectID string, sessionID str
 		return fmt.Errorf("begin session exit: %w", err)
 	}
 	defer tx.Rollback()
-	for _, statement := range []string{
-		"DELETE FROM cache_entries WHERE project_id = ? AND session_id = ?",
-		"DELETE FROM sessions WHERE project_id = ? AND session_id = ?",
-	} {
-		if _, err := tx.ExecContext(ctx, statement, projectID, sessionID); err != nil {
-			return fmt.Errorf("exit session state: %w", err)
-		}
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM cache_entries WHERE project_id = ? AND session_id = ?
+	`, projectID, sessionID); err != nil {
+		return fmt.Errorf("exit session cache: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE sessions
+		SET scope = ?, focused_initiative_id = '', focused_task_id = '',
+		    task_stack_json = '[]', plans_of_interest_json = '[]', updated_at = ?
+		WHERE project_id = ? AND session_id = ?
+	`, task.ScopeGlobal, timestamp(), projectID, sessionID); err != nil {
+		return fmt.Errorf("exit session focus: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit session exit: %w", err)
@@ -187,9 +197,9 @@ func (s *Store) ExitSession(ctx context.Context, projectID string, sessionID str
 	return nil
 }
 
-// FocusScope resolves the scope a session's focus, handoff and dumps belong
-// to. A session that owns a sessions row is independent and keeps its own
-// scope; every other session shares the project's global scope.
+// FocusScope resolves the focus a session writes: its own session ID when it
+// is in an independent focus, else the project's shared "global" focus. A
+// purged session never acts again, so resolving its scope fails.
 func (s *Store) FocusScope(ctx context.Context, projectID string, sessionID string) (string, error) {
 	if projectID == "" || sessionID == "" {
 		return "", errors.New("project ID and session ID are required")
@@ -197,22 +207,80 @@ func (s *Store) FocusScope(ctx context.Context, projectID string, sessionID stri
 	if sessionID == "global" {
 		return "global", nil
 	}
-	var found int
+	var scope string
+	var state string
 	err := s.db.QueryRowContext(ctx, `
-		SELECT 1 FROM sessions WHERE project_id = ? AND session_id = ?
-	`, projectID, sessionID).Scan(&found)
+		SELECT scope, state FROM sessions WHERE project_id = ? AND session_id = ?
+	`, projectID, sessionID).Scan(&scope, &state)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "global", nil
 	}
 	if err != nil {
 		return "", fmt.Errorf("resolve focus scope: %w", err)
 	}
-	return sessionID, nil
+	if state == "purged" {
+		return "", purgedSessionError(sessionID)
+	}
+	if scope == task.ScopeIndependent {
+		return sessionID, nil
+	}
+	return "global", nil
+}
+
+// TouchSession records that a session is active. A session without a row
+// joins the global focus with an empty presence row; an existing row only
+// refreshes its activity time.
+func (s *Store) TouchSession(ctx context.Context, projectID string, sessionID string) error {
+	if projectID == "" || sessionID == "" {
+		return errors.New("project ID and session ID are required")
+	}
+	if err := s.ensureSessionActive(ctx, projectID, sessionID); err != nil {
+		return err
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO sessions
+			(project_id, session_id, focused_initiative_id, focused_task_id,
+			 task_stack_json, plans_of_interest_json, updated_at, scope)
+		VALUES (?, ?, '', '', '[]', '[]', ?, ?)
+		ON CONFLICT (project_id, session_id) DO UPDATE SET
+			updated_at = excluded.updated_at
+	`, projectID, sessionID, timestamp(), task.ScopeGlobal)
+	if err != nil {
+		return fmt.Errorf("touch session: %w", err)
+	}
+	return nil
+}
+
+// scopeForSession returns the scope a focus row written under sessionID has:
+// the project's global row is global, any other written row is independent.
+func scopeForSession(sessionID string) string {
+	if sessionID == "global" {
+		return task.ScopeGlobal
+	}
+	return task.ScopeIndependent
+}
+
+// scopeLabel maps a resolved focus scope to the handoff scope label.
+func scopeLabel(focusScope string) string {
+	if focusScope == "global" {
+		return task.ScopeGlobal
+	}
+	return task.ScopeIndependent
+}
+
+// HandoffScope resolves the scope of a session's handoff: global while the
+// session reads the global focus, ind while it has its own.
+func (s *Store) HandoffScope(ctx context.Context, projectID string, sessionID string) (string, error) {
+	focusScope, err := s.FocusScope(ctx, projectID, sessionID)
+	if err != nil {
+		return "", err
+	}
+	return scopeLabel(focusScope), nil
 }
 
 // ClearGlobalScopeCache drops the derived cache of every session of one
 // project that reads the global focus: the global scope itself and each
-// session without an independent sessions row.
+// session not in an independent focus.
 func (s *Store) ClearGlobalScopeCache(ctx context.Context, projectID string) error {
 	if projectID == "" {
 		return errors.New("project ID is required")
@@ -221,7 +289,7 @@ func (s *Store) ClearGlobalScopeCache(ctx context.Context, projectID string) err
 		DELETE FROM cache_entries
 		WHERE project_id = ? AND session_id NOT IN (
 			SELECT session_id FROM sessions
-			WHERE project_id = ? AND session_id != 'global'
+			WHERE project_id = ? AND scope = 'ind' AND session_id != 'global'
 		)
 	`, projectID, projectID)
 	if err != nil {

@@ -29,7 +29,7 @@ func TestInitCreatesMissingDatabaseAndReportsIt(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit = %d, stderr = %q", code, stderr)
 	}
-	want := "Created project database at " + env.DatabasePath + " (schema v16)\n"
+	want := "Created project database at " + env.DatabasePath + " (schema v17)\n"
 	if stdout != want {
 		t.Fatalf("stdout = %q, want %q", stdout, want)
 	}
@@ -56,7 +56,7 @@ func TestInitIsQuietWhenDatabaseIsCurrent(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("verbose init exit = %d, stderr = %q", code, stderr)
 	}
-	want := "Project database is current at " + env.DatabasePath + " (schema v16)\n"
+	want := "Project database is current at " + env.DatabasePath + " (schema v17)\n"
 	if stdout != want || stderr != "" {
 		t.Fatalf("verbose init stdout = %q, stderr = %q; want %q", stdout, stderr, want)
 	}
@@ -73,10 +73,10 @@ func TestInitUpgradesOlderSchemaAndReportsTransition(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit = %d, stderr = %q", code, stderr)
 	}
-	if !strings.Contains(stderr, "Schema upgrade required: v14 -> v16") {
+	if !strings.Contains(stderr, "Schema upgrade required: v14 -> v17") {
 		t.Fatalf("stderr = %q, want upgrade notice", stderr)
 	}
-	want := "Upgraded project database at " + env.DatabasePath + " (v14 -> v16)\n"
+	want := "Upgraded project database at " + env.DatabasePath + " (v14 -> v17)\n"
 	if stdout != want {
 		t.Fatalf("stdout = %q, want %q", stdout, want)
 	}
@@ -186,7 +186,7 @@ func TestInitHonorsDatabasePathFlag(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit = %d, stderr = %q", code, stderr)
 	}
-	if stdout != "Created project database at "+explicit+" (schema v16)\n" {
+	if stdout != "Created project database at "+explicit+" (schema v17)\n" {
 		t.Fatalf("stdout = %q, want explicit path created", stdout)
 	}
 	if _, err := os.Stat(env.DatabasePath); !os.IsNotExist(err) {

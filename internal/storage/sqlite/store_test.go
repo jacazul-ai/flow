@@ -190,8 +190,8 @@ func TestGooseAdoptsLegacyV1Schema(t *testing.T) {
 	).Scan(&version); err != nil {
 		t.Fatalf("read adopted Goose version: %v", err)
 	}
-	if version != 16 {
-		t.Fatalf("adopted Goose version = %d, want 16", version)
+	if version != 17 {
+		t.Fatalf("adopted Goose version = %d, want 17", version)
 	}
 	for _, column := range []string{"started_at", "completed_at", "disposition", "priority", "urgency", "wait_until", "position", "bucket"} {
 		var count int
@@ -243,8 +243,8 @@ func TestOpenAppliesAllGooseMigrations(t *testing.T) {
 	).Scan(&version); err != nil {
 		t.Fatalf("read goose version: %v", err)
 	}
-	if version != 16 {
-		t.Fatalf("goose version = %d, want 16", version)
+	if version != 17 {
+		t.Fatalf("goose version = %d, want 17", version)
 	}
 	var migrationIssues int
 	if err := db.QueryRow(
@@ -308,7 +308,7 @@ func TestSessionDumpStoresGzipPayloadAndPlaintextHash(t *testing.T) {
 	store := openStore(t, path)
 	content := "# Session Handoff\n\n## Actions\n\nRun the next command\n"
 
-	dump, err := store.CreateSessionDumpDraft(ctx, "project", "session", "plan", content)
+	dump, err := store.CreateSessionDumpDraft(ctx, "project", "session", "ind", "plan", content)
 	if err != nil {
 		t.Fatalf("create session dump: %v", err)
 	}

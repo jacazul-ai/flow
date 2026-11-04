@@ -444,7 +444,7 @@ func (cmd *FocusBackCommand) Execute(args []string) error {
 		return err
 	}
 	defer store.Close()
-	scope, err := focusScope(store, cmd.appOpts, false)
+	scope, err := store.FocusScope(cmd.appOpts.Context(), cmd.appOpts.ProjectID, cmd.appOpts.SessionID)
 	if err != nil {
 		return err
 	}
@@ -498,12 +498,22 @@ func (cmd *FocusClearCommand) Execute(args []string) error {
 }
 
 // focusScope resolves where a focus write lands: an independent write keeps
-// the session's own scope, any other write follows the session's current scope.
+// the session's own scope, any other write follows the session's current
+// scope. A session writing the global focus is recorded as present in it.
 func focusScope(store *sqlite.Store, opts *config.AppOptions, independent bool) (string, error) {
 	if independent {
 		return opts.SessionID, nil
 	}
-	return store.FocusScope(opts.Context(), opts.ProjectID, opts.SessionID)
+	scope, err := store.FocusScope(opts.Context(), opts.ProjectID, opts.SessionID)
+	if err != nil {
+		return "", err
+	}
+	if scope == "global" {
+		if err := store.TouchSession(opts.Context(), opts.ProjectID, opts.SessionID); err != nil {
+			return "", err
+		}
+	}
+	return scope, nil
 }
 
 // clearFocusCaches drops the caches a task focus change makes stale. A change

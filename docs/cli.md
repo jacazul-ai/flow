@@ -156,33 +156,45 @@ to upgrade the engine. There is no separate schema `migrate up` command.
 
 ### Session list report
 
-`jczl-flow session list` renders the current project's persisted sessions as a
-compact text table:
+`jczl-flow session list` renders the current state of every session of the
+project as a compact text table:
 
 ```text
-SESSION    PLAN                TASK      AGE  STATUS  HANDOFF
-* current  session-list-table  373e0c61  0s   active  pending
+SESSION    SCOPE   PLAN                TASK      AGE  STATUS  HANDOFF
+* current  ind     session-list-table  373e0c61  0s   active  pending
+  agent-b  global  parity              57c3fc80  4m   active  -
 ```
 
-The current session is prefixed with `*`. `PLAN` is the initiative name,
-`TASK` is the focused task's short UUID, and missing anchors are shown as `-`.
-`STATUS` is `active` below two hours, `idle` below eight hours, and `orphan`
-after eight hours. `HANDOFF` is `pending` until `session ack` records the
-acknowledgement, then becomes `acknowledged`; sessions without a note show `-`.
-The report is project-scoped and never lists sessions from another project.
-Logically purged sessions are hidden from the default list.
+The current session is prefixed with `*`. `SCOPE` is `global` for a session in
+the project's shared focus and `ind` for one with its own focus (see "Smart
+focus" below). `PLAN` is the initiative name and `TASK` the focused task's
+short UUID of the focus the session reads, so a global session shows the
+global focus; missing anchors are shown as `-`. `STATUS` is `active` below two
+hours, `idle` below eight hours, and `orphan` after eight hours. `HANDOFF` is
+the state of the session's handoff in its current scope: `pending` until
+`session ack` records the acknowledgement, then `acknowledged`; `-` when there
+is none. The report is project-scoped and never lists sessions from another
+project.
+
+A session appears once it writes the focus, runs `onboard`, or runs
+`session dump`, `finalize`, `resume` or `ack`; read-only commands such as
+`status`, `ponder` and `focus show` never register it. Logically purged
+sessions are hidden from the default list; `--all` includes them with
+`STATUS` `purged`, so their last state stays visible.
 
 Structured formats preserve the existing session identity fields and add
-`plan`, `task`, and `handoff` fields:
+`scope`, `state`, `plan`, `task`, and `handoff` fields:
 
 ```bash
+jczl-flow session list --all
 jczl-flow session list --format json
 ```
 
 ### Smart focus: global and independent scopes
 
-A session stays in the scope it entered. A session without an independent
-focus is in the project's global focus, shared by every such session:
+A session stays in the scope it entered, and flow tracks that scope for every
+session. A session starts in the project's global focus, shared by every
+session in it:
 
 - `focus <initiative>`, `focus plan`, `focus ini`, `focus task`, `focus pop`,
   `focus clear` and `focus interest` write the global focus, and every session
@@ -194,26 +206,29 @@ focus is in the project's global focus, shared by every such session:
 - `focus back` is the only way back. A session already in the global focus is
   refused with an `ACTION:` pointing at `focus ind`.
 
-Reads are unchanged: a session reads its own focus when it has one, else the
-global focus. A change to the global focus drops the cached output of every
+A session reads its own focus when it is independent, else the global focus. A change to the global focus drops the cached output of every
 session of the project that reads it; independent sessions and other projects
 keep their cache.
 
-Handoffs follow the same scope. In the global focus, `session dump`,
-`session finalize`, `session resume`, `session ack`, `session dumps` and
-`onboard` act on the shared `global` handoff, so any session in the global
-focus receives it; an independent session keeps its own. `session list` and
-`session purge` keep their project-wide view.
+Handoffs are keyed by session and scope: each session has its own global
+handoff and its own independent handoff, and never reads another session's.
+`session dump`, `session finalize`, `session resume`, `session ack`,
+`session dumps` and `onboard` act on the handoff of the session's current
+scope; the dump header records it as `**Scope:** global` or `**Scope:** ind`,
+and `session dumps --all` lists the scope of every dump. The pending-dump
+guard applies per session and scope, so a session may hold a pending global
+handoff and a pending independent one. `session list` and `session purge`
+keep their project-wide view.
 
 ### Leaving an independent focus
 
 `jczl-flow focus back` drops the current session's independent focus and its
-cached output, so the session falls back to the global focus and no longer
-appears in `session list` until it anchors again with `focus ind`. Like
-removing the legacy `focus-<session>.json` file, it keeps the session's handoff
-notes and dumps stored under its ID: they stay listed by `session dumps --all`,
-while `session resume` now reads the global handoff. Only
-`session purge --hard --confirm` deletes session history.
+cached output and moves the session to the global focus; `session list` shows
+it with `SCOPE` `global`. Like removing the legacy `focus-<session>.json` file,
+it keeps the session's handoff notes and dumps: `session resume` now reads the
+session's global handoff, and its independent handoff is delivered again after
+the next `focus ind`. Only `session purge --hard --confirm` deletes session
+history.
 
 ### Session dump history
 
@@ -236,8 +251,11 @@ jczl-flow session purge --hard
 jczl-flow session purge --hard --confirm
 ```
 
-The default purge marks orphan sessions as purged and hides them from normal
-session views. Only `--hard --confirm` physically deletes an already-purged
+The default purge changes only the session state: it marks orphan sessions as
+purged and hides them from normal session views. A purged session never acts
+again: its focus and handoff writes, `focus back`, `onboard` and `session`
+handoff commands are refused with an `ACTION:` to use a new session ID, while
+`session list --all` and `session dumps --all` keep showing what it did. Only `--hard --confirm` physically deletes an already-purged
 orphan session and its dumps, notes, and cache. It never targets the current or
 global session.
 

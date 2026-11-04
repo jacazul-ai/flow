@@ -405,6 +405,7 @@ type InitiativeSummary struct {
 type SessionInfo struct {
 	ProjectID      string
 	SessionID      string
+	Scope          string
 	InitiativeID   string
 	InitiativeName string
 	FocusedTaskID  string
@@ -413,6 +414,13 @@ type SessionInfo struct {
 	PurgedAt       string
 	Handoff        string
 }
+
+// Session scopes: a session reads either the project's shared global focus
+// or its own independent focus, and keeps one handoff per scope.
+const (
+	ScopeGlobal      = "global"
+	ScopeIndependent = "ind"
+)
 
 // SessionNote stores a legacy-compatible resumable handoff note for one project session.
 type SessionNote struct {
@@ -437,6 +445,7 @@ type SessionDump struct {
 	ID              string
 	ProjectID       string
 	SessionID       string
+	Scope           string
 	Sequence        int64
 	Status          SessionDumpStatus
 	CreatedAt       string

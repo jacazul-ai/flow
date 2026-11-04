@@ -96,7 +96,7 @@ func TestSkillOutWritesLinkedTree(t *testing.T) {
 		"handoff notes and dumps stay readable",
 		"`focus ind ...` is the only way out",
 		"`focus back` is the only way back",
-		"act on the shared global handoff",
+		"Handoffs are per session and scope",
 		"`session purge --hard --confirm` deletes session history",
 	} {
 		if !strings.Contains(tree["references/focus.md"], expected) {
