@@ -180,10 +180,9 @@ current databases stay silent, older databases announce and apply pending
 migrations, and newer databases fail with actionable guidance. The database is
 created lazily by the first command that needs it; `jczl-flow init [--verbose]`
 creates or upgrades it on demand without writing workflow state, so a launcher
-can settle storage before any workflow command runs. Moving that SQL onto [`sqlok`](https://github.com/candango/sqlok) is
-still the intended direction and is deferred, not abandoned; see
-[Architecture](docs/ARCHITECTURE.md) for the ownership split and what `sqlok`
-has to expose first.
+can settle storage before any workflow command runs. That explicit SQL is the
+storage layer; moving it onto [`sqlok`](https://github.com/candango/sqlok) is
+out of scope, see [Architecture](docs/ARCHITECTURE.md#sql-layer).
 
 ## Runtime defaults
 

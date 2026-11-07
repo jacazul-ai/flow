@@ -1,4 +1,4 @@
-// Package sqlite provides the provisional local project workflow store.
+// Package sqlite provides the local project workflow store.
 package sqlite
 
 import (

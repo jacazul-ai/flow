@@ -245,31 +245,25 @@ default paths and fails with `ACTION:` guidance without it. `EnvFromOS`, for
 standalone executables, resolves `JACAZUL_HOME` or falls back to
 `$HOME/.jacazul`.
 
-### SQL layer: sqlok (deferred)
+### SQL layer
 
-[`sqlok`](https://github.com/candango/sqlok) remains the intended
-SQLAlchemy-like query, schema, and migration layer. The ownership split is:
+The store in `internal/storage/sqlite` is the SQL layer: explicit,
+parameterized SQL over `database/sql` with the pure-Go `modernc.org/sqlite`
+driver, and schema changes as embedded Goose migrations. `flow` owns the
+driver and the connection lifecycle per project.
 
-- `flow` owns the concrete driver (`modernc.org/sqlite`) and the
-  `database/sql` connection lifecycle per project;
-- `sqlok` receives the application-provided connection and SQLite dialect to
-  generate DDL and parameterized SQL, apply migrations, and run
-  transaction-aware queries.
+An earlier design planned to move this SQL onto
+[`sqlok`](https://github.com/candango/sqlok), a SQLAlchemy-like query,
+schema, and migration layer. That move is out of scope: `sqlok` targets
+PostgreSQL and exposes no SQLite dialect, migration API, or transactional
+execution over an application-provided `*sql.DB`, and the explicit store
+already carries the workflow contracts and the Taskwarrior cutover.
 
-The integration is deferred, not abandoned. `sqlok` does not yet expose the
-public surface `flow` needs: a SQLite dialect, schema and migration APIs, and
-transaction-aware execution over an application-provided `*sql.DB`. Its
-current integration target is PostgreSQL. Because the concrete workflow
-behavior is the source material for that API, `flow` first built a provisional
-store with explicit SQL and embedded Goose migrations, and the parity review
-kept that store for the Taskwarrior cutover.
+Rules for the SQL layer:
 
-Until the refactor:
-
-- keep all direct SQL isolated inside `internal/storage/sqlite`;
-- do not add a second SQL builder or import `sqlok/internal`;
-- treat the current SQL and migrations as provisional evidence for the `sqlok`
-  API, to be moved onto it in a separate architecture task.
+- keep all direct SQL inside `internal/storage/sqlite`;
+- do not add a query builder or ORM without a recorded design decision;
+- change the schema only through a new embedded migration.
 
 ## Storage Contracts
 
