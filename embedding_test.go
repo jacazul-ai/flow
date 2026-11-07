@@ -13,7 +13,7 @@ import (
 // build local, so the test never reaches the network for the engine itself.
 const consumerModule = `module example.com/consumer
 
-go 1.25.0
+go 1.26.0
 
 require github.com/jacazul-ai/flow v0.0.0
 
